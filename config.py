@@ -29,10 +29,10 @@ MODEL_NAME = os.getenv("MODEL_NAME", MODEL_CANDIDATES[0])
 
 # Inference settings
 MAX_TOKENS = 256                # Fallback; agents use their own value below
-AGENT_MAX_TOKENS = {            # Per-agent — small outputs = cheap inference
-    "triage": 128,
-    "rca": 192,
-    "remediation": 256,
+AGENT_MAX_TOKENS = {
+    "triage": 256,
+    "rca": 512,
+    "remediation": 512,
     "reporting": 256,
 }
 TEMPERATURE = 0.3         # Low for consistent agent outputs

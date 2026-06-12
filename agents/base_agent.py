@@ -207,6 +207,16 @@ class BaseAgent:
                 pass
 
         self.logger.error("Failed to parse JSON from %s: %s", self.name, cleaned[:300])
+
+        # Detect truncation — if text is cut off mid-JSON
+        truncated = False
+        if "{" in cleaned and "}" not in cleaned[cleaned.rindex("{"):]:
+            truncated = True
+        elif cleaned.count("{") > cleaned.count("}"):
+            truncated = True
+
+        if truncated:
+            return {"error": "LLM response truncated (max_tokens too low). JSON incomplete.", "raw": text, "_truncated": True}
         return {"error": "Failed to parse response", "raw": text}
 
     # ── Metrics ──────────────────────────────────────────────────

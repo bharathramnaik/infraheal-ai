@@ -362,6 +362,57 @@ button.secondary:hover {
   border-radius: 10px; height: 120px;
 }
 
+/* ── Agent Chat ────────────────────────────────────────────────── */
+.chat-terminal {
+  background: #0d1117 !important;
+  border: 1px solid #30363d !important;
+  border-radius: 12px !important;
+  font-family: 'JetBrains Mono', monospace !important;
+}
+.chat-terminal .chat-message {
+  border-bottom: 1px solid #21262d !important;
+}
+.chat-terminal .chat-message.user {
+  border-left: 3px solid var(--cyan) !important;
+}
+.chat-terminal .chat-message.assistant {
+  border-left: 3px solid var(--green) !important;
+}
+.chat-status-bar {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+  color: #8b949e;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.chat-status-bar .status-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  display: inline-block;
+}
+.chat-status-bar .status-dot.green { background: var(--green); }
+.chat-status-bar .status-dot.yellow { background: var(--amber); }
+.chat-status-bar .status-dot.gray { background: #484f58; }
+.chat-quick-btn {
+  background: #21262d !important;
+  border: 1px solid #30363d !important;
+  color: #c9d1d9 !important;
+  border-radius: 6px !important;
+  font-size: 0.8rem !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  padding: 6px 14px !important;
+  transition: all 0.2s ease !important;
+}
+.chat-quick-btn:hover {
+  border-color: var(--cyan) !important;
+  color: var(--cyan) !important;
+  background: rgba(0,212,255,0.08) !important;
+}
+
 /* ── Misc ──────────────────────────────────────────────────────── */
 .gr-group { border: none !important; }
 .gr-padded { padding: 0 !important; }
@@ -1688,7 +1739,7 @@ def create_dashboard(
 
     def _chat_respond(message: str, history: list) -> str:
         if not _last_pipeline_state.get("triage"):
-            return "No analysis data yet. Please run an incident analysis first from the **Incident Analysis** tab."
+            return "⚠️ **No analysis data yet.**\n\nRun an incident analysis first from the **Incident Analysis** tab, then I can answer questions about it."
 
         tri = _last_pipeline_state.get("triage", {})
         rca = _last_pipeline_state.get("rca", {})
@@ -1715,26 +1766,28 @@ def create_dashboard(
                     elif isinstance(h, (list, tuple)) and len(h) == 2:
                         history_msgs.append({"role": "user", "content": str(h[0])})
                         history_msgs.append({"role": "assistant", "content": str(h[1])})
-                history_msgs.append({"role": "user", "content": f"Context: {ctx}\n\nUser question: {message}\n\nAnswer concisely as an incident diagnosis AI."})
+                history_msgs.append({"role": "user", "content": f"Current incident: {ctx}\n\nQuestion: {message}\n\nAnswer concisely with markdown formatting (tables, code, bold where helpful)."})
 
                 resp = client.chat.completions.create(
                     model=MODEL_NAME,
                     messages=[
-                        {"role": "system", "content": "You are InfraHeal AI, an autonomous incident diagnosis agent. Answer concisely and technically."},
+                        {"role": "system", "content": "You are InfraHeal AI, an autonomous incident diagnosis agent running on AMD ROCm + vLLM. Answer concisely and technically. Use markdown: **bold** for key terms, `code` for commands/metrics, tables for structured data."},
                     ] + history_msgs,
-                    max_tokens=256,
+                    max_tokens=512,
                     temperature=0.3,
                 )
                 return resp.choices[0].message.content or "I don't have a specific answer."
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("Chat LLM failed: %s", exc)
 
         return (
-            f"I analyzed the incident as **{tri.get('severity','?')}** ({tri.get('category','?')}). "
-            f"Root cause: **{rca.get('root_cause','unknown')[:120]}** "
-            f"({rca.get('confidence_score',0):.0%} confidence). "
-            f"{len(remed.get('recommended_actions',[]))} remediation actions generated. "
-            f"{'Self-critique confirmed.' if crit.get('confirmed',True) else 'Self-critique found gaps.'}"
+            f"**Incident Summary**\n\n"
+            f"| Severity | Category | Confidence | Actions |\n"
+            f"|----------|----------|-----------|--------|\n"
+            f"| {tri.get('severity','?')} | {tri.get('category','?')} | {rca.get('confidence_score',0):.0%} | {len(remed.get('recommended_actions',[]))} |\n\n"
+            f"**Root cause:** {rca.get('root_cause','unknown')}\n\n"
+            f"{len(remed.get('recommended_actions',[]))} remediation actions. "
+            f"{'✅ Critique confirmed.' if crit.get('confirmed',True) else '⚠️ Critique found gaps.'}"
         )
 
     # ═══════════════════════════════════════════════════════════════
@@ -2107,29 +2160,75 @@ def create_dashboard(
                 kb_search.submit(fn=_search_runbooks, inputs=[kb_search], outputs=[kb_results])
 
             # ──────────────────────────────────────────────────────
-            #  TAB 6 — AGENT CHAT (multi-turn)
+            #  TAB 6 — AGENT CHAT (CLI-style, multi-turn)
             # ──────────────────────────────────────────────────────
             with gr.Tab("💬 Agent Chat"):
                 gr.HTML(
-                    '<div style="font-size:1.1rem;font-weight:700;color:#e2e8f0;margin-bottom:4px;">'
-                    '💬 Ask the Agent</div>'
-                    '<div style="font-size:0.82rem;color:#94a3b8;margin-bottom:18px;">'
-                    'Ask questions about the last incident analysis. Try: "why did you pick P1?", '
-                    '"whats your confidence?", "explain the evidence chain", or "what should I do next?".</div>'
+                    '<div style="padding:8px 0 4px 0;">'
+                    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:2px;">'
+                    '<span style="font-size:1.2rem;font-weight:700;color:#e2e8f0;font-family:Inter,sans-serif;">'
+                    '🐚 InfraHeal AI Terminal</span>'
+                    '</div>'
+                    '<div style="font-size:0.78rem;color:#8b949e;font-family:JetBrains Mono,monospace;">'
+                    'Ask questions about the last incident analysis. The agent remembers conversation context.</div>'
+                    '</div>'
                 )
+
+                with gr.Row(elem_classes="chat-status-bar"):
+                    status_dot = gr.HTML(
+                        '<span class="status-dot gray"></span>'
+                    )
+                    status_text = gr.HTML(
+                        '<span style="color:#8b949e;font-family:JetBrains Mono,monospace;font-size:0.78rem;">'
+                        '⏳ Awaiting incident analysis…</span>'
+                    )
+
                 chatbot = gr.Chatbot(
-                    value=[],
-                    height=400,
-                    label="Conversation",
+                    value=[{
+                        "role": "assistant",
+                        "content": "```\nInfraHeal AI v1.0 — Autonomous Incident Diagnosis\nAMD ROCm + Qwen2.5-7B-Instruct\n----------------------------------------\nSystem ready. Run an analysis first, then ask me anything.\n```"
+                    }],
+                    height=380,
+                    label="Terminal Chat",
+                    show_copy_button=True,
+                    elem_classes="chat-terminal",
                 )
+
                 with gr.Row():
                     chat_msg = gr.Textbox(
                         placeholder="Ask a question about the analysis...",
                         label="Your Question",
-                        scale=4,
+                        scale=5,
+                        container=False,
                     )
-                    chat_send = gr.Button("Send", variant="primary", scale=1)
-                    chat_clear = gr.Button("Clear", variant="secondary", scale=1)
+                    chat_send = gr.Button("⏎ Send", variant="primary", scale=1, elem_classes="chat-quick-btn")
+                    chat_clear = gr.Button("✕ Clear", variant="secondary", scale=1, elem_classes="chat-quick-btn")
+
+                gr.HTML(
+                    '<div style="font-size:0.72rem;color:#8b949e;font-family:JetBrains Mono,monospace;padding:4px 0 8px 0;">'
+                    'Quick questions:</div>'
+                )
+                with gr.Row():
+                    q1 = gr.Button("Why P1?", elem_classes="chat-quick-btn", scale=1)
+                    q2 = gr.Button("What's the root cause?", elem_classes="chat-quick-btn", scale=1)
+                    q3 = gr.Button("What should I do?", elem_classes="chat-quick-btn", scale=1)
+                    q4 = gr.Button("Explain evidence", elem_classes="chat-quick-btn", scale=1)
+                    q5 = gr.Button("Re-analyze", elem_classes="chat-quick-btn", scale=1)
+
+                def _update_status():
+                    if _last_pipeline_state.get("triage"):
+                        tri = _last_pipeline_state["triage"]
+                        return (
+                            '<span class="status-dot green"></span>',
+                            f'<span style="color:#00FF88;font-family:JetBrains Mono,monospace;font-size:0.78rem;">'
+                            f'● ACTIVE · {tri.get("severity","?")} · {tri.get("category","?")} · '
+                            f'{len(_last_pipeline_state.get("anomalies",[]))} anomalies</span>'
+                        )
+                    return (
+                        '<span class="status-dot gray"></span>',
+                        '<span style="color:#8b949e;font-family:JetBrains Mono,monospace;font-size:0.78rem;">'
+                        '⏳ Awaiting incident analysis…</span>'
+                    )
 
                 def _chat_handler(message: str, history: list) -> tuple:
                     if not message or not message.strip():
@@ -2139,17 +2238,15 @@ def create_dashboard(
                     history.append({"role": "assistant", "content": response})
                     return history, ""
 
-                chat_send.click(
-                    fn=_chat_handler,
-                    inputs=[chat_msg, chatbot],
-                    outputs=[chatbot, chat_msg],
-                )
-                chat_msg.submit(
-                    fn=_chat_handler,
-                    inputs=[chat_msg, chatbot],
-                    outputs=[chatbot, chat_msg],
-                )
-                chat_clear.click(fn=lambda: ([], ""), inputs=[], outputs=[chatbot, chat_msg])
+                chat_send.click(fn=_chat_handler, inputs=[chat_msg, chatbot], outputs=[chatbot, chat_msg])
+                chat_msg.submit(fn=_chat_handler, inputs=[chat_msg, chatbot], outputs=[chatbot, chat_msg])
+                chat_clear.click(fn=lambda: ([{
+                    "role": "assistant",
+                    "content": "```\nInfraHeal AI v1.0 — Terminal cleared. Ready for new questions.\n```"
+                }], ""), inputs=[], outputs=[chatbot, chat_msg])
+
+                for btn, q_text in [(q1, "Why P1?"), (q2, "What's the root cause?"), (q3, "What should I do?"), (q4, "Explain evidence"), (q5, "Re-analyze")]:
+                    btn.click(fn=lambda h, q=q_text: _chat_handler(q, h), inputs=[chatbot], outputs=[chatbot, chat_msg])
 
     logger.info("InfraHeal AI dashboard created successfully")
     return demo
