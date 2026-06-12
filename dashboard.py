@@ -74,6 +74,7 @@ except ImportError:
     from config import (
         SEVERITY_LEVELS, INCIDENT_CATEGORIES, AVAILABLE_TOOLS,
         DASHBOARD_HOST, DASHBOARD_PORT, MODEL_NAME, VLLM_BASE_URL,
+        MODEL_REGISTRY, THINKING_TAGS,
     )
 
 logger = logging.getLogger("infraheal.dashboard")
@@ -1163,11 +1164,11 @@ def create_dashboard(
         logs_html = format_log_table(sc.get("logs", []))
         return desc_html, logs_html
 
-    def _run_analysis(scenario_name: str) -> Tuple[str, str, str, str, str]:
+    def _run_analysis(scenario_name: str) -> Tuple[str, str, str, str, str, str]:
         """Run the full orchestrator pipeline on a scenario."""
         if not scenario_name or scenario_name not in scenarios:
             empty = _empty_state("Select a scenario first")
-            return empty, empty, empty, empty, empty
+            return empty, empty, empty, empty, empty, empty
 
         sc = dict(scenarios[scenario_name])  # shallow copy so we can inject anomalies
 
@@ -1266,7 +1267,7 @@ def create_dashboard(
                     "pipeline_metrics": result.get("pipeline_metrics", {}),
                 })
 
-                return triage_html, rca_html, remed_html, report_html, reasoning_html
+                return triage_html, rca_html, remed_html, report_html, reasoning_html, _refresh_risk()
 
             except Exception as exc:
                 logger.error("Orchestrator failed: %s", exc, exc_info=True)
@@ -1278,7 +1279,7 @@ def create_dashboard(
                     f'Ensure vLLM server is running at {VLLM_BASE_URL}</div>'
                     f'</div>'
                 )
-                return error_html, error_html, error_html, error_html, error_html
+                return error_html, error_html, error_html, error_html, error_html, error_html
 
         # ---- Demo mode (no orchestrator) ----
         demo_triage = format_agent_output("Triage", {
@@ -1367,7 +1368,7 @@ def create_dashboard(
             },
         })
 
-        return demo_triage, demo_rca, demo_remed, demo_report, demo_reasoning
+        return demo_triage, demo_rca, demo_remed, demo_report, demo_reasoning, _refresh_risk()
 
     def _run_error_level_resolution(scenario_name: str, level_filter: str) -> str:
         """Run error-level specific resolution analysis with progress timing."""
@@ -1732,12 +1733,81 @@ def create_dashboard(
         )
 
     # ═══════════════════════════════════════════════════════════════
+    #  MODEL / THINKING HELPERS
+    # ═══════════════════════════════════════════════════════════════
+
+    def _get_model_label(model_id: str) -> str:
+        info = MODEL_REGISTRY.get(model_id, {})
+        return info.get("label", model_id.split("/")[-1])
+
+    def _extract_think(raw: str) -> tuple:
+        """Extract thinking trace and clean answer from model output.
+        Returns (thinking_trace, clean_answer)."""
+        raw = raw.strip()
+        for open_tag, close_tag in THINKING_TAGS:
+            if open_tag in raw and close_tag in raw:
+                try:
+                    start = raw.index(open_tag) + len(open_tag)
+                    end = raw.index(close_tag)
+                    thinking = raw[start:end].strip()
+                    answer = raw[end + len(close_tag):].strip()
+                    return thinking, answer
+                except ValueError:
+                    continue
+        return "", raw
+
+    def _run_risk_assessment():
+        """Generate risk & security summary from pipeline state."""
+        tri = _last_pipeline_state.get("triage", {})
+        rca = _last_pipeline_state.get("rca", {})
+        remed = _last_pipeline_state.get("remediation", {})
+        actions = remed.get("recommended_actions", [])
+        rca_cat = rca.get("root_cause_category", "")
+        security_related = rca_cat in ("security", "network")
+
+        risk_items = []
+        risk_levels = {"low": 0, "medium": 0, "high": 0}
+        for a in actions:
+            rl = a.get("risk_level", "medium")
+            risk_levels[rl] = risk_levels.get(rl, 0) + 1
+            risk_items.append({
+                "action": a.get("tool_name", "?"),
+                "risk": rl,
+                "rationale": a.get("rationale", "")[:80],
+            })
+
+        return {
+            "security_incident": security_related,
+            "risk_levels": risk_levels,
+            "total_actions": len(actions),
+            "risk_items": risk_items,
+            "severity": tri.get("severity", "?"),
+            "sla_minutes": SEVERITY_LEVELS.get(tri.get("severity", "P3"), {}).get("sla_minutes", 240),
+            "recommendation": _generate_risk_recommendation(tri, rca, risk_levels, security_related),
+        }
+
+    def _generate_risk_recommendation(tri, rca, risk_levels, security_related) -> str:
+        sev = tri.get("severity", "P3")
+        if sev in ("P1", "P2"):
+            base = "**Critical incident** — immediate action required."
+        else:
+            base = "**Non-critical** — standard response timeline applies."
+
+        if security_related:
+            base += " 🔒 **Security incident** — isolate affected systems and preserve forensic evidence."
+        if risk_levels.get("high", 0) > 0:
+            base += f" ⚠ **{risk_levels['high']} high-risk action(s)** require manual approval."
+        if rca.get("confidence_score", 0) < 0.5:
+            base += " ⚠ **Low confidence RCA** — verify root cause before executing remediation."
+        return base
+
+    # ═══════════════════════════════════════════════════════════════
     #  MULTI-TURN CHAT
     # ═══════════════════════════════════════════════════════════════
 
     CHAT_SYSTEM_PROMPT = """You are InfraHeal AI, an autonomous incident diagnosis agent. You just analyzed an infrastructure incident. Answer questions about your analysis, reasoning, and decisions. Be concise and technical. If asked "why", explain your reasoning chain step by step. If asked "re-analyze", acknowledge and suggest running a new analysis."""
 
-    def _chat_respond(message: str, history: list) -> str:
+    def _chat_respond(message: str, history: list, model_id: str = "") -> str:
         if not _last_pipeline_state.get("triage"):
             return "⚠️ **No analysis data yet.**\n\nRun an incident analysis first from the **Incident Analysis** tab, then I can answer questions about it."
 
@@ -1745,6 +1815,12 @@ def create_dashboard(
         rca = _last_pipeline_state.get("rca", {})
         remed = _last_pipeline_state.get("remediation", {})
         crit = _last_pipeline_state.get("critique", {})
+
+        if not model_id or model_id not in MODEL_REGISTRY:
+            model_id = MODEL_NAME
+        model_info = MODEL_REGISTRY.get(model_id, {})
+        has_think = model_info.get("has_thinking", False)
+        model_max = model_info.get("max_tokens", 512)
 
         ctx = (
             f"severity={tri.get('severity','?')} category={tri.get('category','?')} "
@@ -1768,15 +1844,27 @@ def create_dashboard(
                         history_msgs.append({"role": "assistant", "content": str(h[1])})
                 history_msgs.append({"role": "user", "content": f"Current incident: {ctx}\n\nQuestion: {message}\n\nAnswer concisely with markdown formatting (tables, code, bold where helpful)."})
 
+                system = "You are InfraHeal AI, an autonomous incident diagnosis agent running on AMD ROCm + vLLM. Answer concisely and technically. Use markdown: **bold** for key terms, `code` for commands/metrics, tables for structured data."
+                if has_think:
+                    system += " Think step by step before answering. Show your reasoning clearly."
+
                 resp = client.chat.completions.create(
-                    model=MODEL_NAME,
+                    model=model_id,
                     messages=[
-                        {"role": "system", "content": "You are InfraHeal AI, an autonomous incident diagnosis agent running on AMD ROCm + vLLM. Answer concisely and technically. Use markdown: **bold** for key terms, `code` for commands/metrics, tables for structured data."},
+                        {"role": "system", "content": system},
                     ] + history_msgs,
-                    max_tokens=512,
+                    max_tokens=model_max,
                     temperature=0.3,
                 )
-                return resp.choices[0].message.content or "I don't have a specific answer."
+                content = resp.choices[0].message.content or "I don't have a specific answer."
+
+                if has_think:
+                    thinking, clean = _extract_think(content)
+                    if thinking:
+                        return (
+                            f"<details><summary>🧠 Thinking Trace</summary>\n\n```\n{thinking}\n```\n\n</details>\n\n---\n\n{clean}"
+                        )
+                return content
             except Exception as exc:
                 logger.warning("Chat LLM failed: %s", exc)
 
@@ -1933,7 +2021,7 @@ def create_dashboard(
                 analyze_btn.click(
                     fn=_run_analysis,
                     inputs=[scenario_dropdown],
-                    outputs=[triage_panel, rca_panel, remed_panel, report_panel, reasoning_panel],
+                    outputs=[triage_panel, rca_panel, remed_panel, report_panel, reasoning_panel, risk_panel],
                 )
                 level_resolve_btn.click(
                     fn=_run_error_level_resolution,
@@ -2160,7 +2248,7 @@ def create_dashboard(
                 kb_search.submit(fn=_search_runbooks, inputs=[kb_search], outputs=[kb_results])
 
             # ──────────────────────────────────────────────────────
-            #  TAB 6 — AGENT CHAT (CLI-style, multi-turn)
+            #  TAB 6 — AGENT CHAT (CLI-style, multi-turn, multi-model)
             # ──────────────────────────────────────────────────────
             with gr.Tab("💬 Agent Chat"):
                 gr.HTML(
@@ -2170,7 +2258,7 @@ def create_dashboard(
                     '🐚 InfraHeal AI Terminal</span>'
                     '</div>'
                     '<div style="font-size:0.78rem;color:#8b949e;font-family:JetBrains Mono,monospace;">'
-                    'Ask questions about the last incident analysis. The agent remembers conversation context.</div>'
+                    'Ask questions about the analysis. Switch models to compare responses.</div>'
                     '</div>'
                 )
 
@@ -2180,15 +2268,32 @@ def create_dashboard(
                     )
                     status_text = gr.HTML(
                         '<span style="color:#8b949e;font-family:JetBrains Mono,monospace;font-size:0.78rem;">'
-                        '⏳ Awaiting incident analysis…</span>'
+                        '⏳ Awaiting incident…</span>'
+                    )
+
+                model_choices = {
+                    info["label"]: model_id
+                    for model_id, info in MODEL_REGISTRY.items()
+                }
+                with gr.Row():
+                    model_selector = gr.Dropdown(
+                        choices=list(model_choices.keys()),
+                        value=list(model_choices.keys())[0],
+                        label="Model",
+                        scale=3,
+                        container=True,
+                        interactive=True,
+                    )
+                    model_info_html = gr.HTML(
+                        f'<span style="color:#8b949e;font-size:0.75rem;">{MODEL_REGISTRY[MODEL_NAME]["description"]}</span>'
                     )
 
                 chatbot = gr.Chatbot(
                     value=[{
                         "role": "assistant",
-                        "content": "```\nInfraHeal AI v1.0 — Autonomous Incident Diagnosis\nAMD ROCm + Qwen2.5-7B-Instruct\n----------------------------------------\nSystem ready. Run an analysis first, then ask me anything.\n```"
+                        "content": "```\nInfraHeal AI v1.0 — Autonomous Incident Diagnosis\nAMD ROCm + vLLM\n----------------------------------------\nSystem ready. Run an analysis first, then ask me anything.\n```"
                     }],
-                    height=380,
+                    height=360,
                     label="Terminal Chat",
                     show_copy_button=True,
                     elem_classes="chat-terminal",
@@ -2215,38 +2320,98 @@ def create_dashboard(
                     q4 = gr.Button("Explain evidence", elem_classes="chat-quick-btn", scale=1)
                     q5 = gr.Button("Re-analyze", elem_classes="chat-quick-btn", scale=1)
 
+                risk_panel = gr.HTML(value="")
+
+                def _update_model_info(model_label: str):
+                    model_id = model_choices.get(model_label, MODEL_NAME)
+                    info = MODEL_REGISTRY.get(model_id, {})
+                    tags = []
+                    if info.get("has_thinking"):
+                        tags.append("🧠 thinking")
+                    tags.append(f"max {info.get('max_tokens', 512)} tok")
+                    return f'<span style="color:#8b949e;font-size:0.75rem;">{" · ".join(tags)}</span>'
+
                 def _update_status():
                     if _last_pipeline_state.get("triage"):
                         tri = _last_pipeline_state["triage"]
                         return (
                             '<span class="status-dot green"></span>',
                             f'<span style="color:#00FF88;font-family:JetBrains Mono,monospace;font-size:0.78rem;">'
-                            f'● ACTIVE · {tri.get("severity","?")} · {tri.get("category","?")} · '
+                            f'● {tri.get("severity","?")} · {tri.get("category","?")} · '
                             f'{len(_last_pipeline_state.get("anomalies",[]))} anomalies</span>'
                         )
                     return (
                         '<span class="status-dot gray"></span>',
                         '<span style="color:#8b949e;font-family:JetBrains Mono,monospace;font-size:0.78rem;">'
-                        '⏳ Awaiting incident analysis…</span>'
+                        '⏳ Awaiting incident…</span>'
                     )
 
-                def _chat_handler(message: str, history: list) -> tuple:
+                def _refresh_risk():
+                    if not _last_pipeline_state.get("triage"):
+                        return '<div style="color:#8b949e;font-size:0.78rem;">Run an analysis to see risk assessment.</div>'
+                    ra = _run_risk_assessment()
+                    rl = ra["risk_levels"]
+                    sev = ra["severity"]
+                    sev_color = SEVERITY_LEVELS.get(sev, {}).get("color", "#94a3b8")
+                    sev_label = SEVERITY_LEVELS.get(sev, {}).get("label", sev)
+                    return f'''
+                    <div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:12px 16px;margin-top:10px;">
+                      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                        <span style="font-size:0.85rem;font-weight:600;color:#e2e8f0;">🛡️ Risk & Security</span>
+                        <span style="font-size:0.7rem;color:#8b949e;">· SLA: {ra["sla_minutes"]}min</span>
+                      </div>
+                      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:6px;font-size:0.78rem;">
+                        <span>Severity: <b style="color:{sev_color}">{sev} ({sev_label})</b></span>
+                        <span>Low risk: <b style="color:#00FF88;">{rl.get("low",0)}</b></span>
+                        <span>Medium risk: <b style="color:#FFB800;">{rl.get("medium",0)}</b></span>
+                        <span>High risk: <b style="color:#FF3B3B;">{rl.get("high",0)}</b></span>
+                        {('🔒 <b style="color:#FF006E;">Security incident</b>' if ra["security_incident"] else '')}
+                      </div>
+                      <div style="font-size:0.76rem;color:#8b949e;padding:6px 0 0 0;border-top:1px solid #21262d;">
+                        {ra["recommendation"]}
+                      </div>
+                    </div>'''
+
+                model_selector.change(
+                    fn=_update_model_info,
+                    inputs=[model_selector],
+                    outputs=[model_info_html],
+                )
+
+                def _chat_handler(message: str, history: list, model_label: str) -> tuple:
                     if not message or not message.strip():
                         return history, ""
-                    response = _chat_respond(message, history)
+                    model_id = model_choices.get(model_label, MODEL_NAME)
+                    response = _chat_respond(message, history, model_id=model_id)
                     history.append({"role": "user", "content": message})
                     history.append({"role": "assistant", "content": response})
                     return history, ""
 
-                chat_send.click(fn=_chat_handler, inputs=[chat_msg, chatbot], outputs=[chatbot, chat_msg])
-                chat_msg.submit(fn=_chat_handler, inputs=[chat_msg, chatbot], outputs=[chatbot, chat_msg])
-                chat_clear.click(fn=lambda: ([{
-                    "role": "assistant",
-                    "content": "```\nInfraHeal AI v1.0 — Terminal cleared. Ready for new questions.\n```"
-                }], ""), inputs=[], outputs=[chatbot, chat_msg])
+                chat_send.click(
+                    fn=_chat_handler,
+                    inputs=[chat_msg, chatbot, model_selector],
+                    outputs=[chatbot, chat_msg],
+                )
+                chat_msg.submit(
+                    fn=_chat_handler,
+                    inputs=[chat_msg, chatbot, model_selector],
+                    outputs=[chatbot, chat_msg],
+                )
+                chat_clear.click(
+                    fn=lambda: ([{
+                        "role": "assistant",
+                        "content": "```\nInfraHeal AI v1.0 — Terminal cleared. Ready for new questions.\n```"
+                    }], ""),
+                    inputs=[],
+                    outputs=[chatbot, chat_msg],
+                )
 
                 for btn, q_text in [(q1, "Why P1?"), (q2, "What's the root cause?"), (q3, "What should I do?"), (q4, "Explain evidence"), (q5, "Re-analyze")]:
-                    btn.click(fn=lambda h, q=q_text: _chat_handler(q, h), inputs=[chatbot], outputs=[chatbot, chat_msg])
+                    btn.click(
+                        fn=lambda h, m, q=q_text: _chat_handler(q, h, m),
+                        inputs=[chatbot, model_selector],
+                        outputs=[chatbot, chat_msg],
+                    )
 
     logger.info("InfraHeal AI dashboard created successfully")
     return demo

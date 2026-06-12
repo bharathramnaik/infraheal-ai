@@ -27,6 +27,45 @@ MODEL_CANDIDATES = [
 ]
 MODEL_NAME = os.getenv("MODEL_NAME", MODEL_CANDIDATES[0])
 
+# Per-model capabilities registry
+# has_thinking: model outputs chain-of-thought before answer (DeepSeek-R1, Qwen3)
+# thinking_tag: how the model wraps its thinking trace
+MODEL_REGISTRY = {
+    "Qwen/Qwen2.5-7B-Instruct": {
+        "label": "Qwen 2.5 7B (Default)",
+        "has_thinking": False,
+        "max_tokens": 1024,
+        "description": "Balanced instruct model — fast, reliable",
+    },
+    "Qwen/Qwen3-4B": {
+        "label": "Qwen 3 4B (Thinking)",
+        "has_thinking": True,
+        "max_tokens": 2048,
+        "description": "Extended thinking support",
+    },
+    "meta-llama/Llama-3.1-8B-Instruct": {
+        "label": "LLaMA 3.1 8B",
+        "has_thinking": False,
+        "max_tokens": 1024,
+        "description": "Standard instruct — good general purpose",
+    },
+    "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B": {
+        "label": "DeepSeek R1 7B (Thinking)",
+        "has_thinking": True,
+        "max_tokens": 2048,
+        "description": "Reasoning model — shows internal thought chain",
+    },
+}
+
+# All thinking tags to strip from output for display
+THINKING_TAGS = [
+    ("<think>", "</think>"),
+    ("[REASONING]", "[/REASONING]"),
+    ("[reasoning]", "[/reasoning]"),
+    ("[THINK]", "[/THINK]"),
+    ("[think]", "[/think]"),
+]
+
 # Inference settings
 MAX_TOKENS = 256                # Fallback; agents use their own value below
 AGENT_MAX_TOKENS = {
