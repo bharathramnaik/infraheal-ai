@@ -1686,7 +1686,7 @@ def create_dashboard(
 
     CHAT_SYSTEM_PROMPT = """You are InfraHeal AI, an autonomous incident diagnosis agent. You just analyzed an infrastructure incident. Answer questions about your analysis, reasoning, and decisions. Be concise and technical. If asked "why", explain your reasoning chain step by step. If asked "re-analyze", acknowledge and suggest running a new analysis."""
 
-    def _chat_respond(message: str, history: List[Tuple[str, str]]) -> str:
+    def _chat_respond(message: str, history: list) -> str:
         if not _last_pipeline_state.get("triage"):
             return "No analysis data yet. Please run an incident analysis first from the **Incident Analysis** tab."
 
@@ -1695,88 +1695,34 @@ def create_dashboard(
         remed = _last_pipeline_state.get("remediation", {})
         crit = _last_pipeline_state.get("critique", {})
 
-        q = message.lower()
-
-        if any(w in q for w in ["why", "explain", "reasoning", "how did"]):
-            sev = tri.get("severity", "?")
-            cat = tri.get("category", "?")
-            impact = tri.get("impact_assessment", "?")
-            rc = rca.get("root_cause", "?")
-            conf = rca.get("confidence_score", 0)
-            crit_confirmed = crit.get("confirmed", True)
-            crit_gaps = crit.get("gaps", [])
-
-            lines = [f"The analysis classified this as **{sev} ({cat})** — {impact[:120]}."]
-            lines.append(f"The root cause identified is: **{rc[:200]}** (confidence: {conf:.0%}).")
-
-            if crit_confirmed:
-                lines.append("My self-critique **confirmed** this conclusion — evidence is consistent and no gaps were found.")
-            else:
-                refined_conf = crit.get("refined_confidence", conf)
-                lines.append(f"My self-critique found gaps and **refined** confidence to {refined_conf:.0%}:")
-                for g in crit_gaps:
-                    lines.append(f"- {g}")
-                for s in crit.get("suggestions", []):
-                    lines.append(f"- Suggestion: {s}")
-
-            actions = remed.get("recommended_actions", [])
-            if actions:
-                lines.append(f"I generated **{len(actions)} remediation actions**:")
-                for a in actions:
-                    lines.append(f"- {a.get('tool_name','?')}: {a.get('rationale','')[:100]}")
-
-            return "\n\n".join(lines)
-
-        if any(w in q for w in ["re-analyze", "retry", "try again", "rerun"]):
-            return "To re-analyze, go to the **Incident Analysis** tab, select the scenario, and click **Analyze Incident** again. I'll run the full pipeline with fresh reasoning."
-
-        if any(w in q for w in ["confidence", "sure", "accurate", "certain"]):
-            conf = rca.get("confidence_score", 0)
-            crit_confirmed = crit.get("confirmed", True)
-            refined = crit.get("refined_confidence", None)
-            if not crit_confirmed and refined is not None:
-                return f"My initial confidence was {conf:.0%}, but after self-critique I adjusted to **{refined:.0%}**. {'The evidence is consistent and I stand by the conclusion.' if crit_confirmed else 'I found gaps in the evidence chain that lower my certainty.'}"
-            return f"My confidence in this analysis is **{conf:.0%}**. The self-critique confirmed the evidence chain is solid."
-
-        if any(w in q for w in ["what now", "next step", "what should i do", "action"]):
-            actions = remed.get("recommended_actions", [])
-            if actions:
-                lines = ["Here are the recommended next steps in order:"]
-                for i, a in enumerate(actions, 1):
-                    lines.append(f"{i}. **{a.get('tool_name','?')}**: {a.get('rationale','')[:120]} (risk: {a.get('risk_level','?')})")
-                rollback = remed.get("rollback_plan", "")
-                if rollback:
-                    lines.append(f"\n⚠️ Rollback: {rollback[:200]}")
-                return "\n\n".join(lines)
-            return "No remediation actions were generated. The system may not have detected actionable issues."
-
-        if any(w in q for w in ["timeline", "when", "sequence"]):
-            timelines = rca.get("timeline_of_events", [])
-            if timelines:
-                lines = ["Event timeline:"]
-                for e in timelines:
-                    ts = e.get("timestamp", "?")
-                    evt = e.get("event", "?")
-                    lines.append(f"- {ts}: {evt}")
-                return "\n".join(lines)
-            return "No detailed timeline was captured for this analysis."
+        ctx = (
+            f"severity={tri.get('severity','?')} category={tri.get('category','?')} "
+            f"impact={tri.get('impact_assessment','?')[:120]} "
+            f"root_cause={rca.get('root_cause','?')[:200]} "
+            f"confidence={rca.get('confidence_score',0):.0%} "
+            f"actions={len(remed.get('recommended_actions',[]))} "
+            f"critique_confirmed={crit.get('confirmed',True)}"
+        )
 
         if orchestrator is not None:
             try:
                 from openai import OpenAI
                 client = OpenAI(base_url=VLLM_BASE_URL, api_key="EMPTY")
-                ctx = (
-                    f"Incident: sev={tri.get('severity','?')} cat={tri.get('category','?')} "
-                    f"rc={rca.get('root_cause','?')[:80]} conf={rca.get('confidence_score',0)} "
-                    f"actions={len(remed.get('recommended_actions',[]))}"
-                )
+                history_msgs = []
+                for h in history[-6:]:
+                    if isinstance(h, dict):
+                        history_msgs.append({"role": h.get("role","user"), "content": h.get("content","")})
+                    elif isinstance(h, (list, tuple)) and len(h) == 2:
+                        history_msgs.append({"role": "user", "content": str(h[0])})
+                        history_msgs.append({"role": "assistant", "content": str(h[1])})
+                history_msgs.append({"role": "user", "content": f"Context: {ctx}\n\nUser question: {message}\n\nAnswer concisely as an incident diagnosis AI."})
+
                 resp = client.chat.completions.create(
                     model=MODEL_NAME,
                     messages=[
-                        {"role": "system", "content": "You are InfraHeal AI, an incident diagnosis agent. Answer concisely."},
-                        {"role": "user", "content": f"Context: {ctx}\nUser: {message}"},
-                    ],
-                    max_tokens=192,
+                        {"role": "system", "content": "You are InfraHeal AI, an autonomous incident diagnosis agent. Answer concisely and technically."},
+                    ] + history_msgs,
+                    max_tokens=256,
                     temperature=0.3,
                 )
                 return resp.choices[0].message.content or "I don't have a specific answer."
@@ -1784,11 +1730,11 @@ def create_dashboard(
                 pass
 
         return (
-            f"I analyzed the incident and classified it as **{tri.get('severity','?')}** ({tri.get('category','?')}). "
-            f"The root cause is **{rca.get('root_cause','unknown')[:120]}** "
-            f"with {rca.get('confidence_score',0):.0%} confidence. "
-            f"{len(remed.get('recommended_actions',[]))} remediation actions were generated. "
-            f"Ask me 'why' for reasoning, 'confidence' for certainty, or 'actions' for next steps."
+            f"I analyzed the incident as **{tri.get('severity','?')}** ({tri.get('category','?')}). "
+            f"Root cause: **{rca.get('root_cause','unknown')[:120]}** "
+            f"({rca.get('confidence_score',0):.0%} confidence). "
+            f"{len(remed.get('recommended_actions',[]))} remediation actions generated. "
+            f"{'Self-critique confirmed.' if crit.get('confirmed',True) else 'Self-critique found gaps.'}"
         )
 
     # ═══════════════════════════════════════════════════════════════
@@ -2185,12 +2131,12 @@ def create_dashboard(
                     chat_send = gr.Button("Send", variant="primary", scale=1)
                     chat_clear = gr.Button("Clear", variant="secondary", scale=1)
 
-                def _chat_handler(message: str, history: List[Tuple[str, str]]) -> Tuple[List[Tuple[str, str]], str]:
+                def _chat_handler(message: str, history: list) -> tuple:
                     if not message or not message.strip():
                         return history, ""
-                    history = history + [(message, None)]
                     response = _chat_respond(message, history)
-                    history[-1] = (message, response)
+                    history.append({"role": "user", "content": message})
+                    history.append({"role": "assistant", "content": response})
                     return history, ""
 
                 chat_send.click(
