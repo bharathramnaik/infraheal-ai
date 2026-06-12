@@ -115,10 +115,10 @@ CUSTOM_CSS = """
   --text:         #e2e8f0;
   --text-muted:   #94a3b8;
   --cyan:         #00D4FF;
-  --magenta:      #FF006E;
-  --amber:        #FFB800;
   --green:        #00FF88;
   --red:          #FF3B3B;
+  --amber:        #FFB800;
+  --magenta:      #FF006E;
   --purple:       #A855F7;
 }
 
@@ -129,78 +129,72 @@ CUSTOM_CSS = """
   max-width: 1440px !important;
 }
 
-/* ── Glass Card ────────────────────────────────────────────────── */
+/* ── Card ──────────────────────────────────────────────────────── */
 .glass-card {
   background: var(--bg-card);
-  backdrop-filter: blur(24px) saturate(1.5);
-  -webkit-backdrop-filter: blur(24px) saturate(1.5);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 24px;
-  transition: border-color 0.35s ease, box-shadow 0.35s ease;
+  border-radius: 12px;
+  padding: 20px;
+  transition: border-color 0.25s ease;
 }
 .glass-card:hover {
   border-color: var(--border-hover);
-  box-shadow: 0 0 30px rgba(0,212,255,0.07);
 }
 
 /* ── Tab Bar ───────────────────────────────────────────────────── */
 .tabs > .tab-nav {
   background: var(--bg-secondary) !important;
   border-bottom: 1px solid var(--border) !important;
-  border-radius: 12px 12px 0 0 !important;
+  border-radius: 10px 10px 0 0 !important;
   padding: 4px 8px !important;
-  gap: 4px !important;
+  gap: 2px !important;
 }
 .tabs > .tab-nav > button {
   background: transparent !important;
   color: var(--text-muted) !important;
   border: 1px solid transparent !important;
-  border-radius: 10px !important;
-  font-weight: 600 !important;
-  font-size: 0.92rem !important;
-  padding: 10px 20px !important;
-  transition: all 0.3s ease !important;
+  border-radius: 8px !important;
+  font-weight: 500 !important;
+  font-size: 0.88rem !important;
+  padding: 8px 16px !important;
+  transition: background 0.2s ease !important;
 }
 .tabs > .tab-nav > button:hover {
-  color: var(--cyan) !important;
-  background: rgba(0,212,255,0.06) !important;
+  color: var(--text) !important;
+  background: rgba(255,255,255,0.04) !important;
 }
 .tabs > .tab-nav > button.selected {
-  background: linear-gradient(135deg, rgba(0,212,255,0.12), rgba(168,85,247,0.12)) !important;
+  background: rgba(0,212,255,0.1) !important;
   color: var(--cyan) !important;
-  border-color: var(--border-hover) !important;
 }
 
 /* ── Buttons ───────────────────────────────────────────────────── */
 .gr-button-primary, button.primary {
-  background: linear-gradient(135deg, #00D4FF 0%, #A855F7 100%) !important;
+  background: #00D4FF !important;
   border: none !important;
   color: #0a0a1a !important;
-  font-weight: 700 !important;
-  border-radius: 12px !important;
-  padding: 12px 28px !important;
-  font-size: 0.95rem !important;
-  transition: transform 0.2s ease, box-shadow 0.3s ease !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.5px !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  padding: 10px 24px !important;
+  font-size: 0.9rem !important;
+  transition: opacity 0.2s ease !important;
 }
 .gr-button-primary:hover, button.primary:hover {
-  transform: translateY(-2px) !important;
-  box-shadow: 0 8px 25px rgba(0,212,255,0.3) !important;
+  opacity: 0.85 !important;
 }
 button.secondary {
   background: rgba(255,255,255,0.04) !important;
   border: 1px solid var(--border) !important;
   color: var(--text) !important;
-  border-radius: 12px !important;
+  border-radius: 8px !important;
   font-weight: 500 !important;
-  transition: all 0.3s ease !important;
+  padding: 10px 24px !important;
+  font-size: 0.9rem !important;
+  transition: border-color 0.2s ease !important;
 }
 button.secondary:hover {
   border-color: var(--cyan) !important;
   background: rgba(0,212,255,0.06) !important;
-  color: var(--cyan) !important;
 }
 
 /* ── Inputs / Textboxes / Dropdowns ────────────────────────────── */
@@ -230,39 +224,31 @@ button.secondary:hover {
 }
 
 /* ── Severity Badges ───────────────────────────────────────────── */
-.severity-p1 { background: linear-gradient(135deg, #FF3B3B, #FF006E); color: #fff; }
-.severity-p2 { background: linear-gradient(135deg, #FF8C00, #FFB800); color: #0a0a1a; }
-.severity-p3 { background: linear-gradient(135deg, #FFD700, #FFA500); color: #0a0a1a; }
-.severity-p4 { background: linear-gradient(135deg, #4CAF50, #00FF88); color: #0a0a1a; }
+.severity-p1 { background: #FF3B3B; color: #fff; }
+.severity-p2 { background: #FF8C00; color: #fff; }
+.severity-p3 { background: #FFD700; color: #1a1a2e; }
+.severity-p4 { background: #4CAF50; color: #fff; }
 
 .status-badge {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 5px 14px; border-radius: 20px;
-  font-size: 0.78rem; font-weight: 700;
-  text-transform: uppercase; letter-spacing: 0.8px;
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 12px; border-radius: 16px;
+  font-size: 0.72rem; font-weight: 600;
 }
 
 /* ── Pulse Animation ───────────────────────────────────────────── */
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 4px rgba(0,255,136,0.4); }
-  50%      { box-shadow: 0 0 18px rgba(0,255,136,0.8); }
-}
 @keyframes pulse-dot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%      { opacity: 0.5; transform: scale(1.6); }
-}
-.pulse-active {
-  animation: pulse-glow 2s ease-in-out infinite;
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
 }
 .pulse-dot {
-  display: inline-block; width: 8px; height: 8px;
+  display: inline-block; width: 6px; height: 6px;
   background: var(--green); border-radius: 50%;
-  animation: pulse-dot 1.5s ease-in-out infinite;
+  animation: pulse-dot 2s ease-in-out infinite;
 }
 .pulse-dot-red {
-  display: inline-block; width: 8px; height: 8px;
+  display: inline-block; width: 6px; height: 6px;
   background: var(--red); border-radius: 50%;
-  animation: pulse-dot 1s ease-in-out infinite;
+  animation: pulse-dot 1.5s ease-in-out infinite;
 }
 
 /* ── Scrollbar ─────────────────────────────────────────────────── */
@@ -293,63 +279,75 @@ button.secondary:hover {
 /* ── Metric Cards ──────────────────────────────────────────────── */
 .metric-card {
   background: var(--bg-card);
-  backdrop-filter: blur(20px); border: 1px solid var(--border);
-  border-radius: 14px; padding: 20px 24px;
-  text-align: center; transition: all 0.3s ease;
-  position: relative; overflow: hidden;
-}
-.metric-card::before {
-  content: ''; position: absolute; top: 0; left: 0; right: 0;
-  height: 3px; border-radius: 14px 14px 0 0;
-}
-.metric-card:hover {
-  border-color: var(--border-hover);
-  transform: translateY(-3px);
-  box-shadow: 0 12px 35px rgba(0,0,0,0.4);
+  border: 1px solid var(--border);
+  border-radius: 12px; padding: 16px 20px;
+  text-align: center; position: relative; overflow: hidden;
 }
 .metric-value {
-  font-size: 2.2rem; font-weight: 800; line-height: 1.1;
-  background: linear-gradient(135deg, var(--cyan), var(--purple));
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  background-clip: text;
+  font-size: 2rem; font-weight: 700; line-height: 1.1;
+  color: var(--cyan);
 }
 .metric-label {
-  font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;
-  letter-spacing: 1.2px; margin-top: 6px; font-weight: 600;
+  font-size: 0.7rem; color: var(--text-muted);
+  letter-spacing: 0.8px; margin-top: 4px; font-weight: 500;
 }
 
 /* ── Agent Output Panels ───────────────────────────────────────── */
 .agent-panel {
-  background: var(--bg-card); backdrop-filter: blur(20px);
-  border: 1px solid var(--border); border-radius: 14px;
-  padding: 0; overflow: hidden; transition: all 0.35s ease;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 0; overflow: hidden;
 }
-.agent-panel:hover { border-color: var(--border-hover); }
 .agent-panel-header {
-  padding: 14px 20px;
-  font-weight: 700; font-size: 0.88rem; text-transform: uppercase;
-  letter-spacing: 0.8px; display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px;
+  font-weight: 600; font-size: 0.82rem;
+  letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;
   border-bottom: 1px solid var(--border);
 }
-.agent-panel-body { padding: 20px; }
+.agent-panel-body { padding: 16px; }
 
 .evidence-item {
-  background: rgba(255,255,255,0.02); border-left: 3px solid var(--cyan);
-  padding: 10px 14px; margin-bottom: 8px; border-radius: 0 8px 8px 0;
-  font-size: 0.85rem;
+  background: rgba(255,255,255,0.015); border-left: 2px solid var(--cyan);
+  padding: 8px 12px; margin-bottom: 6px; border-radius: 0 6px 6px 0;
+  font-size: 0.82rem;
 }
 .action-card {
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 8px; padding: 10px 14px; margin-bottom: 6px;
-  display: flex; align-items: center; gap: 10px;
+  background: rgba(255,255,255,0.015);
+  border: 1px solid rgba(255,255,255,0.04);
+  border-radius: 6px; padding: 8px 12px; margin-bottom: 4px;
+  display: flex; align-items: center; gap: 8px;
 }
 .action-card .action-icon {
-  width: 22px; height: 22px; min-width: 22px; flex-shrink: 0;
-  border-radius: 6px;
+  width: 20px; height: 20px; min-width: 20px; flex-shrink: 0;
+  border-radius: 4px;
   display: inline-flex; align-items: center; justify-content: center;
-  font-size: 0.72rem; font-weight: 700; color: #fff;
-  background: linear-gradient(135deg, rgba(0,212,255,0.15), rgba(168,85,247,0.15));
+  font-size: 0.65rem; font-weight: 600; color: #fff;
+  background: rgba(0,212,255,0.12);
+}
+
+/* ── Utility Classes ────────────────────────────────────────────── */
+.section-title {
+  font-size: 1.05rem; font-weight: 600; color: var(--text);
+  margin-bottom: 4px;
+}
+.section-subtitle {
+  font-size: 0.8rem; color: var(--text-muted); margin-bottom: 16px;
+}
+.section-label {
+  font-size: 0.72rem; font-weight: 600; color: var(--text-muted);
+  letter-spacing: 0.8px; margin-bottom: 12px;
+}
+.flex-row { display: flex; align-items: center; gap: 8px; }
+.flex-gap { gap: 12px; }
+.text-cyan { color: var(--cyan); }
+.text-green { color: var(--green); }
+.text-muted { color: var(--text-muted); }
+.text-sm { font-size: 0.82rem; }
+.mt-4 { margin-top: 4px; }
+.mb-8 { margin-bottom: 8px; }
+.mb-16 { margin-bottom: 16px; }
+
+.divider {
+  height: 1px; background: rgba(255,255,255,0.06); margin: 16px 0;
 }
 
 /* ── Loading / Skeleton ────────────────────────────────────────── */
@@ -748,8 +746,7 @@ def _metric_card_html(icon: str, label: str, value: str, accent: str) -> str:
         f'<div style="position:absolute;top:0;left:0;right:0;height:3px;background:{accent};'
         f'border-radius:14px 14px 0 0;"></div>'
         f'<div style="font-size:1.4rem;margin-bottom:4px;">{icon}</div>'
-        f'<div class="metric-value" style="background:linear-gradient(135deg,{accent},{_C["purple"]});'
-        f'-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">{value}</div>'
+        f'<div class="metric-value" style="color:{accent};">{value}</div>'
         f'<div class="metric-label">{label}</div>'
         f'</div>'
     )
@@ -2150,8 +2147,7 @@ def create_dashboard(
                 metrics_row = gr.HTML(value=_get_command_center_metrics)
 
                 gr.HTML(
-                    '<div style="margin:18px 0 8px;font-size:0.82rem;font-weight:700;color:#94a3b8;'
-                    'text-transform:uppercase;letter-spacing:1.2px;">📡 Live Log Stream</div>'
+                    '<div class="section-label">📡 Live Log Stream</div>'
                 )
                 log_stream = gr.HTML(value=_get_command_center_logs)
 
@@ -2175,9 +2171,8 @@ def create_dashboard(
             # ──────────────────────────────────────────────────────
             with gr.Tab("🔍 Incident Analysis"):
                 gr.HTML(
-                    '<div style="font-size:1.1rem;font-weight:700;color:#e2e8f0;margin-bottom:4px;">'
-                    '🔍 Incident Analysis Pipeline</div>'
-                    '<div style="font-size:0.82rem;color:#94a3b8;margin-bottom:18px;">'
+                    '<div class="section-title">🔍 Incident Analysis Pipeline</div>'
+                    '<div class="section-subtitle">'
                     'Select a scenario and run the full multi-agent analysis pipeline.</div>'
                 )
 
@@ -2194,12 +2189,9 @@ def create_dashboard(
                 )
                 scenario_logs = gr.HTML(value=_empty_state("Scenario logs"))
 
+                gr.HTML('<div class="divider"></div>')
                 gr.HTML(
-                    '<div style="height:1px;background:rgba(255,255,255,0.06);margin:20px 0;"></div>'
-                )
-                gr.HTML(
-                    '<div style="font-size:0.85rem;font-weight:700;color:#94a3b8;text-transform:uppercase;'
-                    'letter-spacing:1px;margin-bottom:14px;">Agent Outputs</div>'
+                    '<div class="section-label">Agent Outputs</div>'
                 )
 
                 with gr.Row(equal_height=True):
@@ -2226,13 +2218,12 @@ def create_dashboard(
                         value=_empty_state("Reasoning chain", "Run an analysis to see step-by-step reasoning.")
                     )
 
-                gr.HTML('<div style="height:1px;background:rgba(255,255,255,0.06);margin:20px 0;"></div>')
+                gr.HTML('<div class="divider"></div>')
 
                 # ── Error-Level Resolution Section ──────────────
                 gr.HTML(
-                    '<div style="font-size:1rem;font-weight:700;color:#e2e8f0;margin-bottom:4px;">'
-                    '🎯 Resolution by Error Level</div>'
-                    '<div style="font-size:0.82rem;color:#94a3b8;margin-bottom:14px;">'
+                    '<div class="section-title">🎯 Resolution by Error Level</div>'
+                    '<div class="section-subtitle">'
                     'Pipeline outputs grouped by log severity — shows resolution steps '
                     'for each error level independently.</div>'
                 )
@@ -2270,9 +2261,8 @@ def create_dashboard(
             # ──────────────────────────────────────────────────────
             with gr.Tab("📊 Performance Metrics"):
                 gr.HTML(
-                    '<div style="font-size:1.1rem;font-weight:700;color:#e2e8f0;margin-bottom:4px;">'
-                    '📊 Agent Performance Dashboard</div>'
-                    '<div style="font-size:0.82rem;color:#94a3b8;margin-bottom:18px;">'
+                    '<div class="section-title">📊 Agent Performance Dashboard</div>'
+                    '<div class="section-subtitle">'
                     'Token usage, latency breakdown, and system metrics from the latest analysis run.</div>'
                 )
                 refresh_perf_btn = gr.Button("🔄 Refresh Metrics", variant="secondary")
@@ -2285,11 +2275,10 @@ def create_dashboard(
                 refresh_perf_btn.click(fn=_get_perf_metrics_html, inputs=[], outputs=[perf_output])
 
                 # ── GPU Benchmark Panel ───────────────────────────
-                gr.HTML('<div style="height:20px;"></div>')
+                gr.HTML('<div style="height:16px;"></div>')
                 gr.HTML(
-                    '<div style="font-size:1rem;font-weight:700;color:#e2e8f0;margin-bottom:4px;">'
-                    '🎛️ ROCm GPU Benchmarking</div>'
-                    '<div style="font-size:0.82rem;color:#94a3b8;margin-bottom:14px;">'
+                    '<div class="section-title">🎛️ ROCm GPU Benchmarking</div>'
+                    '<div class="section-subtitle">'
                     'Throughput profiling for Qwen2.5-7B-Instruct on AMD ROCm. '
                     'Measures tokens/sec across batch sizes and prompt lengths.</div>'
                 )
@@ -2373,32 +2362,31 @@ def create_dashboard(
                 # Also show model / system info
                 gr.HTML(
                     f'<div class="glass-card" style="margin-top:20px;">'
-                    f'<div style="font-size:0.8rem;font-weight:700;color:#94a3b8;text-transform:uppercase;'
-                    f'letter-spacing:1px;margin-bottom:14px;">System Information</div>'
-                    f'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">'
+                    f'<div class="section-label">System Information</div>'
+                    f'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">'
                     f'<div>'
-                    f'  <div style="font-size:0.7rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;">Model</div>'
-                    f'  <div style="font-size:0.92rem;color:{_C["cyan"]};font-weight:600;margin-top:4px;">{MODEL_NAME.split("/")[-1]}</div>'
+                    f'  <div class="section-label" style="margin:0 0 2px;">Model</div>'
+                    f'  <div class="text-cyan" style="font-size:0.88rem;font-weight:600;">{MODEL_NAME.split("/")[-1]}</div>'
                     f'</div>'
                     f'<div>'
-                    f'  <div style="font-size:0.7rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;">Runtime</div>'
-                    f'  <div style="font-size:0.92rem;color:{_C["green"]};font-weight:600;margin-top:4px;">vLLM + ROCm (AMD GPU)</div>'
+                    f'  <div class="section-label" style="margin:0 0 2px;">Runtime</div>'
+                    f'  <div class="text-green" style="font-size:0.88rem;font-weight:600;">vLLM + ROCm (AMD GPU)</div>'
                     f'</div>'
                     f'<div>'
-                    f'  <div style="font-size:0.7rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;">API Endpoint</div>'
-                    f'  <div style="font-size:0.92rem;color:{_C["amber"]};font-weight:600;margin-top:4px;">{VLLM_BASE_URL}</div>'
+                    f'  <div class="section-label" style="margin:0 0 2px;">API Endpoint</div>'
+                    f'  <div style="font-size:0.88rem;font-weight:600;color:var(--amber);">{VLLM_BASE_URL}</div>'
                     f'</div>'
                     f'<div>'
-                    f'  <div style="font-size:0.7rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;">RAG Backend</div>'
-                    f'  <div style="font-size:0.92rem;color:{_C["magenta"]};font-weight:600;margin-top:4px;">BM25 (rank_bm25)</div>'
+                    f'  <div class="section-label" style="margin:0 0 2px;">RAG Backend</div>'
+                    f'  <div style="font-size:0.88rem;font-weight:600;color:var(--magenta);">BM25 (rank_bm25)</div>'
                     f'</div>'
                     f'<div>'
-                    f'  <div style="font-size:0.7rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;">Agent Framework</div>'
-                    f'  <div style="font-size:0.92rem;color:{_C["purple"]};font-weight:600;margin-top:4px;">4-Agent Pipeline</div>'
+                    f'  <div class="section-label" style="margin:0 0 2px;">Agent Framework</div>'
+                    f'  <div style="font-size:0.88rem;font-weight:600;color:var(--purple);">4-Agent Pipeline</div>'
                     f'</div>'
                     f'<div>'
-                    f'  <div style="font-size:0.7rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;">Hackathon</div>'
-                    f'  <div style="font-size:0.92rem;color:#e2e8f0;font-weight:600;margin-top:4px;">TCS &amp; AMD Build AI 2026</div>'
+                    f'  <div class="section-label" style="margin:0 0 2px;">Hackathon</div>'
+                    f'  <div style="font-size:0.88rem;color:var(--text);font-weight:600;">TCS &amp; AMD Build AI 2026</div>'
                     f'</div>'
                     f'</div></div>'
                 )
@@ -2408,9 +2396,8 @@ def create_dashboard(
             # ──────────────────────────────────────────────────────
             with gr.Tab("🌟 Visualization"):
                 gr.HTML(
-                    '<div style="font-size:1.1rem;font-weight:700;color:#e2e8f0;margin-bottom:4px;">'
-                    '🌟 Metric &amp; Anomaly Visualization</div>'
-                    '<div style="font-size:0.82rem;color:#94a3b8;margin-bottom:18px;">'
+                    '<div class="section-title">🌟 Metric &amp; Anomaly Visualization</div>'
+                    '<div class="section-subtitle">'
                     'Interactive 2D visualizations powered by Plotly — time-series analysis, '
                     'correlation heatmaps, anomaly timelines, and log distributions.</div>'
                 )
@@ -2442,8 +2429,7 @@ def create_dashboard(
                     viz_plot3 = gr.Plot(value=_empty_fig2, show_label=False)
                     viz_plot4 = gr.Plot(value=_empty_fig2, show_label=False)
                 gr.HTML(
-                    '<div style="margin:10px 0 4px;font-size:0.82rem;font-weight:700;color:#94a3b8;'
-                    'text-transform:uppercase;letter-spacing:1.2px;">🌐 Topology Map</div>'
+                    '<div class="section-label" style="margin-top:8px;">🌐 Topology Map</div>'
                 )
                 viz_plot5 = gr.Plot(value=_empty_fig2, show_label=False)
 
@@ -2462,9 +2448,8 @@ def create_dashboard(
             # ──────────────────────────────────────────────────────
             with gr.Tab("📋 Knowledge Base"):
                 gr.HTML(
-                    '<div style="font-size:1.1rem;font-weight:700;color:#e2e8f0;margin-bottom:4px;">'
-                    '📋 Runbook Knowledge Base</div>'
-                    '<div style="font-size:0.82rem;color:#94a3b8;margin-bottom:18px;">'
+                    '<div class="section-title">📋 Runbook Knowledge Base</div>'
+                    '<div class="section-subtitle">'
                     'Search and browse operational runbooks used by the RAG pipeline.</div>'
                 )
 
