@@ -24,6 +24,7 @@ from visualizer_2d import (
     anomaly_timeline,
     log_level_distribution,
     host_radar,
+    draw_topology_map,
 )
 from log_streamer import LogStreamer, LiveAnalyzer
 
@@ -1089,6 +1090,7 @@ def create_dashboard(
 
     # state holders
     _perf_state: Dict[str, Any] = {}
+    _last_pipeline_state: Dict[str, Any] = {}
 
     # ------- event handlers -----------------------------------------------
 
@@ -1199,6 +1201,18 @@ def create_dashboard(
                         "Remediation Agent": _agent_tokens("remediation"),
                         "Reporting Agent": _agent_tokens("reporting"),
                     },
+                })
+
+                _last_pipeline_state.update({
+                    "scenario": scenario_name,
+                    "triage": triage_out,
+                    "rca": rca_out,
+                    "remediation": remed_out,
+                    "report": report_out,
+                    "reasoning_chain": reasoning_html,
+                    "critique": result.get("critique", {}),
+                    "anomalies": sc.get("anomalies", []),
+                    "pipeline_metrics": result.get("pipeline_metrics", {}),
                 })
 
                 return triage_html, rca_html, remed_html, report_html, reasoning_html
@@ -1480,7 +1494,7 @@ def create_dashboard(
             except Exception as _exc:
                 logger.warning("3D: failed to load %s: %s", _p, _exc)
 
-    def _get_visualizations(scenario_name: str) -> Tuple[go.Figure, go.Figure, go.Figure, go.Figure]:
+    def _get_visualizations(scenario_name: str) -> Tuple[go.Figure, go.Figure, go.Figure, go.Figure, go.Figure]:
         """Generate all 2D plots for the selected scenario or all data."""
 
         if scenario_name and scenario_name in scenarios:
@@ -1510,7 +1524,17 @@ def create_dashboard(
         plot3 = anomaly_timeline(incidents, title="Anomaly Timeline by Host") if incidents else \
                 host_radar(metrics, title="Host Comparison — Radar")
         plot4 = log_level_distribution(logs, title="Log Level Distribution by Source")
-        return plot1, plot2, plot3, plot4
+
+        root_host = _last_pipeline_state.get("root_cause_host", "")
+        aff_hosts = _last_pipeline_state.get("affected_hosts", [])
+        all_hosts = sorted(set(m.get("host", "") for m in metrics)) if metrics else []
+        plot5 = draw_topology_map(
+            root_cause_host=root_host,
+            affected_hosts=aff_hosts,
+            all_hosts=all_hosts if all_hosts else None,
+            title="Infrastructure Topology — Failure Origin",
+        )
+        return plot1, plot2, plot3, plot4, plot5
 
     def _run_anomaly_scan() -> str:
         """Run anomaly detection and return results."""
@@ -1654,6 +1678,117 @@ def create_dashboard(
             f'<div style="font-size:0.78rem;color:#94a3b8;margin-top:4px;">'
             f'{len(scenarios)} incidents catalogued · AMD GPU accelerated inference · Model: {MODEL_NAME.split("/")[-1]}</div>'
             f'</div></div>'
+        )
+
+    # ═══════════════════════════════════════════════════════════════
+    #  MULTI-TURN CHAT
+    # ═══════════════════════════════════════════════════════════════
+
+    CHAT_SYSTEM_PROMPT = """You are InfraHeal AI, an autonomous incident diagnosis agent. You just analyzed an infrastructure incident. Answer questions about your analysis, reasoning, and decisions. Be concise and technical. If asked "why", explain your reasoning chain step by step. If asked "re-analyze", acknowledge and suggest running a new analysis."""
+
+    def _chat_respond(message: str, history: List[Tuple[str, str]]) -> str:
+        if not _last_pipeline_state.get("triage"):
+            return "No analysis data yet. Please run an incident analysis first from the **Incident Analysis** tab."
+
+        tri = _last_pipeline_state.get("triage", {})
+        rca = _last_pipeline_state.get("rca", {})
+        remed = _last_pipeline_state.get("remediation", {})
+        crit = _last_pipeline_state.get("critique", {})
+
+        q = message.lower()
+
+        if any(w in q for w in ["why", "explain", "reasoning", "how did"]):
+            sev = tri.get("severity", "?")
+            cat = tri.get("category", "?")
+            impact = tri.get("impact_assessment", "?")
+            rc = rca.get("root_cause", "?")
+            conf = rca.get("confidence_score", 0)
+            crit_confirmed = crit.get("confirmed", True)
+            crit_gaps = crit.get("gaps", [])
+
+            lines = [f"The analysis classified this as **{sev} ({cat})** — {impact[:120]}."]
+            lines.append(f"The root cause identified is: **{rc[:200]}** (confidence: {conf:.0%}).")
+
+            if crit_confirmed:
+                lines.append("My self-critique **confirmed** this conclusion — evidence is consistent and no gaps were found.")
+            else:
+                refined_conf = crit.get("refined_confidence", conf)
+                lines.append(f"My self-critique found gaps and **refined** confidence to {refined_conf:.0%}:")
+                for g in crit_gaps:
+                    lines.append(f"- {g}")
+                for s in crit.get("suggestions", []):
+                    lines.append(f"- Suggestion: {s}")
+
+            actions = remed.get("recommended_actions", [])
+            if actions:
+                lines.append(f"I generated **{len(actions)} remediation actions**:")
+                for a in actions:
+                    lines.append(f"- {a.get('tool_name','?')}: {a.get('rationale','')[:100]}")
+
+            return "\n\n".join(lines)
+
+        if any(w in q for w in ["re-analyze", "retry", "try again", "rerun"]):
+            return "To re-analyze, go to the **Incident Analysis** tab, select the scenario, and click **Analyze Incident** again. I'll run the full pipeline with fresh reasoning."
+
+        if any(w in q for w in ["confidence", "sure", "accurate", "certain"]):
+            conf = rca.get("confidence_score", 0)
+            crit_confirmed = crit.get("confirmed", True)
+            refined = crit.get("refined_confidence", None)
+            if not crit_confirmed and refined is not None:
+                return f"My initial confidence was {conf:.0%}, but after self-critique I adjusted to **{refined:.0%}**. {'The evidence is consistent and I stand by the conclusion.' if crit_confirmed else 'I found gaps in the evidence chain that lower my certainty.'}"
+            return f"My confidence in this analysis is **{conf:.0%}**. The self-critique confirmed the evidence chain is solid."
+
+        if any(w in q for w in ["what now", "next step", "what should i do", "action"]):
+            actions = remed.get("recommended_actions", [])
+            if actions:
+                lines = ["Here are the recommended next steps in order:"]
+                for i, a in enumerate(actions, 1):
+                    lines.append(f"{i}. **{a.get('tool_name','?')}**: {a.get('rationale','')[:120]} (risk: {a.get('risk_level','?')})")
+                rollback = remed.get("rollback_plan", "")
+                if rollback:
+                    lines.append(f"\n⚠️ Rollback: {rollback[:200]}")
+                return "\n\n".join(lines)
+            return "No remediation actions were generated. The system may not have detected actionable issues."
+
+        if any(w in q for w in ["timeline", "when", "sequence"]):
+            timelines = rca.get("timeline_of_events", [])
+            if timelines:
+                lines = ["Event timeline:"]
+                for e in timelines:
+                    ts = e.get("timestamp", "?")
+                    evt = e.get("event", "?")
+                    lines.append(f"- {ts}: {evt}")
+                return "\n".join(lines)
+            return "No detailed timeline was captured for this analysis."
+
+        if orchestrator is not None:
+            try:
+                from openai import OpenAI
+                client = OpenAI(base_url=VLLM_BASE_URL, api_key="EMPTY")
+                ctx = (
+                    f"Incident: sev={tri.get('severity','?')} cat={tri.get('category','?')} "
+                    f"rc={rca.get('root_cause','?')[:80]} conf={rca.get('confidence_score',0)} "
+                    f"actions={len(remed.get('recommended_actions',[]))}"
+                )
+                resp = client.chat.completions.create(
+                    model=MODEL_NAME,
+                    messages=[
+                        {"role": "system", "content": "You are InfraHeal AI, an incident diagnosis agent. Answer concisely."},
+                        {"role": "user", "content": f"Context: {ctx}\nUser: {message}"},
+                    ],
+                    max_tokens=192,
+                    temperature=0.3,
+                )
+                return resp.choices[0].message.content or "I don't have a specific answer."
+            except Exception:
+                pass
+
+        return (
+            f"I analyzed the incident and classified it as **{tri.get('severity','?')}** ({tri.get('category','?')}). "
+            f"The root cause is **{rca.get('root_cause','unknown')[:120]}** "
+            f"with {rca.get('confidence_score',0):.0%} confidence. "
+            f"{len(remed.get('recommended_actions',[]))} remediation actions were generated. "
+            f"Ask me 'why' for reasoning, 'confidence' for certainty, or 'actions' for next steps."
         )
 
     # ═══════════════════════════════════════════════════════════════
@@ -1826,6 +1961,89 @@ def create_dashboard(
                 )
                 refresh_perf_btn.click(fn=_get_perf_metrics_html, inputs=[], outputs=[perf_output])
 
+                # ── GPU Benchmark Panel ───────────────────────────
+                gr.HTML('<div style="height:20px;"></div>')
+                gr.HTML(
+                    '<div style="font-size:1rem;font-weight:700;color:#e2e8f0;margin-bottom:4px;">'
+                    '🎛️ ROCm GPU Benchmarking</div>'
+                    '<div style="font-size:0.82rem;color:#94a3b8;margin-bottom:14px;">'
+                    'Throughput profiling for Qwen2.5-7B-Instruct on AMD ROCm. '
+                    'Measures tokens/sec across batch sizes and prompt lengths.</div>'
+                )
+                with gr.Row():
+                    tune_btn = gr.Button("🚀 Run GPU Benchmark", variant="primary", scale=1)
+                    tune_status = gr.HTML(value=_empty_state("Benchmark not run", "Click to profile GPU throughput."), scale=3)
+                tune_config = gr.HTML(value=_empty_state("Optimal config", "Run benchmark to get recommendations."))
+                tune_plot = gr.Plot(value=_empty_fig2, show_label=False)
+
+                def _on_tune():
+                    from gpu_autotuner import GPUTuner
+                    tuner = GPUTuner(client=None, model_name=MODEL_NAME.split("/")[-1])
+                    summary = tuner.benchmark()
+                    bc = summary.get("best_config", {})
+                    rec = summary.get("recommendation", {})
+                    best_tok = summary.get("best_tokens_per_sec", 0)
+                    avg_tok = summary.get("avg_tokens_per_sec", 0)
+
+                    curve_data = tuner.get_benchmark_curve()
+                    fig = go.Figure()
+                    colors = ["#00D4FF", "#A855F7", "#FF006E", "#FFB800"]
+                    for idx, curve in enumerate(curve_data.get("curves", [])):
+                        plen = curve["prompt_length"]
+                        fig.add_trace(go.Scatter(
+                            x=curve_data["batch_sizes"],
+                            y=curve["tokens_per_sec"],
+                            mode="lines+markers",
+                            name=f"Prompt {plen}",
+                            line=dict(color=colors[idx % len(colors)], width=2),
+                            marker=dict(size=8),
+                        ))
+                    fig.update_layout(
+                        paper_bgcolor="#0a0a1a", plot_bgcolor="#0a0a1a",
+                        font=dict(color="#e2e8f0"), height=350,
+                        title=dict(text="Throughput: Tokens/sec vs Batch Size", x=0.5, font=dict(color="#00D4FF", size=13)),
+                        xaxis=dict(title="Batch Size", gridcolor="rgba(255,255,255,0.06)"),
+                        yaxis=dict(title="Tokens/sec", gridcolor="rgba(255,255,255,0.06)"),
+                        legend=dict(font=dict(color="#94a3b8")),
+                        margin=dict(l=10, r=10, t=35, b=10),
+                    )
+
+                    status_html = (
+                        f'<div class="glass-card">'
+                        f'<div style="display:flex;gap:20px;flex-wrap:wrap;">'
+                        f'<div style="flex:1;min-width:120px;text-align:center;">'
+                        f'  <div style="font-size:1.8rem;font-weight:800;color:#00D4FF;">{avg_tok}</div>'
+                        f'  <div style="font-size:0.7rem;color:#94a3b8;text-transform:uppercase;">Avg Tokens/s</div>'
+                        f'</div>'
+                        f'<div style="flex:1;min-width:120px;text-align:center;">'
+                        f'  <div style="font-size:1.8rem;font-weight:800;color:#A855F7;">{best_tok}</div>'
+                        f'  <div style="font-size:0.7rem;color:#94a3b8;text-transform:uppercase;">Peak Tokens/s</div>'
+                        f'</div>'
+                        f'<div style="flex:1;min-width:120px;text-align:center;">'
+                        f'  <div style="font-size:1.8rem;font-weight:800;color:#FF006E;">{bc.get("batch_size","?")}</div>'
+                        f'  <div style="font-size:0.7rem;color:#94a3b8;text-transform:uppercase;">Optimal Batch</div>'
+                        f'</div>'
+                        f'<div style="flex:1;min-width:120px;text-align:center;">'
+                        f'  <div style="font-size:1.8rem;font-weight:800;color:#FFB800;">{bc.get("prompt_length","?")}</div>'
+                        f'  <div style="font-size:0.7rem;color:#94a3b8;text-transform:uppercase;">Optimal Prompt Len</div>'
+                        f'</div>'
+                        f'</div></div>'
+                    )
+                    config_html = (
+                        f'<div class="glass-card" style="margin-top:12px;">'
+                        f'<div style="font-size:0.85rem;font-weight:700;color:#00D4FF;margin-bottom:8px;">⚙️ Recommended vLLM Configuration</div>'
+                        f'<div style="font-size:0.88rem;color:#e2e8f0;">'
+                        f'<code>--max-model-len {rec.get("max_context_length",2048)}</code><br>'
+                        f'<code>--gpu-memory-utilization 0.9</code><br>'
+                        f'<code>Batch concurrency: {rec.get("batch_concurrency","?")}</code>'
+                        f'</div>'
+                        f'<div style="font-size:0.78rem;color:#94a3b8;margin-top:8px;">{rec.get("note","")}</div>'
+                        f'</div>'
+                    )
+                    return status_html, config_html, fig
+
+                tune_btn.click(fn=_on_tune, inputs=[], outputs=[tune_status, tune_config, tune_plot])
+
                 # Also show model / system info
                 gr.HTML(
                     f'<div class="glass-card" style="margin-top:20px;">'
@@ -1897,6 +2115,11 @@ def create_dashboard(
                 with gr.Row(equal_height=True):
                     viz_plot3 = gr.Plot(value=_empty_fig2, show_label=False)
                     viz_plot4 = gr.Plot(value=_empty_fig2, show_label=False)
+                gr.HTML(
+                    '<div style="margin:10px 0 4px;font-size:0.82rem;font-weight:700;color:#94a3b8;'
+                    'text-transform:uppercase;letter-spacing:1.2px;">🌐 Topology Map</div>'
+                )
+                viz_plot5 = gr.Plot(value=_empty_fig2, show_label=False)
 
                 def _on_viz_generate(name: str):
                     sc_name = name if name != "ALL SCENARIOS" else None
@@ -1905,7 +2128,7 @@ def create_dashboard(
                 viz_refresh_btn.click(
                     fn=_on_viz_generate,
                     inputs=[viz_scenario],
-                    outputs=[viz_plot1, viz_plot2, viz_plot3, viz_plot4],
+                    outputs=[viz_plot1, viz_plot2, viz_plot3, viz_plot4, viz_plot5],
                 )
 
             # ──────────────────────────────────────────────────────
@@ -1933,6 +2156,53 @@ def create_dashboard(
 
                 kb_btn.click(fn=_search_runbooks, inputs=[kb_search], outputs=[kb_results])
                 kb_search.submit(fn=_search_runbooks, inputs=[kb_search], outputs=[kb_results])
+
+            # ──────────────────────────────────────────────────────
+            #  TAB 6 — AGENT CHAT (multi-turn)
+            # ──────────────────────────────────────────────────────
+            with gr.Tab("💬 Agent Chat"):
+                gr.HTML(
+                    '<div style="font-size:1.1rem;font-weight:700;color:#e2e8f0;margin-bottom:4px;">'
+                    '💬 Ask the Agent</div>'
+                    '<div style="font-size:0.82rem;color:#94a3b8;margin-bottom:18px;">'
+                    'Ask questions about the last incident analysis. Try: "why did you pick P1?", '
+                    '"whats your confidence?", "explain the evidence chain", or "what should I do next?".</div>'
+                )
+                chatbot = gr.Chatbot(
+                    value=[],
+                    height=400,
+                    bubble_full_width=False,
+                    avatar_images=(None, "🛡️"),
+                    label="Conversation",
+                )
+                with gr.Row():
+                    chat_msg = gr.Textbox(
+                        placeholder="Ask a question about the analysis...",
+                        label="Your Question",
+                        scale=4,
+                    )
+                    chat_send = gr.Button("Send", variant="primary", scale=1)
+                    chat_clear = gr.Button("Clear", variant="secondary", scale=1)
+
+                def _chat_handler(message: str, history: List[Tuple[str, str]]) -> Tuple[List[Tuple[str, str]], str]:
+                    if not message or not message.strip():
+                        return history, ""
+                    history = history + [(message, None)]
+                    response = _chat_respond(message, history)
+                    history[-1] = (message, response)
+                    return history, ""
+
+                chat_send.click(
+                    fn=_chat_handler,
+                    inputs=[chat_msg, chatbot],
+                    outputs=[chatbot, chat_msg],
+                )
+                chat_msg.submit(
+                    fn=_chat_handler,
+                    inputs=[chat_msg, chatbot],
+                    outputs=[chatbot, chat_msg],
+                )
+                chat_clear.click(fn=lambda: ([], ""), inputs=[], outputs=[chatbot, chat_msg])
 
     logger.info("InfraHeal AI dashboard created successfully")
     return demo

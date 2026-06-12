@@ -280,6 +280,129 @@ def log_level_distribution(
     return fig
 
 
+def draw_topology_map(
+    root_cause_host: str = "",
+    affected_hosts: Optional[List[str]] = None,
+    all_hosts: Optional[List[str]] = None,
+    metrics: Optional[List[Dict[str, Any]]] = None,
+    title: str = "Infrastructure Topology — Failure Origin",
+) -> go.Figure:
+    """Interactive topology map showing failure origin and blast radius.
+
+    Args:
+        root_cause_host: Host identified as the failure origin.
+        affected_hosts: Hosts impacted by the failure.
+        all_hosts: All known hosts in the infrastructure.
+        metrics: Metric data (used to infer hosts if not provided).
+        title: Plot title.
+
+    Returns:
+        Plotly Figure with nodes colored by status.
+    """
+    if affected_hosts is None:
+        affected_hosts = []
+
+    if not all_hosts and metrics:
+        all_hosts = sorted(set(m.get("host", "unknown") for m in metrics))
+    if not all_hosts:
+        all_hosts = list(set([root_cause_host] + affected_hosts)) if root_cause_host else ["web-1", "db-1", "cache-1", "worker-1"]
+
+    if not root_cause_host and all_hosts:
+        root_cause_host = all_hosts[0]
+
+    root_cause_host = root_cause_host.replace("_", "-")
+    affected_hosts = [h.replace("_", "-") for h in affected_hosts]
+
+    node_colors = []
+    node_sizes = []
+    node_borders = []
+    label_colors = []
+    for host in all_hosts:
+        h = host.replace("_", "-")
+        if h == root_cause_host:
+            node_colors.append("#FF006E")
+            node_sizes.append(35)
+            node_borders.append("rgba(255,0,110,0.6)")
+            label_colors.append("#FF006E")
+        elif h in affected_hosts:
+            node_colors.append("#FFB800")
+            node_sizes.append(25)
+            node_borders.append("rgba(255,184,0,0.4)")
+            label_colors.append("#FFB800")
+        else:
+            node_colors.append("#00FF88")
+            node_sizes.append(20)
+            node_borders.append("rgba(0,255,136,0.4)")
+            label_colors.append("#00FF88")
+
+    import plotly.graph_objects as go
+    import numpy as np
+
+    n = len(all_hosts)
+    angles = np.linspace(0, 2 * np.pi, n, endpoint=False) if n > 1 else [0]
+    x_pos = np.cos(angles) * 0.8
+    y_pos = np.sin(angles) * 0.8
+
+    fig = go.Figure()
+
+    edge_x = []
+    edge_y = []
+    for i in range(n):
+        for j in range(i + 1, n):
+            dist = np.sqrt((x_pos[i] - x_pos[j])**2 + (y_pos[i] - y_pos[j])**2)
+            opacity = max(0.1, 0.5 - dist * 0.3)
+            edge_x += [x_pos[i], x_pos[j], None]
+            edge_y += [y_pos[i], y_pos[j], None]
+            fig.add_trace(go.Scatter(
+                x=[x_pos[i], x_pos[j]],
+                y=[y_pos[i], y_pos[j]],
+                mode="lines",
+                line=dict(color=f"rgba(255,255,255,{opacity})", width=1),
+                hoverinfo="none",
+                showlegend=False,
+            ))
+
+    root_label = f"🔥 {root_cause_host}" if root_cause_host else ""
+    fig.add_trace(go.Scatter(
+        x=x_pos, y=y_pos,
+        mode="markers+text",
+        marker=dict(
+            size=node_sizes,
+            color=node_colors,
+            line=dict(width=2, color=node_borders),
+            symbol="circle",
+        ),
+        text=all_hosts,
+        textposition="top center",
+        textfont=dict(size=11, color=label_colors, family="Inter, sans-serif"),
+        hovertemplate=[
+            f"<b>{h}</b><br>"
+            f"{'🔥 ROOT CAUSE' if h == root_cause_host else '⚠️ AFFECTED' if h in affected_hosts else '✅ HEALTHY'}"
+            f"<extra></extra>"
+            for h in all_hosts
+        ],
+        showlegend=False,
+    ))
+
+    _apply_theme(fig, height=450)
+    fig.update_layout(
+        title=dict(text=title, x=0.5, font=dict(size=14, color="#00D4FF")),
+        xaxis=dict(visible=False, range=[-1.3, 1.3]),
+        yaxis=dict(visible=False, range=[-1.3, 1.3]),
+        paper_bgcolor="#0a0a1a",
+        plot_bgcolor="#0a0a1a",
+        annotations=[
+            dict(
+                x=0.02, y=0.02, xref="paper", yref="paper",
+                text=f"🔥 Root Cause: {root_cause_host}  |  ⚠️ Affected: {len(affected_hosts)}  |  ✅ Healthy: {len(all_hosts) - len(affected_hosts) - (1 if root_cause_host in all_hosts else 0)}",
+                showarrow=False,
+                font=dict(color="#94a3b8", size=10),
+            )
+        ],
+    )
+    return fig
+
+
 def host_radar(
     metrics: List[Dict[str, Any]],
     title: str = "Host Comparison — Radar",

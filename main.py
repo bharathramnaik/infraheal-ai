@@ -268,6 +268,7 @@ Examples:
     parser.add_argument("--demo", action="store_true", help="Run demo scenario without dashboard")
     parser.add_argument("--generate-data", action="store_true", help="Generate synthetic data only")
     parser.add_argument("--test-llm", action="store_true", help="Test vLLM server connectivity")
+    parser.add_argument("--tune", action="store_true", help="Run GPU throughput profiler and exit")
     parser.add_argument("--port", type=int, default=7860, help="Dashboard port (default: 7860)")
     parser.add_argument("--jupyter", action="store_true", help="Print JupyterLab setup instructions")
     parser.add_argument("--model", type=str, default=None, help="Override model name")
@@ -287,6 +288,21 @@ Examples:
     if args.test_llm:
         success, model = test_vllm_connection()
         sys.exit(0 if success else 1)
+    elif args.tune:
+        logger.info("Running GPU throughput profiler...")
+        from gpu_autotuner import GPUTuner
+        from config import VLLM_BASE_URL, VLLM_API_KEY, MODEL_NAME
+        from openai import OpenAI
+        try:
+            client = OpenAI(base_url=VLLM_BASE_URL, api_key=VLLM_API_KEY, timeout=5.0, max_retries=0)
+            _ = client.models.list()
+        except Exception:
+            logger.warning("vLLM not available — running simulated benchmark")
+            client = None
+        tuner = GPUTuner(client=client, model_name=MODEL_NAME)
+        result = tuner.benchmark()
+        print(json.dumps(result, indent=2))
+        sys.exit(0)
     elif args.generate_data:
         generate_data()
     elif args.demo:

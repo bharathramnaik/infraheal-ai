@@ -188,6 +188,23 @@ class InfraHealOrchestrator:
             rca_result.get("confidence_score", 0), result["rca_latency"],
         )
 
+        # ── Step 3b: Self-Critique / Reflection ──────────────────
+        logger.info("Step 3b/5: Running self-critique on RCA…")
+        try:
+            critique = self._critique_analysis(anomalies, triage_result, rca_result)
+            if critique.get("confirmed"):
+                logger.info("Critique CONFIRMED RCA (confidence=%.2f)", critique.get("refined_confidence", rca_result.get("confidence_score", 0)))
+            else:
+                logger.warning("Critique found gaps: %s", critique.get("gaps", []))
+                rca_result["refined_confidence"] = critique.get("refined_confidence", rca_result.get("confidence_score", 0))
+                rca_result["refined_reasoning"] = critique.get("refined_reasoning", rca_result.get("reasoning_summary", ""))
+                rca_result["critique_gaps"] = critique.get("gaps", [])
+                rca_result["critique_suggestions"] = critique.get("suggestions", [])
+            result["critique"] = critique
+        except Exception as exc:
+            logger.warning("Critique failed (continuing without): %s", exc)
+            result["critique"] = {"confirmed": True, "error": str(exc)}
+
         # ── Step 4: Remediation Plan ────────────────────────────
         logger.info("Step 4/5: Running Remediation Agent…")
         step_start = time.time()
@@ -246,11 +263,21 @@ class InfraHealOrchestrator:
         result["report"] = report
         result["report_latency"] = round(time.time() - step_start, 2)
 
+        # ── Root Cause Host / Affected Hosts ──────────────────
+        anomaly_sources = [a.get("source", "") for a in anomalies if a.get("source")]
+        host_counts = {h: anomaly_sources.count(h) for h in set(anomaly_sources)}
+        worst_anomaly = max(anomalies, key=lambda a: {"P1":0,"P2":1,"P3":2,"P4":3}.get(a.get("severity","P4"), 4)) if anomalies else {}
+        root_cause_host = rca_result.get("root_cause", worst_anomaly.get("source", anomaly_sources[0] if anomaly_sources else ""))
+        affected_hosts = list(set(anomaly_sources))
+        result["root_cause_host"] = root_cause_host
+        result["affected_hosts"] = affected_hosts
+
         # ── Reasoning Chain ────────────────────────────────────
         reasoning_chain = []
         rc_items = [
             ("Triage Agent", triage_result, "triage_latency", "urgency_reasoning"),
             ("RCA Agent", rca_result, "rca_latency", "reasoning_summary"),
+            ("Critique Agent", result.get("critique", {}), 0, "refined_reasoning"),
             ("Remediation Agent", remediation_result, "remediation_latency", "rollback_plan"),
             ("Reporting Agent", report, "report_latency", "executive_summary"),
         ]
@@ -506,6 +533,37 @@ class InfraHealOrchestrator:
         result["triage"] = result.get("triage_result", {})
         result["rca"] = result.get("rca_result", {})
         result["remediation"] = result.get("remediation_result", {})
+        return result
+
+    # ── Self-Critique / Reflection ───────────────────────────────
+
+    CRITIQUE_PROMPT = """Review this RCA analysis. Identify gaps or weak evidence. Either confirm or refine.
+triage: sev={sev} cat={cat} impact={impact[:80]}
+rca: cause={rc} conf={conf}
+evidence: {ev[:250]}
+Return JSON: {{"confirmed":true/false,"refined_confidence":0-1,"refined_reasoning":"summary","gaps":["gap"],"suggestions":["suggestion"]}}"""
+
+    def _critique_analysis(self, anomalies, triage_result, rca_result) -> dict:
+        ev = "; ".join(str(e)[:60] for e in rca_result.get("evidence_chain", [])[:3])
+        prompt = self.CRITIQUE_PROMPT.format(
+            sev=triage_result.get("severity","?"),
+            cat=triage_result.get("category","?"),
+            impact=triage_result.get("impact_assessment",""),
+            rc=rca_result.get("root_cause","?"),
+            conf=rca_result.get("confidence_score",0),
+            ev=ev,
+        )
+        messages = [
+            {"role": "system", "content": "You are a critique agent. Respond ONLY with the JSON object."},
+            {"role": "user", "content": prompt},
+        ]
+        raw = self.triage_agent._call_llm(messages)
+        try:
+            result = json.loads(raw)
+        except Exception:
+            result = {"confirmed": True, "refined_confidence": rca_result.get("confidence_score", 0.5), "refined_reasoning": rca_result.get("reasoning_summary", ""), "gaps": [], "suggestions": []}
+        result.setdefault("refined_confidence", rca_result.get("confidence_score", 0.5))
+        result.setdefault("refined_reasoning", rca_result.get("reasoning_summary", ""))
         return result
 
     # ── Metrics ──────────────────────────────────────────────────
