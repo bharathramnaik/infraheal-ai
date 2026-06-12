@@ -2325,7 +2325,6 @@ def create_dashboard(
                     }],
                     height=360,
                     label="Terminal Chat",
-                    show_copy_button=True,
                     elem_classes="chat-terminal",
                 )
 
