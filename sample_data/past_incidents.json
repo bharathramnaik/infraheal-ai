@@ -212,5 +212,367 @@
       "application",
       "postgresql"
     ]
+  },
+  {
+    "id": "INC-016",
+    "timestamp": "2026-06-04T12:57:59.055176+00:00",
+    "title": "GPU OOM on Inference Node",
+    "severity": "P2",
+    "category": "infrastructure",
+    "root_cause": "Batch inference job allocated more VRAM than available on the GPU node; memory oversubscription triggered OOM killer",
+    "resolution": "Rescheduled pods with memory limits; added node taint for GPU workloads; monitored via ROCm-smi",
+    "duration_minutes": 49,
+    "affected_services": [
+      "nginx"
+    ]
+  },
+  {
+    "id": "INC-017",
+    "timestamp": "2026-06-20T11:21:04.069873+00:00",
+    "title": "ROCm Driver Crash",
+    "severity": "P3",
+    "category": "infrastructure",
+    "root_cause": "ROCm driver encountered an uncorrectable ECC error on MI250 GPU; driver state machine entered fault handler and panicked",
+    "resolution": "Downgraded ROCm driver from 5.7.1 to 5.6.3; isolated faulty GPU via AMI; coordinated with AMD support for RMA",
+    "duration_minutes": 31,
+    "affected_services": [
+      "gpu-operator",
+      "kubernetes",
+      "nginx"
+    ]
+  },
+  {
+    "id": "INC-018",
+    "timestamp": "2026-07-06T16:21:37.637093+00:00",
+    "title": "VRAM Allocation Failure",
+    "severity": "P1",
+    "category": "infrastructure",
+    "root_cause": "Fragmented VRAM across multiple inference containers prevented a large model from loading; hipMalloc returned out-of-memory despite 40% free VRAM",
+    "resolution": "Rebooted GPU node to defragment VRAM; set pod resource requests for VRAM; enabled ROCm GTT memory fallback",
+    "duration_minutes": 37,
+    "affected_services": [
+      "gpu-operator"
+    ]
+  },
+  {
+    "id": "INC-019",
+    "timestamp": "2026-06-22T22:17:29.543903+00:00",
+    "title": "Credential Leak in Git History",
+    "severity": "P1",
+    "category": "security",
+    "root_cause": "Engineer accidentally committed .env file containing AWS access keys to public Git repository; secret scanner detected within 12 minutes",
+    "resolution": "Rotated all AWS keys; force-pushed to remove file from history; enabled pre-commit secret scanning; triggered incident review",
+    "duration_minutes": 33,
+    "affected_services": [
+      "cert-manager",
+      "kubernetes",
+      "auth"
+    ]
+  },
+  {
+    "id": "INC-020",
+    "timestamp": "2026-07-15T07:58:51.935428+00:00",
+    "title": "Insider Threat \u2014 Data Exfiltration",
+    "severity": "P3",
+    "category": "security",
+    "root_cause": "Employee with database read access exported 500k customer records to personal S3 bucket; anomaly detection flagged unusual egress traffic",
+    "resolution": "Revoked access; isolated the user account; initiated legal hold; engaged forensics team for evidence collection",
+    "duration_minutes": 103,
+    "affected_services": [
+      "application"
+    ]
+  },
+  {
+    "id": "INC-021",
+    "timestamp": "2026-05-22T16:46:27.110218+00:00",
+    "title": "SSRF Attack on Metadata Service",
+    "severity": "P1",
+    "category": "security",
+    "root_cause": "Attacker exploited a URL parameter in the document-generation service to query AWS metadata endpoint (169.254.169.254) and retrieved temporary credentials",
+    "resolution": "Patched input validation to block loopback IPs; rotated instance role credentials; disabled metadata service v1; added WAF rule for SSRF",
+    "duration_minutes": 47,
+    "affected_services": [
+      "nginx"
+    ]
+  },
+  {
+    "id": "INC-022",
+    "timestamp": "2026-07-25T03:23:49.452982+00:00",
+    "title": "Ransomware on Shared Storage",
+    "severity": "P1",
+    "category": "security",
+    "root_cause": "Crypto locker encrypted 12 TB of NFS shares used by multiple teams; ransom note dropped in every directory; backups were partially encrypted due to mounted drive",
+    "resolution": "Isolated storage array from network; restored from immutable snapshots (6-hour data loss); rebuilt affected NFS clients; implemented air-gapped backup strategy",
+    "duration_minutes": 237,
+    "affected_services": [
+      "cert-manager",
+      "nginx"
+    ]
+  },
+  {
+    "id": "INC-023",
+    "timestamp": "2026-07-27T03:30:50.669231+00:00",
+    "title": "Container Image Vulnerability Exploit",
+    "severity": "P2",
+    "category": "security",
+    "root_cause": "CVE-2026-1234 in base image (Alpine 3.18) allowed container escape via a kernel module exploit; attacker gained host-level access on 3 Kubernetes nodes",
+    "resolution": "Patched all images with updated base; implemented image scanning in CI; blocked containers running as root; enabled seccomp profiles",
+    "duration_minutes": 99,
+    "affected_services": [
+      "auth",
+      "nginx"
+    ]
+  },
+  {
+    "id": "INC-024",
+    "timestamp": "2026-07-15T21:52:30.598407+00:00",
+    "title": "API Key Rotation Failure",
+    "severity": "P3",
+    "category": "security",
+    "root_cause": "Scheduled rotation of Stripe API key via automation failed silently due to expired vault token; services continued using revoked key for 4 hours causing 503 errors on payment",
+    "resolution": "Manually rotated all API keys; fixed vault token renewal pipeline; added monitoring for key rotation success; implemented staged rotation with validation",
+    "duration_minutes": 16,
+    "affected_services": [
+      "cert-manager",
+      "application"
+    ]
+  },
+  {
+    "id": "INC-025",
+    "timestamp": "2026-07-30T11:36:16.992689+00:00",
+    "title": "IAM Policy Misconfiguration",
+    "severity": "P2",
+    "category": "security",
+    "root_cause": "Overly permissive IAM policy on the CI/CD role granted s3:PutObject to all buckets; a misconfigured pipeline step overwrote production TLS certificate in S3",
+    "resolution": "Applied least-privilege IAM policy; restored TLS cert from ACM; added pipeline guardrails to prevent S3 writes in non-artifact stages",
+    "duration_minutes": 32,
+    "affected_services": [
+      "auth",
+      "application"
+    ]
+  },
+  {
+    "id": "INC-026",
+    "timestamp": "2026-06-14T11:23:04.964969+00:00",
+    "title": "BGP Route Hijack",
+    "severity": "P1",
+    "category": "network",
+    "root_cause": "A misconfigured BGP peer advertised a more specific route (/24) for our production IP block (/22) causing traffic to be blackholed via the peer AS",
+    "resolution": "Disabled the offending BGP session; forced route withdrawal via RPKI; implemented BGP prefix filtering with IRR record validation; rolled out ROV for all peers",
+    "duration_minutes": 57,
+    "affected_services": [
+      "application",
+      "nginx",
+      "kubernetes"
+    ]
+  },
+  {
+    "id": "INC-027",
+    "timestamp": "2026-06-30T13:44:31.683783+00:00",
+    "title": "MTU Mismatch on VPN Tunnel",
+    "severity": "P3",
+    "category": "network",
+    "root_cause": "Site-to-site VPN tunnel between datacenter and cloud had MTU 1500 on one end and 1400 on the other; fragmented packets caused TCP retransmission storms",
+    "resolution": "Standardised MTU to 1400 across all tunnel endpoints; enabled MSS clamping on both sides; verified with ping -M do -s 1472 across all routes",
+    "duration_minutes": 27,
+    "affected_services": [
+      "nginx",
+      "application",
+      "systemd"
+    ]
+  },
+  {
+    "id": "INC-028",
+    "timestamp": "2026-07-14T10:25:47.388777+00:00",
+    "title": "DNS Cache Poisoning",
+    "severity": "P1",
+    "category": "network",
+    "root_cause": "Attackers injected fake A records for internal services via a vulnerable DNS forwarder; traffic was redirected to attacker-controlled endpoints for 18 min",
+    "resolution": "Flushed all DNS caches; patched DNS forwarder (CVE-2026-5678); enabled DNSSEC validation; deployed DNS-over-TLS for upstream resolvers",
+    "duration_minutes": 32,
+    "affected_services": [
+      "application",
+      "systemd"
+    ]
+  },
+  {
+    "id": "INC-029",
+    "timestamp": "2026-07-26T11:05:36.970997+00:00",
+    "title": "Firewall Rule Cascade Failure",
+    "severity": "P2",
+    "category": "network",
+    "root_cause": "Network team removed what appeared to be an unused firewall rule but it was implicitly referenced by a stateful rule-group; 200+ production firewall rules stopped matching",
+    "resolution": "Restored firewall rule from backup; implemented change-management workflow for firewall rules; added automated rule-dependency graph generation before any deletion",
+    "duration_minutes": 50,
+    "affected_services": [
+      "kubernetes"
+    ]
+  },
+  {
+    "id": "INC-030",
+    "timestamp": "2026-08-03T16:22:26.501667+00:00",
+    "title": "PostgreSQL Replication Lag Critical",
+    "severity": "P2",
+    "category": "database",
+    "root_cause": "A long-running ANALYZE on the primary with aggressive vacuum caused WAL generation to spike; replicas fell behind by 45 minutes; read replicas served stale data",
+    "resolution": "Cancelled the ANALYZE; monitored replay until replicas caught up; scheduled ANALYZE during maintenance windows; tuned wal_keep_size and replication slots",
+    "duration_minutes": 56,
+    "affected_services": [
+      "postgresql"
+    ]
+  },
+  {
+    "id": "INC-031",
+    "timestamp": "2026-06-18T02:33:53.662648+00:00",
+    "title": "Deadlock Cascade in Order Service",
+    "severity": "P3",
+    "category": "database",
+    "root_cause": "Multiple concurrent transactions acquiring locks on orders and inventory in different order caused a deadlock cascade; application retry logic amplified the issue",
+    "resolution": "Killed blocked processes; implemented consistent lock ordering in application; added deadlock_timeout and retry with exponential backoff",
+    "duration_minutes": 45,
+    "affected_services": [
+      "postgresql",
+      "application"
+    ]
+  },
+  {
+    "id": "INC-032",
+    "timestamp": "2026-07-19T13:10:34.324744+00:00",
+    "title": "WAL Disk Full Preventing Writes",
+    "severity": "P2",
+    "category": "database",
+    "root_cause": "Unmonitored WAL archive directory filled the disk (100GB limit); PostgreSQL entered read-only mode; all write transactions failed for 7 minutes",
+    "resolution": "Manually archived and removed old WAL segments; extended WAL volume to 500GB; set up disk usage alert at 75%; implemented WAL archival to S3",
+    "duration_minutes": 32,
+    "affected_services": [
+      "postgresql",
+      "redis"
+    ]
+  },
+  {
+    "id": "INC-033",
+    "timestamp": "2026-06-02T05:43:58.223207+00:00",
+    "title": "Snapshot Backfill Exhausting IOPS",
+    "severity": "P1",
+    "category": "storage",
+    "root_cause": "Nightly snapshot backfill job for newly provisioned EBS volumes ran concurrently on all 50 new volumes; IOPS quota exhausted causing 800ms write latency on production volumes",
+    "resolution": "Throttled snapshot creation to 5 concurrent volumes; moved backfill to off-peak hours; provisioned dedicated IOPS for snapshot operations",
+    "duration_minutes": 34,
+    "affected_services": [
+      "storage",
+      "backup-service",
+      "kubernetes"
+    ]
+  },
+  {
+    "id": "INC-034",
+    "timestamp": "2026-07-29T23:58:56.225568+00:00",
+    "title": "Backup Verification Failure",
+    "severity": "P2",
+    "category": "storage",
+    "root_cause": "Weekly backup integrity check failed for 3 out of 15 databases; backup files had checksum mismatches due to silent disk corruption on the backup server",
+    "resolution": "Restored from known-good second copy; replaced failing disks on backup server; enabled Data Integrity Checks (DIC) on all backup volumes; added alert on checksum failures",
+    "duration_minutes": 49,
+    "affected_services": [
+      "docker"
+    ]
+  },
+  {
+    "id": "INC-035",
+    "timestamp": "2026-06-17T03:05:50.615581+00:00",
+    "title": "Dead Letter Queue Overflow",
+    "severity": "P2",
+    "category": "application",
+    "root_cause": "A malformed message schema from a misconfigured publisher caused all consumer workers to reject messages; DLQ grew to 2M messages in 15 minutes flooding disk",
+    "resolution": "Stopped the offending publisher; drained DLQ via replay script; added schema validation on both producer and consumer sides; set DLQ max-depth alert",
+    "duration_minutes": 44,
+    "affected_services": [
+      "message-broker",
+      "redis",
+      "application"
+    ]
+  },
+  {
+    "id": "INC-036",
+    "timestamp": "2026-07-13T17:24:43.798155+00:00",
+    "title": "Garbage Collection Pause Storm",
+    "severity": "P3",
+    "category": "application",
+    "root_cause": "JVM heap reached 90% usage triggering back-to-back Full GCs; each pause lasted 8-12 seconds causing request timeouts and cascading circuit-breaker trips",
+    "resolution": "Tuned JVM heap from 8GB to 12GB; switched to G1GC with tuned pause target; added GC pause metrics to Prometheus; implemented heap dumps on OOM",
+    "duration_minutes": 33,
+    "affected_services": [
+      "redis",
+      "message-broker",
+      "application"
+    ]
+  },
+  {
+    "id": "INC-037",
+    "timestamp": "2026-05-23T12:57:09.701882+00:00",
+    "title": "Inter-Service Deadlock",
+    "severity": "P2",
+    "category": "application",
+    "root_cause": "Service A holds lock on resource X and waits for resource Y; Service B holds lock on resource Y and waits for resource X; both blocked indefinitely",
+    "resolution": "Terminated both service instances; implemented global lock ordering; added distributed lock timeout with automatic release; added deadlock detection to health check",
+    "duration_minutes": 28,
+    "affected_services": [
+      "redis",
+      "message-broker",
+      "postgresql"
+    ]
+  },
+  {
+    "id": "INC-038",
+    "timestamp": "2026-08-08T23:16:41.856814+00:00",
+    "title": "Message Broker Partition Loss",
+    "severity": "P1",
+    "category": "application",
+    "root_cause": "Kafka broker lost a replica due to disk failure; unclean leader election caused 2 partitions to lose all committed messages; consumers fell behind by 10M messages",
+    "resolution": "Restored data from backup; set min.insync.replicas=2; prevented unclean leader election; added partition health monitoring per broker",
+    "duration_minutes": 88,
+    "affected_services": [
+      "redis"
+    ]
+  },
+  {
+    "id": "INC-039",
+    "timestamp": "2026-07-28T06:00:20.851389+00:00",
+    "title": "Kernel Panic on Bare-Metal Node",
+    "severity": "P1",
+    "category": "infrastructure",
+    "root_cause": "Memory ECC error on DIMM slot B2 caused uncorrectable machine check exception; kernel panicked; node dropped from Kubernetes cluster",
+    "resolution": "Removed node from cluster; scheduled hardware repair; replaced faulty DIMM; ran memtest86 for 24h before restoring to cluster",
+    "duration_minutes": 92,
+    "affected_services": [
+      "nginx"
+    ]
+  },
+  {
+    "id": "INC-040",
+    "timestamp": "2026-07-21T03:01:23.981384+00:00",
+    "title": "Systemd Unit Drift After Reboot",
+    "severity": "P2",
+    "category": "infrastructure",
+    "root_cause": "After scheduled reboot, systemd unit file for app-api.service was replaced by an older version from a stale package; service failed to start due to missing environment variable",
+    "resolution": "Manually restored correct unit file; pinned package versions; added systemd unit diff check in boot-time monitoring; enabled immutable unit file tracking via etcd",
+    "duration_minutes": 10,
+    "affected_services": [
+      "nginx"
+    ]
+  },
+  {
+    "id": "INC-041",
+    "timestamp": "2026-08-05T02:51:10.840074+00:00",
+    "title": "Prometheus TSDB Corruption",
+    "severity": "P2",
+    "category": "infrastructure",
+    "root_cause": "Prometheus instance crashed leaving TSDB in an inconsistent state; WAL replay failed; 8 hours of metrics data became unrecoverable",
+    "resolution": "Deleted corrupted TSDB blocks; rebuilt TSDB from scrape; deployed Thanos sidecar for long-term storage; enabled TSDB integrity checks and alerts",
+    "duration_minutes": 49,
+    "affected_services": [
+      "kubernetes",
+      "gpu-operator"
+    ]
   }
 ]

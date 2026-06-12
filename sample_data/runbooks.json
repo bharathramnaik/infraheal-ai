@@ -750,5 +750,469 @@
       "connection",
       "database"
     ]
+  },
+  {
+    "title": "GPU Out-of-Memory",
+    "category": "infrastructure",
+    "symptoms": [
+      "hipMalloc or cudaMalloc returns out-of-memory error",
+      "GPU process crash with 'OOM' in ROCm dmesg",
+      "Pod status: OOMKilled on GPU node",
+      "VRAM usage at 100% in rocm-smi",
+      "Inference latency spikes followed by failures"
+    ],
+    "root_causes": [
+      "Batch size too large for available VRAM",
+      "Memory leak in GPU kernel (unreleased tensors)",
+      "Too many models loaded simultaneously on same GPU",
+      "Fragmented VRAM after repeated allocations and deallocations"
+    ],
+    "resolution_steps": [
+      "1. Check VRAM usage: `rocm-smi --showmeminfo vram` or `nvidia-smi`",
+      "2. Identify offending process: `rocm-smi --showpid`",
+      "3. Reduce batch size or model parallelism",
+      "4. Restart the GPU workload pod",
+      "5. Enable memory defragmentation: reboot GPU node if necessary",
+      "6. Set VRAM resource requests and limits in pod spec"
+    ],
+    "prevention": [
+      "Specify VRAM limits in container resource spec",
+      "Add GPU memory monitoring dashboards",
+      "Implement model batching with adaptive sizing",
+      "Run memory profiling on inference workloads",
+      "Use MIG or GPU partitioning for multi-tenant isolation"
+    ],
+    "tags": [
+      "gpu",
+      "amd",
+      "rocm",
+      "oom",
+      "inference"
+    ],
+    "id": "RB-021"
+  },
+  {
+    "title": "ROCm Driver Failure",
+    "category": "infrastructure",
+    "symptoms": [
+      "rocminfo fails to find any GPU devices",
+      "dmesg shows 'AMDGPU: Fatal error during GPU init'",
+      "GPU compute pods stuck in CrashLoopBackOff",
+      "Kernel module amdgpu fails to load",
+      "HSA_STATUS_ERROR in application logs"
+    ],
+    "root_causes": [
+      "ROCm driver version incompatible with kernel",
+      "GPU ECC uncorrectable error causing driver panic",
+      "Firmware mismatch between GPU VBIOS and driver",
+      "Insufficient hugepage allocation for GPU DMA"
+    ],
+    "resolution_steps": [
+      "1. Check driver status: `dmesg | grep -i amdgpu`",
+      "2. Verify ROCm installation: `rocminfo`",
+      "3. Run GPU diagnostics: `amd-smi -a`",
+      "4. Reinstall or downgrade ROCm driver",
+      "5. Check kernel compatibility: `uname -r` vs supported kernel list",
+      "6. Reboot node and re-probe amdgpu module"
+    ],
+    "prevention": [
+      "Pin ROCm driver version to validated kernel versions",
+      "Test driver upgrades in staging before production",
+      "Monitor GPU health with ROCm telemetry",
+      "Maintain fallback driver version for quick rollback",
+      "Document kernel compatibility matrix for all GPU nodes"
+    ],
+    "tags": [
+      "gpu",
+      "amd",
+      "rocm",
+      "driver"
+    ],
+    "id": "RB-022"
+  },
+  {
+    "title": "PostgreSQL Replication Lag",
+    "category": "database",
+    "symptoms": [
+      "Read replicas serving stale data minutes behind primary",
+      "pg_stat_replication shows increasing replay_lag",
+      "WAL generation rate exceeds replica replay rate",
+      "Application read-after-write consistency failures"
+    ],
+    "root_causes": [
+      "Long-running write transaction on primary generating excessive WAL",
+      "Replica under-provisioned (CPU/IO slower than primary)",
+      "Network latency between primary and replicas",
+      "Vacuum or ANALYZE on primary causing WAL spike"
+    ],
+    "resolution_steps": [
+      "1. Check lag: `SELECT now() - pg_last_xact_replay_timestamp() AS replication_lag;`",
+      "2. Identify WAL sources: `SELECT * FROM pg_stat_statements ORDER BY total_time DESC LIMIT 10;`",
+      "3. Cancel long-running write transactions on primary",
+      "4. Temporarily increase replica resources (CPU/memory)",
+      "5. Tune max_wal_size, wal_keep_size, and checkpoint_completion_target",
+      "6. Add more replicas or use cascading replication for read scaling"
+    ],
+    "prevention": [
+      "Set up replication lag monitoring and alerts (threshold: 60s)",
+      "Provision replicas with at least equal resources as primary",
+      "Use synchronous replication for critical writes",
+      "Schedule VACUUM and ANALYZE during off-peak hours",
+      "Implement read-after-write consistency in application via primary reads"
+    ],
+    "tags": [
+      "database",
+      "postgresql",
+      "replication",
+      "lag"
+    ],
+    "id": "RB-023"
+  },
+  {
+    "title": "Credential Rotation Failure",
+    "category": "security",
+    "symptoms": [
+      "Services returning 401/403 after scheduled key rotation time",
+      "Automation job for key rotation reports failure",
+      "Vault agent unable to authenticate to secrets backend",
+      "Expired credentials detected by monitoring"
+    ],
+    "root_causes": [
+      "Rotation automation script failed silently (permissions, network, or token expiry)",
+      "Vault token used for rotation had expired before rotation window",
+      "Dependency on external service (HSM, KMS) during rotation",
+      "Credential still cached in running services"
+    ],
+    "resolution_steps": [
+      "1. Identify the failed credential from alerts: `vault list secret/credentials`",
+      "2. Manually rotate the credential via vault/secrets manager UI",
+      "3. Verify new credential works: `vault read secret/credentials/<name>`",
+      "4. Restart affected services or trigger reload",
+      "5. Check rotation automation logs for failure root cause",
+      "6. Re-run rotation validation test suite"
+    ],
+    "prevention": [
+      "Store rotation tokens with auto-renewal in Vault",
+      "Implement staged rotation with canary validation",
+      "Set up credential-age monitoring and alerts",
+      "Use short-lived credentials with automatic refresh (STS, OIDC)",
+      "Test rotation automation in staging environment weekly"
+    ],
+    "tags": [
+      "security",
+      "credentials",
+      "rotation",
+      "vault"
+    ],
+    "id": "RB-024"
+  },
+  {
+    "title": "SSRF Attack Response",
+    "category": "security",
+    "symptoms": [
+      "Alerts from metadata service access attempts (169.254.169.254)",
+      "Suspicious outbound connections to internal IP ranges",
+      "Logs showing URL parameters containing internal IPs or file:// schemes",
+      "Security scanner or WAF detecting SSRF probe patterns"
+    ],
+    "root_causes": [
+      "Application accepts user-supplied URLs and fetches them server-side",
+      "Missing allowlist for permitted external domains",
+      "No input validation on URL scheme and host",
+      "Metadata service (IMDS) v1 enabled allowing token-less access"
+    ],
+    "resolution_steps": [
+      "1. Block all outbound traffic to 169.254.169.254 at the firewall/WAF",
+      "2. Rotate any potentially exposed cloud provider credentials",
+      "3. Disable IMDSv1; enforce IMDSv2 with hop limit",
+      "4. Patch application: add URL allowlist, block private IP ranges",
+      "5. Deploy endpoint to validate internal IPs before outbound fetches",
+      "6. Run vulnerability scan to confirm SSRF vectors are mitigated"
+    ],
+    "prevention": [
+      "Enforce IMDSv2 with Hop Limit=1 on all instances",
+      "Maintain strict URL allowlist for server-side fetches",
+      "Block private IP ranges in application-level URL validation",
+      "Run DAST scanning for SSRF in CI/CD pipeline",
+      "Segment metadata service access via network policies"
+    ],
+    "tags": [
+      "security",
+      "ssrf",
+      "metadata",
+      "firewall"
+    ],
+    "id": "RB-025"
+  },
+  {
+    "title": "Ransomware Incident Response",
+    "category": "security",
+    "symptoms": [
+      "Files on shared storage renamed with .locked or .encrypted extension",
+      "Ransom note text files appearing in directories",
+      "Storage volume IOPS spike followed by access denied errors",
+      "Backup jobs failing with checksum mismatch"
+    ],
+    "root_causes": [
+      "Compromised user credentials with write access to shares",
+      "Unpatched server exposed to internet with SMB/NFS vulnerability",
+      "Backup storage mounted read-write at time of encryption",
+      "Phishing attack delivered ransomware to employee workstation"
+    ],
+    "resolution_steps": [
+      "1. Isolate affected systems from network immediately",
+      "2. Identify patient zero from authentication logs",
+      "3. Preserve encrypted files and ransom note for forensics",
+      "4. Restore data from immutable/air-gapped backups",
+      "5. Verify backup integrity before restoring services",
+      "6. Reset all credentials for affected accounts",
+      "7. Engage incident response and law enforcement if required"
+    ],
+    "prevention": [
+      "Maintain immutable and air-gapped backups",
+      "Implement least-privilege access to shared storage",
+      "Deploy endpoint detection and response (EDR) on all servers",
+      "Disable SMBv1 and restrict NFS exports by IP",
+      "Run tabletop exercises for ransomware scenarios quarterly"
+    ],
+    "tags": [
+      "security",
+      "ransomware",
+      "storage",
+      "backup"
+    ],
+    "id": "RB-026"
+  },
+  {
+    "title": "BGP Route Hijack",
+    "category": "network",
+    "symptoms": [
+      "Traffic to production IP ranges drops or routes to unexpected destinations",
+      "External monitoring reports timeouts from multiple geographic locations",
+      "BGP looking-glass shows more-specific routes from unknown ASNs",
+      "Users report inability to reach the service"
+    ],
+    "root_causes": [
+      "Transit provider or peering partner leaked routes",
+      "Misconfigured route advertisement from internal router",
+      "Malicious BGP hijack from attacker ASN",
+      "Lack of RPKI filtering on upstream routers"
+    ],
+    "resolution_steps": [
+      "1. Identify hijacked prefixes from BGP looking-glass services",
+      "2. Contact upstream providers to filter malicious routes",
+      "3. Announce more-specific prefix to override hijack",
+      "4. Deploy RPKI ROA (Route Origin Authorization) to prevent future hijacks",
+      "5. Implement BGP prefix filtering with IRR data",
+      "6. Monitor BGP updates with a BGP monitoring service"
+    ],
+    "prevention": [
+      "Register RPKI ROAs for all owned IP prefixes",
+      "Filter inbound BGP advertisements from peers",
+      "Monitor BGP announcements with a BGP monitoring tool",
+      "Use prefix-list filters on all eBGP sessions",
+      "Participate in MANRS (Mutually Agreed Norms for Routing Security)"
+    ],
+    "tags": [
+      "network",
+      "bgp",
+      "route-hijack",
+      "security"
+    ],
+    "id": "RB-027"
+  },
+  {
+    "title": "Garbage Collection Tuning",
+    "category": "application",
+    "symptoms": [
+      "Application latency spikes every few minutes",
+      "GC logs show frequent Full GC or pause times > 5 seconds",
+      "CPU utilization spikes corresponding to GC events",
+      "Application throughput drops during GC pauses"
+    ],
+    "root_causes": [
+      "Heap size too small for workload object allocation rate",
+      "Incorrect GC algorithm selection for application profile",
+      "Object allocation rate exceeds GC throughput",
+      "Memory leak causing tenured generation to fill up"
+    ],
+    "resolution_steps": [
+      "1. Enable GC logging: `-Xlog:gc*:gc.log:time,uptime,tags`",
+      "2. Analyze GC log with GCeasy or GCViewer",
+      "3. Identify pause frequency, duration, and heap occupancy",
+      "4. Tune heap size: set -Xms and -Xmx to equal value",
+      "5. Switch GC algorithm: G1GC for low-pause, ZGC for sub-millisecond",
+      "6. Profile object allocation rate and optimize hot allocation paths"
+    ],
+    "prevention": [
+      "Set GC metrics monitoring (pause time, frequency, heap usage)",
+      "Run load tests with GC logging enabled before releases",
+      "Use G1GC with -XX:MaxGCPauseMillis=200 for latency-sensitive apps",
+      "Implement heap dump on OOM for post-mortem analysis",
+      "Review object allocation patterns in code review"
+    ],
+    "tags": [
+      "application",
+      "gc",
+      "performance",
+      "java",
+      "jvm"
+    ],
+    "id": "RB-028"
+  },
+  {
+    "title": "Prometheus Database Corruption",
+    "category": "infrastructure",
+    "symptoms": [
+      "Prometheus crashes with 'TSDB corruption detected' error",
+      "WAL replay fails on startup",
+      "Missing metrics data for recent time window",
+      "Queries return incomplete or incorrect results"
+    ],
+    "root_causes": [
+      "Unclean shutdown of Prometheus (kill -9, node crash)",
+      "Disk errors causing corrupted WAL or TSDB blocks",
+      "Out-of-disk space during TSDB compaction",
+      "Bug in Prometheus TSDB WAL implementation"
+    ],
+    "resolution_steps": [
+      "1. Check Prometheus logs for corruption details",
+      "2. Run TSDB repair: `promtool tsdb repair /path/to/data`",
+      "3. If repair fails, delete corrupted blocks: `rm -rf /data/*/corrupted-block-id`",
+      "4. Restart Prometheus and verify WAL replay",
+      "5. Rebuild data from remote storage (Thanos/Cortex) if available",
+      "6. Set up Thanos sidecar for HA metric storage"
+    ],
+    "prevention": [
+      "Deploy Prometheus with graceful shutdown handling",
+      "Use persistent volumes with monitoring for disk health",
+      "Set up Thanos or Cortex for long-term HA metric storage",
+      "Enable WAL compression to reduce corruption surface",
+      "Backup Prometheus TSDB data regularly"
+    ],
+    "tags": [
+      "prometheus",
+      "tsdb",
+      "corruption",
+      "monitoring",
+      "infrastructure"
+    ],
+    "id": "RB-029"
+  },
+  {
+    "title": "Message Broker Partition Recovery",
+    "category": "application",
+    "symptoms": [
+      "Kafka/RabbitMQ partitions show 'under-replicated' status",
+      "Producers receive timeout or leader-not-available errors",
+      "Consumers lagging significantly behind",
+      "Messages published but not consumed for extended period"
+    ],
+    "root_causes": [
+      "Broker disk failure causing replica loss",
+      "Network partition isolating broker from cluster",
+      "Unclean leader election losing committed messages",
+      "Memory pressure causing broker to drop connections"
+    ],
+    "resolution_steps": [
+      "1. Check cluster health: `kafka-broker-api-versions.sh --bootstrap-server <host>`",
+      "2. Identify affected partitions: `kafka-topics.sh --describe --under-replicated-partitions`",
+      "3. Restart failed broker if it rejoins cluster",
+      "4. Reassign replicas: `kafka-reassign-partitions.sh`",
+      "5. Reset consumer offsets if needed: `kafka-consumer-groups.sh --reset-offsets`",
+      "6. Verify data integrity and resume producers"
+    ],
+    "prevention": [
+      "Set min.insync.replicas=2 and replication.factor=3",
+      "Prevent unclean leader election: `unclean.leader.election.enable=false`",
+      "Monitor partition health and ISR (in-sync replicas) count",
+      "Provision brokers with adequate disk and memory resources",
+      "Test partition recovery procedure in chaos engineering drills"
+    ],
+    "tags": [
+      "application",
+      "message-broker",
+      "kafka",
+      "partition",
+      "recovery"
+    ],
+    "id": "RB-030"
+  },
+  {
+    "title": "Container Image Vulnerability Response",
+    "category": "security",
+    "symptoms": [
+      "Image vulnerability scanner reports CVSS 9+ vulnerabilities",
+      "Kubernetes admission webhook blocking deployments due to policy",
+      "Trivy/Grype scan output shows known-exploitable CVEs",
+      "Security advisory from Docker/Package registry about base image"
+    ],
+    "root_causes": [
+      "Base image (Alpine, Ubuntu, Distroless) has known CVEs",
+      "Application dependency with known vulnerability not updated",
+      "Image built from outdated base layer in CI pipeline",
+      "No image scanning in deployment pipeline"
+    ],
+    "resolution_steps": [
+      "1. Identify vulnerable images: `trivy image <repo>/<name>:<tag>`",
+      "2. Pin exact base image version with known-good SHA",
+      "3. Rebuild image with patched base and dependencies",
+      "4. Scan rebuilt image to confirm vulnerabilities resolved",
+      "5. Deploy patched image and roll out gradually",
+      "6. Verify no running containers still using vulnerable image"
+    ],
+    "prevention": [
+      "Scan all images in CI/CD pipeline (fail on critical CVEs)",
+      "Use minimal base images (distroless, scratch)",
+      "Regularly rebuild images to pick up security patches",
+      "Run container runtime security (Falco, AppArmor, seccomp)",
+      "Subscribe to CVE notifications for all dependencies"
+    ],
+    "tags": [
+      "security",
+      "container",
+      "vulnerability",
+      "image",
+      "cve"
+    ],
+    "id": "RB-031"
+  },
+  {
+    "title": "Backup Validation and Recovery",
+    "category": "storage",
+    "symptoms": [
+      "Scheduled backup job completes with warnings or errors",
+      "Restore test fails with checksum mismatch",
+      "Backup size anomaly (significantly smaller or larger than usual)",
+      "Alert from backup monitoring: 'backup integrity check failed'"
+    ],
+    "root_causes": [
+      "Disk corruption on backup storage target",
+      "Intermittent network failure during backup transfer",
+      "Inconsistent snapshot due to missing filesystem freeze",
+      "Backup software bug or configuration error"
+    ],
+    "resolution_steps": [
+      "1. Check backup job logs for error details",
+      "2. Verify source data integrity with checksum tool",
+      "3. Test restore from secondary backup copy",
+      "4. If secondary is corrupt, identify last known-good backup",
+      "5. Re-run backup after fixing underlying issue",
+      "6. Verify restored data with application-level validation"
+    ],
+    "prevention": [
+      "Automate backup integrity verification (restore test) weekly",
+      "Use 3-2-1 backup rule: 3 copies, 2 media types, 1 offsite",
+      "Monitor backup success/failure with alerting",
+      "Immutable backups to protect against ransomware",
+      "Document and test recovery procedures regularly"
+    ],
+    "tags": [
+      "storage",
+      "backup",
+      "validation",
+      "recovery"
+    ],
+    "id": "RB-032"
   }
 ]

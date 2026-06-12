@@ -63666,5 +63666,6214 @@
       "query_id": "8baa57ba",
       "duration_ms": 4568.7
     }
+  },
+  {
+    "timestamp": "2026-07-31T12:30:02.643411+00:00",
+    "source": "redis",
+    "level": "INFO",
+    "service": "redis",
+    "message": "Message broker connection failed: amqp://rabbitmq.infraheal.internal:5672 refused",
+    "metadata": {
+      "host": "db-replica",
+      "db_index": 2,
+      "client_ip": "10.248.35.251"
+    }
+  },
+  {
+    "timestamp": "2026-05-25T01:19:32.027950+00:00",
+    "source": "cert-manager",
+    "level": "ERROR",
+    "service": "cert-manager",
+    "message": "pg_hba.conf: new entry added for replication user from 10.0.0.0/8 with scram-sha-256",
+    "metadata": {
+      "host": "db-primary",
+      "certificate": "*.infraheal.internal",
+      "days_remaining": 34
+    }
+  },
+  {
+    "timestamp": "2026-08-05T02:27:11.321585+00:00",
+    "source": "gpu-operator",
+    "level": "CRITICAL",
+    "service": "gpu-operator",
+    "message": "ROCm environment variable ROCR_VISIBLE_DEVICES set to 0,1,2,3",
+    "metadata": {
+      "host": "db-replica",
+      "gpu_id": 1,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-08-11T01:31:21.397395+00:00",
+    "source": "backup-service",
+    "level": "ERROR",
+    "service": "backup-service",
+    "message": "Connection limit reached: max_connections=200, 200 active connections",
+    "metadata": {
+      "host": "gpu-node-01",
+      "job_name": "wal-archive-cleanup",
+      "status": "failed"
+    }
+  },
+  {
+    "timestamp": "2026-05-19T06:17:45.369834+00:00",
+    "source": "nginx",
+    "level": "ERROR",
+    "service": "nginx",
+    "message": "Thread pool status: active=180, queued=450, rejected=23 \u2014 pool size=200",
+    "metadata": {
+      "host": "db-replica",
+      "upstream": "10.112.3.19",
+      "request_id": "0f1259e0",
+      "status_code": 200
+    }
+  },
+  {
+    "timestamp": "2026-06-28T18:34:37.987632+00:00",
+    "source": "application",
+    "level": "ERROR",
+    "service": "application",
+    "message": "ZFS pool tank0 checksum errors: 47 on device wwn-0x5000c500a1b2c3d4",
+    "metadata": {
+      "host": "web-server-02",
+      "request_id": "8a0b3c33",
+      "endpoint": "/api/v1/inventory",
+      "trace_id": "683514f2"
+    }
+  },
+  {
+    "timestamp": "2026-06-14T09:16:57.877800+00:00",
+    "source": "nginx",
+    "level": "INFO",
+    "service": "nginx",
+    "message": "CHECKPOINT occurring every 20 seconds \u2014 immediate checkpoint requested by long-running tx",
+    "metadata": {
+      "host": "gpu-node-01",
+      "upstream": "10.239.27.173",
+      "request_id": "a56c0941",
+      "status_code": 200
+    }
+  },
+  {
+    "timestamp": "2026-06-04T21:05:51.652564+00:00",
+    "source": "docker",
+    "level": "ERROR",
+    "service": "docker",
+    "message": "LVM thin pool data_lv: 98% used, automatic extension triggered",
+    "metadata": {
+      "host": "web-server-02",
+      "container_id": "6c006f61",
+      "image": "gpu-inference:2.3"
+    }
+  },
+  {
+    "timestamp": "2026-06-22T09:09:44.673536+00:00",
+    "source": "systemd",
+    "level": "WARNING",
+    "service": "systemd",
+    "message": "pg_hba.conf: new entry added for replication user from 10.0.0.0/8 with scram-sha-256",
+    "metadata": {
+      "host": "web-server-02",
+      "unit": "app-api",
+      "pid": 4315
+    }
+  },
+  {
+    "timestamp": "2026-08-08T17:01:54.896646+00:00",
+    "source": "storage",
+    "level": "ERROR",
+    "service": "storage",
+    "message": "dmesg: EDAC MC0: 1 CE error at 0x000000007f8a0000 (csrow:2 channel:0)",
+    "metadata": {
+      "host": "web-server-01",
+      "volume": "vol-05526b",
+      "io_wait_ms": 203.2
+    }
+  },
+  {
+    "timestamp": "2026-08-02T17:16:35.722210+00:00",
+    "source": "systemd",
+    "level": "WARNING",
+    "service": "systemd",
+    "message": "Configuration reloaded: feature flag 'new-checkout-flow' enabled for 10% of users",
+    "metadata": {
+      "host": "gpu-node-01",
+      "unit": "redis-server",
+      "pid": 1141
+    }
+  },
+  {
+    "timestamp": "2026-06-08T04:08:18.004291+00:00",
+    "source": "docker",
+    "level": "ERROR",
+    "service": "docker",
+    "message": "Sequential scan on orders = 3.2M rows \u2014 missing index on customer_id + status",
+    "metadata": {
+      "host": "gpu-node-02",
+      "container_id": "27a0c3d7",
+      "image": "gpu-inference:2.3"
+    }
+  },
+  {
+    "timestamp": "2026-07-18T17:11:32.302264+00:00",
+    "source": "redis",
+    "level": "INFO",
+    "service": "redis",
+    "message": "Thread pool status: active=180, queued=450, rejected=23 \u2014 pool size=200",
+    "metadata": {
+      "host": "monitoring-01",
+      "db_index": 10,
+      "client_ip": "10.29.25.150"
+    }
+  },
+  {
+    "timestamp": "2026-08-07T23:16:56.751862+00:00",
+    "source": "systemd",
+    "level": "WARNING",
+    "service": "systemd",
+    "message": "Message broker connection failed: amqp://rabbitmq.infraheal.internal:5672 refused",
+    "metadata": {
+      "host": "web-server-01",
+      "unit": "postgresql",
+      "pid": 5490
+    }
+  },
+  {
+    "timestamp": "2026-06-18T20:09:18.687051+00:00",
+    "source": "message-broker",
+    "level": "INFO",
+    "service": "message-broker",
+    "message": "Kubelet node status update: disk-pressure=True on monitoring-01 (/var 92% used)",
+    "metadata": {
+      "host": "db-replica",
+      "broker": "kafka-1",
+      "partition": 9
+    }
+  },
+  {
+    "timestamp": "2026-07-03T08:53:24.559812+00:00",
+    "source": "nginx",
+    "level": "DEBUG",
+    "service": "nginx",
+    "message": "chronyd: clock skew too large (230ms) \u2014 stepping system clock",
+    "metadata": {
+      "host": "monitoring-01",
+      "upstream": "10.133.104.172",
+      "request_id": "b758588d",
+      "status_code": 301
+    }
+  },
+  {
+    "timestamp": "2026-07-12T22:51:03.173737+00:00",
+    "source": "auth",
+    "level": "CRITICAL",
+    "service": "auth",
+    "message": "WAL disk usage: 99% \u2014 PostgreSQL entering read-only mode",
+    "metadata": {
+      "host": "db-primary",
+      "user": "admin",
+      "ip": "10.234.51.19",
+      "session_id": "89a2688b"
+    }
+  },
+  {
+    "timestamp": "2026-08-05T11:50:24.923279+00:00",
+    "source": "gpu-operator",
+    "level": "ERROR",
+    "service": "gpu-operator",
+    "message": "GPU node gpu-node-01 VRAM usage critical at 97.2%",
+    "metadata": {
+      "host": "db-primary",
+      "gpu_id": 1,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-06-21T22:28:43.239708+00:00",
+    "source": "kubernetes",
+    "level": "ERROR",
+    "service": "kubernetes",
+    "message": "Kubernetes scheduler: unable to schedule pod gpu-inference-2 \u2014 0/7 nodes available (3 GPU unfit, 4 resource)",
+    "metadata": {
+      "host": "db-primary",
+      "pod": "api-040163",
+      "namespace": "security",
+      "container": "sidecar",
+      "node": "web-server-02"
+    }
+  },
+  {
+    "timestamp": "2026-08-01T13:46:46.009676+00:00",
+    "source": "postgresql",
+    "level": "ERROR",
+    "service": "postgresql",
+    "message": "Retry exhausted for queue 'email-notifications': message id e4f5a6 sent to DLQ",
+    "metadata": {
+      "host": "web-server-02",
+      "database": "infraheal_analytics",
+      "query_id": "57c700aa",
+      "duration_ms": 3437.8
+    }
+  },
+  {
+    "timestamp": "2026-08-02T23:31:36.554633+00:00",
+    "source": "auth",
+    "level": "CRITICAL",
+    "service": "auth",
+    "message": "Health check FAILED: /health returns 503 \u2014 upstream dependencies unavailable",
+    "metadata": {
+      "host": "k8s-node-01",
+      "user": "svc-account",
+      "ip": "10.141.22.1",
+      "session_id": "fad409e2"
+    }
+  },
+  {
+    "timestamp": "2026-07-16T00:14:30.066006+00:00",
+    "source": "postgresql",
+    "level": "DEBUG",
+    "service": "postgresql",
+    "message": "JVM Full GC pause: 11.2 seconds \u2014 application unavailable during pause",
+    "metadata": {
+      "host": "storage-node-01",
+      "database": "infraheal_prod",
+      "query_id": "e767dcea",
+      "duration_ms": 2728.4
+    }
+  },
+  {
+    "timestamp": "2026-05-24T23:16:56.357938+00:00",
+    "source": "kubernetes",
+    "level": "WARNING",
+    "service": "kubernetes",
+    "message": "Node reboot detected: 'gpu-node-02' has uptime 0.5m \u2014 systemd units restarting",
+    "metadata": {
+      "host": "gpu-node-01",
+      "pod": "api-bab39a",
+      "namespace": "production",
+      "container": "sidecar",
+      "node": "db-replica"
+    }
+  },
+  {
+    "timestamp": "2026-06-14T07:56:45.062763+00:00",
+    "source": "storage",
+    "level": "INFO",
+    "service": "storage",
+    "message": "CHECKPOINT occurring every 20 seconds \u2014 immediate checkpoint requested by long-running tx",
+    "metadata": {
+      "host": "web-server-02",
+      "volume": "vol-04f219",
+      "io_wait_ms": 462.9
+    }
+  },
+  {
+    "timestamp": "2026-07-31T19:51:32.407462+00:00",
+    "source": "redis",
+    "level": "WARNING",
+    "service": "redis",
+    "message": "Kafka partition offline: topic 'orders' partition 3 lost leader in broker-2 (disk failure)",
+    "metadata": {
+      "host": "db-primary",
+      "db_index": 5,
+      "client_ip": "10.170.210.206"
+    }
+  },
+  {
+    "timestamp": "2026-06-06T12:18:01.197807+00:00",
+    "source": "storage",
+    "level": "ERROR",
+    "service": "storage",
+    "message": "Rate limiter active: client 10.0.4.20 exceeded 1000 req/min \u2014 returning 429",
+    "metadata": {
+      "host": "db-replica",
+      "volume": "vol-0c3dc8",
+      "io_wait_ms": 436.1
+    }
+  },
+  {
+    "timestamp": "2026-07-25T23:49:37.445122+00:00",
+    "source": "systemd",
+    "level": "WARNING",
+    "service": "systemd",
+    "message": "Index scan on orders.created_at_seq reversed \u2014 index bloat suspected",
+    "metadata": {
+      "host": "db-replica",
+      "unit": "nginx",
+      "pid": 21000
+    }
+  },
+  {
+    "timestamp": "2026-05-15T15:06:54.644238+00:00",
+    "source": "cert-manager",
+    "level": "INFO",
+    "service": "cert-manager",
+    "message": "Kernel panic: Machine check exception \u2014 CPU-1 BANK-8 MCG_STATUS RIP 0xffffffff81000000",
+    "metadata": {
+      "host": "db-replica",
+      "certificate": "api.infraheal.com",
+      "days_remaining": 43
+    }
+  },
+  {
+    "timestamp": "2026-06-14T02:28:32.299747+00:00",
+    "source": "auth",
+    "level": "INFO",
+    "service": "auth",
+    "message": "max_replication_slots (10) reached \u2014 cannot create new slot for additional replica",
+    "metadata": {
+      "host": "k8s-node-01",
+      "user": "svc-account",
+      "ip": "10.169.14.30",
+      "session_id": "42deffcc"
+    }
+  },
+  {
+    "timestamp": "2026-05-23T06:08:58.207142+00:00",
+    "source": "message-broker",
+    "level": "ERROR",
+    "service": "message-broker",
+    "message": "chronyd: clock skew too large (230ms) \u2014 stepping system clock",
+    "metadata": {
+      "host": "web-server-01",
+      "broker": "rabbit-1",
+      "partition": 9
+    }
+  },
+  {
+    "timestamp": "2026-08-02T10:55:48.803117+00:00",
+    "source": "gpu-operator",
+    "level": "INFO",
+    "service": "gpu-operator",
+    "message": "amdgpu: GPU reset triggered for device 0000:03:00.0",
+    "metadata": {
+      "host": "gpu-node-01",
+      "gpu_id": 2,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-06-29T07:01:40.630454+00:00",
+    "source": "application",
+    "level": "CRITICAL",
+    "service": "application",
+    "message": "systemd unit 'app-api.service' hashes do not match expected \u2014 possible drift after reboot",
+    "metadata": {
+      "host": "web-server-01",
+      "request_id": "5d3d9e56",
+      "endpoint": "/api/v1/orders",
+      "trace_id": "ebb7a385"
+    }
+  },
+  {
+    "timestamp": "2026-07-17T06:40:09.149196+00:00",
+    "source": "message-broker",
+    "level": "ERROR",
+    "service": "message-broker",
+    "message": "Idx scan on idx_orders_created_at yielded 1.8M rows \u2014 partial index recommended",
+    "metadata": {
+      "host": "web-server-02",
+      "broker": "rabbit-1",
+      "partition": 5
+    }
+  },
+  {
+    "timestamp": "2026-05-24T22:56:29.925484+00:00",
+    "source": "docker",
+    "level": "ERROR",
+    "service": "docker",
+    "message": "PostgreSQL replication lag: 1800 seconds on replica pg-replica-01",
+    "metadata": {
+      "host": "storage-node-01",
+      "container_id": "e71e43a6",
+      "image": "gpu-inference:2.3"
+    }
+  },
+  {
+    "timestamp": "2026-06-09T20:22:11.605511+00:00",
+    "source": "docker",
+    "level": "DEBUG",
+    "service": "docker",
+    "message": "Prometheus TSDB WAL replay failed at segment 00001234: unexpected CRC mismatch",
+    "metadata": {
+      "host": "web-server-01",
+      "container_id": "a79ac9aa",
+      "image": "prometheus:v2.50"
+    }
+  },
+  {
+    "timestamp": "2026-06-28T12:08:08.999697+00:00",
+    "source": "systemd",
+    "level": "DEBUG",
+    "service": "systemd",
+    "message": "Configuration reloaded: feature flag 'new-checkout-flow' enabled for 10% of users",
+    "metadata": {
+      "host": "db-replica",
+      "unit": "app-api",
+      "pid": 19598
+    }
+  },
+  {
+    "timestamp": "2026-07-26T03:47:40.860237+00:00",
+    "source": "gpu-operator",
+    "level": "ERROR",
+    "service": "gpu-operator",
+    "message": "ROCm environment variable ROCR_VISIBLE_DEVICES set to 0,1,2,3",
+    "metadata": {
+      "host": "web-server-02",
+      "gpu_id": 1,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-07-25T02:10:33.068225+00:00",
+    "source": "storage",
+    "level": "WARNING",
+    "service": "storage",
+    "message": "Redis pipeline execution failed: connection lost while sending 150 commands",
+    "metadata": {
+      "host": "db-replica",
+      "volume": "vol-00c817",
+      "io_wait_ms": 23.1
+    }
+  },
+  {
+    "timestamp": "2026-06-19T19:11:33.301518+00:00",
+    "source": "systemd",
+    "level": "INFO",
+    "service": "systemd",
+    "message": "Kernel panic: Machine check exception \u2014 CPU-1 BANK-8 MCG_STATUS RIP 0xffffffff81000000",
+    "metadata": {
+      "host": "gpu-node-02",
+      "unit": "redis-server",
+      "pid": 33399
+    }
+  },
+  {
+    "timestamp": "2026-07-11T13:05:07.094405+00:00",
+    "source": "docker",
+    "level": "WARNING",
+    "service": "docker",
+    "message": "DLQ for order-service: 2,340,000 messages \u2014 disk usage at 95%",
+    "metadata": {
+      "host": "db-primary",
+      "container_id": "e2add909",
+      "image": "rabbitmq:3.12"
+    }
+  },
+  {
+    "timestamp": "2026-06-24T07:25:39.902449+00:00",
+    "source": "redis",
+    "level": "WARNING",
+    "service": "redis",
+    "message": "Kubelet node status update: disk-pressure=True on monitoring-01 (/var 92% used)",
+    "metadata": {
+      "host": "storage-node-01",
+      "db_index": 3,
+      "client_ip": "10.233.68.206"
+    }
+  },
+  {
+    "timestamp": "2026-07-07T15:19:44.461795+00:00",
+    "source": "systemd",
+    "level": "ERROR",
+    "service": "systemd",
+    "message": "Replication slot 'standby_1' active \u2014 WAL retention 200GB, removing old slot",
+    "metadata": {
+      "host": "gpu-node-02",
+      "unit": "redis-server",
+      "pid": 55432
+    }
+  },
+  {
+    "timestamp": "2026-07-19T10:17:44.718233+00:00",
+    "source": "gpu-operator",
+    "level": "CRITICAL",
+    "service": "gpu-operator",
+    "message": "ROCm 5.6.3 compatibility verified with kernel 6.2.0-rc4",
+    "metadata": {
+      "host": "db-primary",
+      "gpu_id": 3,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-07-21T10:09:27.209095+00:00",
+    "source": "auth",
+    "level": "WARNING",
+    "service": "auth",
+    "message": "Pgbouncer pool exhausted: 150 of 150 connections used, 12 queued waiting",
+    "metadata": {
+      "host": "k8s-node-01",
+      "user": "svc-account",
+      "ip": "10.122.140.113",
+      "session_id": "49257af1"
+    }
+  },
+  {
+    "timestamp": "2026-08-01T20:56:16.651778+00:00",
+    "source": "auth",
+    "level": "ERROR",
+    "service": "auth",
+    "message": "Security group sg-0a1b2c3d port 3306 opened to 0.0.0.0/0 for 12 minutes",
+    "metadata": {
+      "host": "cache-server-01",
+      "user": "svc-account",
+      "ip": "10.78.109.17",
+      "session_id": "6a34c854"
+    }
+  },
+  {
+    "timestamp": "2026-05-19T02:29:38.165498+00:00",
+    "source": "kubernetes",
+    "level": "DEBUG",
+    "service": "kubernetes",
+    "message": "pg_stat_replication: replay_lag=45min on standby pg-replica-02",
+    "metadata": {
+      "host": "gpu-node-01",
+      "pod": "api-c76981",
+      "namespace": "security",
+      "container": "worker",
+      "node": "web-server-01"
+    }
+  },
+  {
+    "timestamp": "2026-06-25T10:16:34.400366+00:00",
+    "source": "cert-manager",
+    "level": "ERROR",
+    "service": "cert-manager",
+    "message": "Kubernetes scheduler: unable to schedule pod gpu-inference-2 \u2014 0/7 nodes available (3 GPU unfit, 4 resource)",
+    "metadata": {
+      "host": "gpu-node-01",
+      "certificate": "api.infraheal.com",
+      "days_remaining": 54
+    }
+  },
+  {
+    "timestamp": "2026-06-02T05:57:02.630816+00:00",
+    "source": "gpu-operator",
+    "level": "WARNING",
+    "service": "gpu-operator",
+    "message": "amdgpu: PCIe link down on bus 03:00.0 \u2014 scheduling GPU reset",
+    "metadata": {
+      "host": "gpu-node-02",
+      "gpu_id": 3,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-07-12T16:46:01.273964+00:00",
+    "source": "application",
+    "level": "CRITICAL",
+    "service": "application",
+    "message": "Configuration reloaded: feature flag 'new-checkout-flow' enabled for 10% of users",
+    "metadata": {
+      "host": "cache-server-01",
+      "request_id": "d72b6108",
+      "endpoint": "/api/v1/users",
+      "trace_id": "88bc539c"
+    }
+  },
+  {
+    "timestamp": "2026-07-12T04:04:46.109158+00:00",
+    "source": "docker",
+    "level": "DEBUG",
+    "service": "docker",
+    "message": "Message broker connection failed: amqp://rabbitmq.infraheal.internal:5672 refused",
+    "metadata": {
+      "host": "monitoring-01",
+      "container_id": "a48b3dbe",
+      "image": "redis:7"
+    }
+  },
+  {
+    "timestamp": "2026-06-05T21:56:15.497037+00:00",
+    "source": "systemd",
+    "level": "WARNING",
+    "service": "systemd",
+    "message": "Prometheus Alertmanager: 47 firing alerts including 'NodeCPUUsage > 90%'",
+    "metadata": {
+      "host": "web-server-01",
+      "unit": "postgresql",
+      "pid": 30799
+    }
+  },
+  {
+    "timestamp": "2026-06-07T13:02:03.443207+00:00",
+    "source": "kubernetes",
+    "level": "ERROR",
+    "service": "kubernetes",
+    "message": "pg_stat_replication: replay_lag=45min on standby pg-replica-02",
+    "metadata": {
+      "host": "gpu-node-01",
+      "pod": "api-8129bb",
+      "namespace": "production",
+      "container": "sidecar",
+      "node": "web-server-01"
+    }
+  },
+  {
+    "timestamp": "2026-06-02T16:19:11.560637+00:00",
+    "source": "backup-service",
+    "level": "INFO",
+    "service": "backup-service",
+    "message": "Hystrix fallback triggered for inventory-svc: timeout waiting for connection from pool",
+    "metadata": {
+      "host": "cache-server-01",
+      "job_name": "wal-archive-cleanup",
+      "status": "completed"
+    }
+  },
+  {
+    "timestamp": "2026-05-31T10:37:08.666051+00:00",
+    "source": "cert-manager",
+    "level": "INFO",
+    "service": "cert-manager",
+    "message": "Inter-service deadlock: service-a holding lock on order:1234, waiting for inventory:5678",
+    "metadata": {
+      "host": "db-replica",
+      "certificate": "*.staging.internal",
+      "days_remaining": 20
+    }
+  },
+  {
+    "timestamp": "2026-07-12T18:01:51.975764+00:00",
+    "source": "redis",
+    "level": "WARNING",
+    "service": "redis",
+    "message": "Node gpu-node-01 NotReady due to kernel panic \u2014 cordoned and drained",
+    "metadata": {
+      "host": "gpu-node-02",
+      "db_index": 14,
+      "client_ip": "10.131.188.43"
+    }
+  },
+  {
+    "timestamp": "2026-08-08T07:47:48.731113+00:00",
+    "source": "message-broker",
+    "level": "INFO",
+    "service": "message-broker",
+    "message": "Rate limiter active: client 10.0.4.20 exceeded 1000 req/min \u2014 returning 429",
+    "metadata": {
+      "host": "db-primary",
+      "broker": "kafka-1",
+      "partition": 4
+    }
+  },
+  {
+    "timestamp": "2026-08-06T05:34:35.374257+00:00",
+    "source": "message-broker",
+    "level": "CRITICAL",
+    "service": "message-broker",
+    "message": "Dependency 'auth-svc' latency p99=3400ms \u2014 degrading gracefully with cached tokens",
+    "metadata": {
+      "host": "gpu-node-01",
+      "broker": "kafka-1",
+      "partition": 1
+    }
+  },
+  {
+    "timestamp": "2026-07-24T23:56:25.445313+00:00",
+    "source": "backup-service",
+    "level": "ERROR",
+    "service": "backup-service",
+    "message": "GC times: young gen 45ms, old gen 340ms, full GC 11.2s \u2014 heap 7.8GB/8GB",
+    "metadata": {
+      "host": "monitoring-01",
+      "job_name": "nightly-snapshot",
+      "status": "warning"
+    }
+  },
+  {
+    "timestamp": "2026-06-28T00:52:31.100529+00:00",
+    "source": "docker",
+    "level": "ERROR",
+    "service": "docker",
+    "message": "Read-only filesystem detected on /data/pg_wal after power loss \u2014 fsck required",
+    "metadata": {
+      "host": "web-server-02",
+      "container_id": "1b049863",
+      "image": "rocminference:5.7"
+    }
+  },
+  {
+    "timestamp": "2026-06-21T16:39:08.039580+00:00",
+    "source": "storage",
+    "level": "WARNING",
+    "service": "storage",
+    "message": "Pgbouncer pool exhausted: 150 of 150 connections used, 12 queued waiting",
+    "metadata": {
+      "host": "db-primary",
+      "volume": "vol-08a483",
+      "io_wait_ms": 308.0
+    }
+  },
+  {
+    "timestamp": "2026-06-21T16:50:27.257598+00:00",
+    "source": "gpu-operator",
+    "level": "CRITICAL",
+    "service": "gpu-operator",
+    "message": "GPU memory temperature 92C \u2014 liquid cooling pump RPM low",
+    "metadata": {
+      "host": "gpu-node-02",
+      "gpu_id": 2,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-06-07T14:29:06.065721+00:00",
+    "source": "kubernetes",
+    "level": "WARNING",
+    "service": "kubernetes",
+    "message": "WAL segment size 16MB filling every 8 seconds \u2014 archive_command falling behind",
+    "metadata": {
+      "host": "web-server-02",
+      "pod": "api-7cdbab",
+      "namespace": "gpu-workloads",
+      "container": "worker",
+      "node": "monitoring-01"
+    }
+  },
+  {
+    "timestamp": "2026-05-16T01:59:31.182660+00:00",
+    "source": "storage",
+    "level": "WARNING",
+    "service": "storage",
+    "message": "Prometheus Alertmanager: 47 firing alerts including 'NodeCPUUsage > 90%'",
+    "metadata": {
+      "host": "cache-server-01",
+      "volume": "vol-05d1a1",
+      "io_wait_ms": 243.8
+    }
+  },
+  {
+    "timestamp": "2026-06-07T16:03:44.402980+00:00",
+    "source": "kubernetes",
+    "level": "ERROR",
+    "service": "kubernetes",
+    "message": "Prometheus rule evaluation error: query 'up == 0' returned 0 results for 54320 series",
+    "metadata": {
+      "host": "cache-server-01",
+      "pod": "api-053286",
+      "namespace": "security",
+      "container": "api",
+      "node": "web-server-02"
+    }
+  },
+  {
+    "timestamp": "2026-07-02T11:10:50.221261+00:00",
+    "source": "redis",
+    "level": "DEBUG",
+    "service": "redis",
+    "message": "dmesg: EDAC MC0: 1 CE error at 0x000000007f8a0000 (csrow:2 channel:0)",
+    "metadata": {
+      "host": "gpu-node-02",
+      "db_index": 15,
+      "client_ip": "10.251.229.203"
+    }
+  },
+  {
+    "timestamp": "2026-06-02T10:38:53.610074+00:00",
+    "source": "application",
+    "level": "INFO",
+    "service": "application",
+    "message": "Kubelet node status update: disk-pressure=True on monitoring-01 (/var 92% used)",
+    "metadata": {
+      "host": "k8s-node-01",
+      "request_id": "94e0d3ba",
+      "endpoint": "/api/v1/inventory",
+      "trace_id": "58007c02"
+    }
+  },
+  {
+    "timestamp": "2026-07-15T18:10:00.030437+00:00",
+    "source": "backup-service",
+    "level": "ERROR",
+    "service": "backup-service",
+    "message": "Transaction ID wraparound imminent: vacuum required on database infraheal_prod",
+    "metadata": {
+      "host": "cache-server-01",
+      "job_name": "prod-db-backup",
+      "status": "warning"
+    }
+  },
+  {
+    "timestamp": "2026-07-19T08:37:23.150858+00:00",
+    "source": "redis",
+    "level": "ERROR",
+    "service": "redis",
+    "message": "Scheduler triggered: 12 worker nodes assigned to process backfill job",
+    "metadata": {
+      "host": "web-server-02",
+      "db_index": 6,
+      "client_ip": "10.110.247.71"
+    }
+  },
+  {
+    "timestamp": "2026-07-27T10:28:38.153231+00:00",
+    "source": "backup-service",
+    "level": "ERROR",
+    "service": "backup-service",
+    "message": "pg_stat_replication: replay_lag=45min on standby pg-replica-02",
+    "metadata": {
+      "host": "web-server-02",
+      "job_name": "nightly-snapshot",
+      "status": "completed"
+    }
+  },
+  {
+    "timestamp": "2026-05-17T14:18:50.090846+00:00",
+    "source": "backup-service",
+    "level": "WARNING",
+    "service": "backup-service",
+    "message": "Circuit breaker opened for payments-svc: failure rate 62% (threshold 50%)",
+    "metadata": {
+      "host": "k8s-node-01",
+      "job_name": "wal-archive-cleanup",
+      "status": "failed"
+    }
+  },
+  {
+    "timestamp": "2026-05-22T17:35:21.541422+00:00",
+    "source": "backup-service",
+    "level": "WARNING",
+    "service": "backup-service",
+    "message": "JVM Full GC pause: 11.2 seconds \u2014 application unavailable during pause",
+    "metadata": {
+      "host": "gpu-node-02",
+      "job_name": "wal-archive-cleanup",
+      "status": "failed"
+    }
+  },
+  {
+    "timestamp": "2026-06-13T03:55:29.331589+00:00",
+    "source": "systemd",
+    "level": "DEBUG",
+    "service": "systemd",
+    "message": "Circuit breaker opened for payments-svc: failure rate 62% (threshold 50%)",
+    "metadata": {
+      "host": "gpu-node-02",
+      "unit": "nginx",
+      "pid": 62673
+    }
+  },
+  {
+    "timestamp": "2026-06-18T13:31:41.070951+00:00",
+    "source": "systemd",
+    "level": "INFO",
+    "service": "systemd",
+    "message": "Cache hit rate dropped from 94% to 12% after Redis restart \u2014 thundering herd in progress",
+    "metadata": {
+      "host": "web-server-02",
+      "unit": "gpu-operator",
+      "pid": 42251
+    }
+  },
+  {
+    "timestamp": "2026-05-26T22:16:00.416867+00:00",
+    "source": "storage",
+    "level": "INFO",
+    "service": "storage",
+    "message": "Kubernetes scheduler: unable to schedule pod gpu-inference-2 \u2014 0/7 nodes available (3 GPU unfit, 4 resource)",
+    "metadata": {
+      "host": "db-primary",
+      "volume": "vol-02b9cd",
+      "io_wait_ms": 497.0
+    }
+  },
+  {
+    "timestamp": "2026-07-07T01:38:46.056065+00:00",
+    "source": "nginx",
+    "level": "CRITICAL",
+    "service": "nginx",
+    "message": "systemd-unit: app-api.service failed to start \u2014 missing env var DB_PASSWORD",
+    "metadata": {
+      "host": "gpu-node-01",
+      "upstream": "10.194.230.233",
+      "request_id": "715629ee",
+      "status_code": 502
+    }
+  },
+  {
+    "timestamp": "2026-07-08T09:25:08.448657+00:00",
+    "source": "docker",
+    "level": "ERROR",
+    "service": "docker",
+    "message": "Application startup: waiting for database connection... attempt 12/30",
+    "metadata": {
+      "host": "monitoring-01",
+      "container_id": "3605bf54",
+      "image": "nginx:1.25"
+    }
+  },
+  {
+    "timestamp": "2026-07-02T04:18:11.701613+00:00",
+    "source": "postgresql",
+    "level": "WARNING",
+    "service": "postgresql",
+    "message": "Service mesh sidecar proxy CPU throttled: 450ms/200ms quota \u2014 consider increasing CPU limit",
+    "metadata": {
+      "host": "db-primary",
+      "database": "infraheal_prod",
+      "query_id": "68949b8d",
+      "duration_ms": 3447.2
+    }
+  },
+  {
+    "timestamp": "2026-06-03T07:59:19.199908+00:00",
+    "source": "systemd",
+    "level": "ERROR",
+    "service": "systemd",
+    "message": "Index scan on orders.created_at_seq reversed \u2014 index bloat suspected",
+    "metadata": {
+      "host": "web-server-01",
+      "unit": "app-api",
+      "pid": 46048
+    }
+  },
+  {
+    "timestamp": "2026-07-12T00:09:19.341228+00:00",
+    "source": "redis",
+    "level": "ERROR",
+    "service": "redis",
+    "message": "Slow query detected: SELECT * FROM orders JOIN line_items ON ... (duration: 45600ms)",
+    "metadata": {
+      "host": "monitoring-01",
+      "db_index": 3,
+      "client_ip": "10.115.76.233"
+    }
+  },
+  {
+    "timestamp": "2026-05-18T20:49:05.395260+00:00",
+    "source": "auth",
+    "level": "WARNING",
+    "service": "auth",
+    "message": "Node reboot detected: 'gpu-node-02' has uptime 0.5m \u2014 systemd units restarting",
+    "metadata": {
+      "host": "web-server-02",
+      "user": "deploy-bot",
+      "ip": "10.224.63.120",
+      "session_id": "b04d3376"
+    }
+  },
+  {
+    "timestamp": "2026-06-27T13:01:11.649269+00:00",
+    "source": "backup-service",
+    "level": "CRITICAL",
+    "service": "backup-service",
+    "message": "Message broker connection failed: amqp://rabbitmq.infraheal.internal:5672 refused",
+    "metadata": {
+      "host": "k8s-node-01",
+      "job_name": "wal-archive-cleanup",
+      "status": "completed"
+    }
+  },
+  {
+    "timestamp": "2026-06-05T00:47:40.809156+00:00",
+    "source": "docker",
+    "level": "ERROR",
+    "service": "docker",
+    "message": "systemd-tmpfiles: failed to create file /tmp/cleanup-XXXX: read-only filesystem",
+    "metadata": {
+      "host": "monitoring-01",
+      "container_id": "d248a9a7",
+      "image": "infraheal/api:latest"
+    }
+  },
+  {
+    "timestamp": "2026-06-29T04:57:42.827520+00:00",
+    "source": "cert-manager",
+    "level": "INFO",
+    "service": "cert-manager",
+    "message": "Connection limit reached: max_connections=200, 200 active connections",
+    "metadata": {
+      "host": "gpu-node-02",
+      "certificate": "api.infraheal.com",
+      "days_remaining": 24
+    }
+  },
+  {
+    "timestamp": "2026-08-08T17:09:33.515647+00:00",
+    "source": "message-broker",
+    "level": "CRITICAL",
+    "service": "message-broker",
+    "message": "CHECKPOINT occurring every 20 seconds \u2014 immediate checkpoint requested by long-running tx",
+    "metadata": {
+      "host": "gpu-node-02",
+      "broker": "rabbit-1",
+      "partition": 5
+    }
+  },
+  {
+    "timestamp": "2026-06-12T04:22:33.287990+00:00",
+    "source": "storage",
+    "level": "INFO",
+    "service": "storage",
+    "message": "pg_stat_statements: top query by total_time = 4.3 hours (UPDATE inventory SET qty = qty - 1)",
+    "metadata": {
+      "host": "db-primary",
+      "volume": "vol-093914",
+      "io_wait_ms": 331.3
+    }
+  },
+  {
+    "timestamp": "2026-06-23T10:25:26.265287+00:00",
+    "source": "docker",
+    "level": "DEBUG",
+    "service": "docker",
+    "message": "chronyd: clock skew too large (230ms) \u2014 stepping system clock",
+    "metadata": {
+      "host": "web-server-01",
+      "container_id": "409d3602",
+      "image": "nginx:1.25"
+    }
+  },
+  {
+    "timestamp": "2026-07-26T17:50:33.932617+00:00",
+    "source": "cert-manager",
+    "level": "WARNING",
+    "service": "cert-manager",
+    "message": "DLQ for order-service: 2,340,000 messages \u2014 disk usage at 95%",
+    "metadata": {
+      "host": "storage-node-01",
+      "certificate": "*.staging.internal",
+      "days_remaining": 70
+    }
+  },
+  {
+    "timestamp": "2026-05-30T09:10:41.841884+00:00",
+    "source": "systemd",
+    "level": "DEBUG",
+    "service": "systemd",
+    "message": "Cron job 'db-vacuum-daily' failed: exit status 2 \u2014 vacuum output: ERROR: deadlock detected",
+    "metadata": {
+      "host": "web-server-01",
+      "unit": "gpu-operator",
+      "pid": 50574
+    }
+  },
+  {
+    "timestamp": "2026-05-31T19:41:08.861412+00:00",
+    "source": "systemd",
+    "level": "DEBUG",
+    "service": "systemd",
+    "message": "pg_hba.conf: new entry added for replication user from 10.0.0.0/8 with scram-sha-256",
+    "metadata": {
+      "host": "web-server-01",
+      "unit": "postgresql",
+      "pid": 61795
+    }
+  },
+  {
+    "timestamp": "2026-05-24T10:16:49.224228+00:00",
+    "source": "auth",
+    "level": "CRITICAL",
+    "service": "auth",
+    "message": "dmesg: EDAC MC0: 1 CE error at 0x000000007f8a0000 (csrow:2 channel:0)",
+    "metadata": {
+      "host": "gpu-node-02",
+      "user": "jdoe",
+      "ip": "10.159.7.142",
+      "session_id": "687213f9"
+    }
+  },
+  {
+    "timestamp": "2026-08-06T17:39:04.332586+00:00",
+    "source": "redis",
+    "level": "INFO",
+    "service": "redis",
+    "message": "Retry exhausted for queue 'email-notifications': message id e4f5a6 sent to DLQ",
+    "metadata": {
+      "host": "gpu-node-02",
+      "db_index": 15,
+      "client_ip": "10.149.139.107"
+    }
+  },
+  {
+    "timestamp": "2026-06-23T14:39:31.611966+00:00",
+    "source": "systemd",
+    "level": "DEBUG",
+    "service": "systemd",
+    "message": "Redis pipeline execution failed: connection lost while sending 150 commands",
+    "metadata": {
+      "host": "db-replica",
+      "unit": "redis-server",
+      "pid": 13491
+    }
+  },
+  {
+    "timestamp": "2026-06-07T08:41:39.804344+00:00",
+    "source": "message-broker",
+    "level": "WARNING",
+    "service": "message-broker",
+    "message": "pg_stat_replication: replay_lag=45min on standby pg-replica-02",
+    "metadata": {
+      "host": "web-server-02",
+      "broker": "rabbit-1",
+      "partition": 8
+    }
+  },
+  {
+    "timestamp": "2026-07-17T20:16:12.440803+00:00",
+    "source": "auth",
+    "level": "INFO",
+    "service": "auth",
+    "message": "Sequential scan on orders = 3.2M rows \u2014 missing index on customer_id + status",
+    "metadata": {
+      "host": "k8s-node-01",
+      "user": "jdoe",
+      "ip": "10.228.247.89",
+      "session_id": "6090d697"
+    }
+  },
+  {
+    "timestamp": "2026-07-03T23:04:58.464075+00:00",
+    "source": "kubernetes",
+    "level": "WARNING",
+    "service": "kubernetes",
+    "message": "Prometheus unable to open TSDB: 'block 01J2XYZ is corrupted, skipping'",
+    "metadata": {
+      "host": "db-replica",
+      "pod": "api-d2511d",
+      "namespace": "production",
+      "container": "sidecar",
+      "node": "gpu-node-02"
+    }
+  },
+  {
+    "timestamp": "2026-08-10T10:58:27.279080+00:00",
+    "source": "backup-service",
+    "level": "CRITICAL",
+    "service": "backup-service",
+    "message": "Retry exhausted for queue 'email-notifications': message id e4f5a6 sent to DLQ",
+    "metadata": {
+      "host": "gpu-node-01",
+      "job_name": "nightly-snapshot",
+      "status": "completed"
+    }
+  },
+  {
+    "timestamp": "2026-06-12T09:06:30.817770+00:00",
+    "source": "postgresql",
+    "level": "CRITICAL",
+    "service": "postgresql",
+    "message": "NFS export /data/shared approaching 95% capacity (18.5TB / 20TB)",
+    "metadata": {
+      "host": "monitoring-01",
+      "database": "infraheal_staging",
+      "query_id": "e912b4bf",
+      "duration_ms": 77.7
+    }
+  },
+  {
+    "timestamp": "2026-05-20T05:37:44.458343+00:00",
+    "source": "postgresql",
+    "level": "DEBUG",
+    "service": "postgresql",
+    "message": "etcd leader election: current leader member-2 health-check failed; new leader member-1",
+    "metadata": {
+      "host": "db-primary",
+      "database": "infraheal_analytics",
+      "query_id": "889b78d5",
+      "duration_ms": 4770.7
+    }
+  },
+  {
+    "timestamp": "2026-07-31T00:20:50.343291+00:00",
+    "source": "storage",
+    "level": "ERROR",
+    "service": "storage",
+    "message": "Failed login attempts for user 'admin': 85 attempts from 45.33.32.156 in 60s",
+    "metadata": {
+      "host": "gpu-node-02",
+      "volume": "vol-093235",
+      "io_wait_ms": 498.7
+    }
+  },
+  {
+    "timestamp": "2026-08-09T13:12:34.174643+00:00",
+    "source": "backup-service",
+    "level": "INFO",
+    "service": "backup-service",
+    "message": "Application startup: waiting for database connection... attempt 12/30",
+    "metadata": {
+      "host": "gpu-node-01",
+      "job_name": "nightly-snapshot",
+      "status": "completed"
+    }
+  },
+  {
+    "timestamp": "2026-05-17T15:20:25.772434+00:00",
+    "source": "backup-service",
+    "level": "ERROR",
+    "service": "backup-service",
+    "message": "systemd-journald: journal file /var/log/journal/ corrupted \u2014 rotating journal",
+    "metadata": {
+      "host": "web-server-01",
+      "job_name": "nightly-snapshot",
+      "status": "failed"
+    }
+  },
+  {
+    "timestamp": "2026-06-30T07:19:09.289925+00:00",
+    "source": "docker",
+    "level": "WARNING",
+    "service": "docker",
+    "message": "Scheduler triggered: 12 worker nodes assigned to process backfill job",
+    "metadata": {
+      "host": "db-replica",
+      "container_id": "2b840c67",
+      "image": "nginx:1.25"
+    }
+  },
+  {
+    "timestamp": "2026-07-13T23:34:14.493790+00:00",
+    "source": "message-broker",
+    "level": "CRITICAL",
+    "service": "message-broker",
+    "message": "Redis pipeline execution failed: connection lost while sending 150 commands",
+    "metadata": {
+      "host": "monitoring-01",
+      "broker": "kafka-1",
+      "partition": 7
+    }
+  },
+  {
+    "timestamp": "2026-06-05T11:30:20.482646+00:00",
+    "source": "storage",
+    "level": "WARNING",
+    "service": "storage",
+    "message": "JVM Full GC pause: 11.2 seconds \u2014 application unavailable during pause",
+    "metadata": {
+      "host": "gpu-node-02",
+      "volume": "vol-0ee35a",
+      "io_wait_ms": 450.6
+    }
+  },
+  {
+    "timestamp": "2026-05-20T03:32:30.136600+00:00",
+    "source": "storage",
+    "level": "ERROR",
+    "service": "storage",
+    "message": "Kubernetes scheduler: unable to schedule pod gpu-inference-2 \u2014 0/7 nodes available (3 GPU unfit, 4 resource)",
+    "metadata": {
+      "host": "db-primary",
+      "volume": "vol-0d93f0",
+      "io_wait_ms": 345.2
+    }
+  },
+  {
+    "timestamp": "2026-08-11T10:38:48.845329+00:00",
+    "source": "systemd",
+    "level": "ERROR",
+    "service": "systemd",
+    "message": "Rate limiter active: client 10.0.4.20 exceeded 1000 req/min \u2014 returning 429",
+    "metadata": {
+      "host": "db-replica",
+      "unit": "postgresql",
+      "pid": 25993
+    }
+  },
+  {
+    "timestamp": "2026-06-09T03:05:03.706318+00:00",
+    "source": "message-broker",
+    "level": "ERROR",
+    "service": "message-broker",
+    "message": "Inter-service deadlock: service-a holding lock on order:1234, waiting for inventory:5678",
+    "metadata": {
+      "host": "monitoring-01",
+      "broker": "rabbit-1",
+      "partition": 4
+    }
+  },
+  {
+    "timestamp": "2026-08-03T10:55:57.432117+00:00",
+    "source": "application",
+    "level": "DEBUG",
+    "service": "application",
+    "message": "pg_stat_statements: top query by total_time = 4.3 hours (UPDATE inventory SET qty = qty - 1)",
+    "metadata": {
+      "host": "web-server-01",
+      "request_id": "e726be23",
+      "endpoint": "/api/v1/users",
+      "trace_id": "5a31b4cc"
+    }
+  },
+  {
+    "timestamp": "2026-06-05T01:21:13.997139+00:00",
+    "source": "storage",
+    "level": "INFO",
+    "service": "storage",
+    "message": "Distributed tracing: request abc123 traced across 8 services with 1200ms total latency",
+    "metadata": {
+      "host": "monitoring-01",
+      "volume": "vol-031bf7",
+      "io_wait_ms": 451.7
+    }
+  },
+  {
+    "timestamp": "2026-07-23T11:23:55.123663+00:00",
+    "source": "storage",
+    "level": "INFO",
+    "service": "storage",
+    "message": "Dead letter queue consumer processed 3400 messages in 60s (rate limit: 1000/s)",
+    "metadata": {
+      "host": "k8s-node-01",
+      "volume": "vol-0bacf1",
+      "io_wait_ms": 366.2
+    }
+  },
+  {
+    "timestamp": "2026-07-19T18:33:31.205761+00:00",
+    "source": "nginx",
+    "level": "WARNING",
+    "service": "nginx",
+    "message": "Dependency 'auth-svc' latency p99=3400ms \u2014 degrading gracefully with cached tokens",
+    "metadata": {
+      "host": "cache-server-01",
+      "upstream": "10.102.67.202",
+      "request_id": "f8b38a8b",
+      "status_code": 502
+    }
+  },
+  {
+    "timestamp": "2026-06-05T15:03:19.377564+00:00",
+    "source": "gpu-operator",
+    "level": "ERROR",
+    "service": "gpu-operator",
+    "message": "ROCm 5.6.3 compatibility verified with kernel 6.2.0-rc4",
+    "metadata": {
+      "host": "db-primary",
+      "gpu_id": 2,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-06-24T15:35:44.879719+00:00",
+    "source": "backup-service",
+    "level": "ERROR",
+    "service": "backup-service",
+    "message": "AWS Transit Gateway route propagation delayed by 5 minutes from new VPC attachment",
+    "metadata": {
+      "host": "web-server-02",
+      "job_name": "wal-archive-cleanup",
+      "status": "warning"
+    }
+  },
+  {
+    "timestamp": "2026-05-21T15:03:15.160421+00:00",
+    "source": "docker",
+    "level": "DEBUG",
+    "service": "docker",
+    "message": "WAL disk usage: 99% \u2014 PostgreSQL entering read-only mode",
+    "metadata": {
+      "host": "cache-server-01",
+      "container_id": "03902c5d",
+      "image": "nginx:1.25"
+    }
+  },
+  {
+    "timestamp": "2026-07-05T02:38:59.272687+00:00",
+    "source": "systemd",
+    "level": "ERROR",
+    "service": "systemd",
+    "message": "udev: event failed for /devices/pci0000:00/0000:00:03.0 \u2014 timeout processing",
+    "metadata": {
+      "host": "k8s-node-01",
+      "unit": "app-api",
+      "pid": 45226
+    }
+  },
+  {
+    "timestamp": "2026-07-08T06:13:16.438138+00:00",
+    "source": "redis",
+    "level": "DEBUG",
+    "service": "redis",
+    "message": "Prometheus Alertmanager: 47 firing alerts including 'NodeCPUUsage > 90%'",
+    "metadata": {
+      "host": "web-server-01",
+      "db_index": 7,
+      "client_ip": "10.32.237.233"
+    }
+  },
+  {
+    "timestamp": "2026-05-24T00:01:12.083990+00:00",
+    "source": "backup-service",
+    "level": "ERROR",
+    "service": "backup-service",
+    "message": "Unusual outbound RDP traffic detected from bastion-host to 10.0.0.0/8 at 23:00 UTC",
+    "metadata": {
+      "host": "gpu-node-01",
+      "job_name": "nightly-snapshot",
+      "status": "completed"
+    }
+  },
+  {
+    "timestamp": "2026-05-25T17:02:03.642740+00:00",
+    "source": "nginx",
+    "level": "ERROR",
+    "service": "nginx",
+    "message": "Idx scan on idx_orders_created_at yielded 1.8M rows \u2014 partial index recommended",
+    "metadata": {
+      "host": "storage-node-01",
+      "upstream": "10.214.79.227",
+      "request_id": "f396ea37",
+      "status_code": 200
+    }
+  },
+  {
+    "timestamp": "2026-06-22T09:42:26.877208+00:00",
+    "source": "backup-service",
+    "level": "ERROR",
+    "service": "backup-service",
+    "message": "Cron job 'db-vacuum-daily' failed: exit status 2 \u2014 vacuum output: ERROR: deadlock detected",
+    "metadata": {
+      "host": "db-replica",
+      "job_name": "prod-db-backup",
+      "status": "warning"
+    }
+  },
+  {
+    "timestamp": "2026-06-18T07:58:53.861980+00:00",
+    "source": "kubernetes",
+    "level": "ERROR",
+    "service": "kubernetes",
+    "message": "Phishing alert: employee 'alice' clicked link in email purporting from IT support",
+    "metadata": {
+      "host": "web-server-01",
+      "pod": "api-2eefd1",
+      "namespace": "staging",
+      "container": "worker",
+      "node": "monitoring-01"
+    }
+  },
+  {
+    "timestamp": "2026-06-04T10:06:31.744347+00:00",
+    "source": "application",
+    "level": "INFO",
+    "service": "application",
+    "message": "Zero-downtime deploy: old pods draining connections \u2014 active: 12, draining: 4",
+    "metadata": {
+      "host": "cache-server-01",
+      "request_id": "34885a46",
+      "endpoint": "/api/v1/users",
+      "trace_id": "961d33ba"
+    }
+  },
+  {
+    "timestamp": "2026-07-23T11:28:13.833263+00:00",
+    "source": "redis",
+    "level": "ERROR",
+    "service": "redis",
+    "message": "Prometheus rule evaluation error: query 'up == 0' returned 0 results for 54320 series",
+    "metadata": {
+      "host": "db-primary",
+      "db_index": 4,
+      "client_ip": "10.66.128.205"
+    }
+  },
+  {
+    "timestamp": "2026-05-25T08:41:41.913073+00:00",
+    "source": "postgresql",
+    "level": "INFO",
+    "service": "postgresql",
+    "message": "Vault agent auto-auth failed: cannot renew token \u2014 backend unreachable",
+    "metadata": {
+      "host": "web-server-01",
+      "database": "infraheal_prod",
+      "query_id": "96bf10ab",
+      "duration_ms": 79.9
+    }
+  },
+  {
+    "timestamp": "2026-07-19T06:06:39.610875+00:00",
+    "source": "auth",
+    "level": "INFO",
+    "service": "auth",
+    "message": "Autovacuum worker 12345 unable to process 'orders': conflicting with user query",
+    "metadata": {
+      "host": "db-primary",
+      "user": "admin",
+      "ip": "10.32.243.115",
+      "session_id": "c72c1fe3"
+    }
+  },
+  {
+    "timestamp": "2026-06-27T20:17:29.651775+00:00",
+    "source": "gpu-operator",
+    "level": "INFO",
+    "service": "gpu-operator",
+    "message": "ROCm bandwidth test: 312 GB/s H2D, 298 GB/s D2H on GPU-0",
+    "metadata": {
+      "host": "gpu-node-02",
+      "gpu_id": 0,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-07-10T09:36:57.160382+00:00",
+    "source": "backup-service",
+    "level": "ERROR",
+    "service": "backup-service",
+    "message": "AWS EBS multi-attach volume vol-9876 connected to 5 instances (max 16)",
+    "metadata": {
+      "host": "gpu-node-02",
+      "job_name": "nightly-snapshot",
+      "status": "warning"
+    }
+  },
+  {
+    "timestamp": "2026-05-20T02:44:23.805800+00:00",
+    "source": "nginx",
+    "level": "DEBUG",
+    "service": "nginx",
+    "message": "Message broker connection failed: amqp://rabbitmq.infraheal.internal:5672 refused",
+    "metadata": {
+      "host": "gpu-node-02",
+      "upstream": "10.164.75.17",
+      "request_id": "204e178c",
+      "status_code": 502
+    }
+  },
+  {
+    "timestamp": "2026-07-16T14:15:00.145011+00:00",
+    "source": "storage",
+    "level": "ERROR",
+    "service": "storage",
+    "message": "Zero-downtime deploy: old pods draining connections \u2014 active: 12, draining: 4",
+    "metadata": {
+      "host": "storage-node-01",
+      "volume": "vol-096fcd",
+      "io_wait_ms": 226.9
+    }
+  },
+  {
+    "timestamp": "2026-07-23T21:05:15.219958+00:00",
+    "source": "message-broker",
+    "level": "CRITICAL",
+    "service": "message-broker",
+    "message": "Consul agent: serf gossip protocol detected 3 nodes left cluster in last 60s",
+    "metadata": {
+      "host": "web-server-02",
+      "broker": "kafka-1",
+      "partition": 6
+    }
+  },
+  {
+    "timestamp": "2026-06-13T00:05:32.268062+00:00",
+    "source": "systemd",
+    "level": "WARNING",
+    "service": "systemd",
+    "message": "Index scan on orders.created_at_seq reversed \u2014 index bloat suspected",
+    "metadata": {
+      "host": "gpu-node-01",
+      "unit": "redis-server",
+      "pid": 28262
+    }
+  },
+  {
+    "timestamp": "2026-06-20T21:48:36.912685+00:00",
+    "source": "backup-service",
+    "level": "INFO",
+    "service": "backup-service",
+    "message": "systemd-networkd-wait-online.service: timeout waiting for network (90s)",
+    "metadata": {
+      "host": "cache-server-01",
+      "job_name": "nightly-snapshot",
+      "status": "completed"
+    }
+  },
+  {
+    "timestamp": "2026-05-21T17:02:43.954334+00:00",
+    "source": "storage",
+    "level": "WARNING",
+    "service": "storage",
+    "message": "Message broker connection failed: amqp://rabbitmq.infraheal.internal:5672 refused",
+    "metadata": {
+      "host": "web-server-02",
+      "volume": "vol-02fbbd",
+      "io_wait_ms": 215.9
+    }
+  },
+  {
+    "timestamp": "2026-07-02T13:45:38.840145+00:00",
+    "source": "backup-service",
+    "level": "ERROR",
+    "service": "backup-service",
+    "message": "systemd-tmpfiles: failed to create file /tmp/cleanup-XXXX: read-only filesystem",
+    "metadata": {
+      "host": "db-primary",
+      "job_name": "wal-archive-cleanup",
+      "status": "completed"
+    }
+  },
+  {
+    "timestamp": "2026-07-30T15:04:44.549606+00:00",
+    "source": "docker",
+    "level": "ERROR",
+    "service": "docker",
+    "message": "acpid: received event 'button/power PBTN 00000080' \u2014 initiating graceful shutdown",
+    "metadata": {
+      "host": "gpu-node-01",
+      "container_id": "99b479d4",
+      "image": "rocminference:5.7"
+    }
+  },
+  {
+    "timestamp": "2026-06-01T15:30:56.952906+00:00",
+    "source": "nginx",
+    "level": "CRITICAL",
+    "service": "nginx",
+    "message": "systemd-unit: app-api.service failed to start \u2014 missing env var DB_PASSWORD",
+    "metadata": {
+      "host": "storage-node-01",
+      "upstream": "10.55.179.217",
+      "request_id": "8e676a01",
+      "status_code": 200
+    }
+  },
+  {
+    "timestamp": "2026-06-02T20:30:13.117493+00:00",
+    "source": "cert-manager",
+    "level": "WARNING",
+    "service": "cert-manager",
+    "message": "Slow query detected: SELECT * FROM orders JOIN line_items ON ... (duration: 45600ms)",
+    "metadata": {
+      "host": "monitoring-01",
+      "certificate": "*.staging.internal",
+      "days_remaining": 80
+    }
+  },
+  {
+    "timestamp": "2026-08-05T02:49:19.446777+00:00",
+    "source": "message-broker",
+    "level": "INFO",
+    "service": "message-broker",
+    "message": "Linux OOM killer invoked: process java (PID 4567) scored 87, killed /var/log/messages",
+    "metadata": {
+      "host": "monitoring-01",
+      "broker": "kafka-1",
+      "partition": 2
+    }
+  },
+  {
+    "timestamp": "2026-06-14T02:12:38.119651+00:00",
+    "source": "auth",
+    "level": "ERROR",
+    "service": "auth",
+    "message": "Flow log: unusual traffic to port 445 (SMB) from internet to internal IP range",
+    "metadata": {
+      "host": "cache-server-01",
+      "user": "svc-account",
+      "ip": "10.35.72.190",
+      "session_id": "07d924ce"
+    }
+  },
+  {
+    "timestamp": "2026-06-20T06:50:17.471513+00:00",
+    "source": "backup-service",
+    "level": "WARNING",
+    "service": "backup-service",
+    "message": "NetworkManager: connectivity check failed \u2014 server 'http://connectivity-check.internal' unreachable",
+    "metadata": {
+      "host": "gpu-node-01",
+      "job_name": "prod-db-backup",
+      "status": "failed"
+    }
+  },
+  {
+    "timestamp": "2026-07-06T03:50:36.052667+00:00",
+    "source": "auth",
+    "level": "ERROR",
+    "service": "auth",
+    "message": "Retry exhausted for queue 'email-notifications': message id e4f5a6 sent to DLQ",
+    "metadata": {
+      "host": "monitoring-01",
+      "user": "jdoe",
+      "ip": "10.25.41.70",
+      "session_id": "6c8c3b6a"
+    }
+  },
+  {
+    "timestamp": "2026-06-07T02:02:25.381780+00:00",
+    "source": "message-broker",
+    "level": "CRITICAL",
+    "service": "message-broker",
+    "message": "Kafka consumer group 'order-processor' lag: 12,500,000 messages (estimated catchup: 23min)",
+    "metadata": {
+      "host": "gpu-node-01",
+      "broker": "rabbit-1",
+      "partition": 6
+    }
+  },
+  {
+    "timestamp": "2026-06-26T07:07:36.290160+00:00",
+    "source": "nginx",
+    "level": "WARNING",
+    "service": "nginx",
+    "message": "Node reboot detected: 'gpu-node-02' has uptime 0.5m \u2014 systemd units restarting",
+    "metadata": {
+      "host": "monitoring-01",
+      "upstream": "10.23.112.102",
+      "request_id": "0e0630cd",
+      "status_code": 301
+    }
+  },
+  {
+    "timestamp": "2026-07-21T06:35:15.125439+00:00",
+    "source": "auth",
+    "level": "WARNING",
+    "service": "auth",
+    "message": "systemd-journald: journal file /var/log/journal/ corrupted \u2014 rotating journal",
+    "metadata": {
+      "host": "db-primary",
+      "user": "deploy-bot",
+      "ip": "10.61.3.128",
+      "session_id": "bf3c5140"
+    }
+  },
+  {
+    "timestamp": "2026-06-30T10:22:40.337017+00:00",
+    "source": "postgresql",
+    "level": "WARNING",
+    "service": "postgresql",
+    "message": "Prometheus unable to open TSDB: 'block 01J2XYZ is corrupted, skipping'",
+    "metadata": {
+      "host": "gpu-node-01",
+      "database": "infraheal_staging",
+      "query_id": "5aaab32f",
+      "duration_ms": 1986.0
+    }
+  },
+  {
+    "timestamp": "2026-05-15T04:28:54.188490+00:00",
+    "source": "backup-service",
+    "level": "INFO",
+    "service": "backup-service",
+    "message": "Cache hit rate dropped from 94% to 12% after Redis restart \u2014 thundering herd in progress",
+    "metadata": {
+      "host": "gpu-node-01",
+      "job_name": "nightly-snapshot",
+      "status": "warning"
+    }
+  },
+  {
+    "timestamp": "2026-07-16T08:31:03.925160+00:00",
+    "source": "docker",
+    "level": "DEBUG",
+    "service": "docker",
+    "message": "pg_stat_replication: replay_lag=45min on standby pg-replica-02",
+    "metadata": {
+      "host": "gpu-node-01",
+      "container_id": "4a1dab32",
+      "image": "rabbitmq:3.12"
+    }
+  },
+  {
+    "timestamp": "2026-07-24T14:51:21.071918+00:00",
+    "source": "application",
+    "level": "ERROR",
+    "service": "application",
+    "message": "Cron job 'db-vacuum-daily' failed: exit status 2 \u2014 vacuum output: ERROR: deadlock detected",
+    "metadata": {
+      "host": "db-primary",
+      "request_id": "168fae12",
+      "endpoint": "/api/v1/orders",
+      "trace_id": "3e49fd09"
+    }
+  },
+  {
+    "timestamp": "2026-05-20T13:52:39.752267+00:00",
+    "source": "message-broker",
+    "level": "CRITICAL",
+    "service": "message-broker",
+    "message": "NetworkManager: connectivity check failed \u2014 server 'http://connectivity-check.internal' unreachable",
+    "metadata": {
+      "host": "storage-node-01",
+      "broker": "kafka-1",
+      "partition": 5
+    }
+  },
+  {
+    "timestamp": "2026-06-28T10:38:38.020600+00:00",
+    "source": "cert-manager",
+    "level": "INFO",
+    "service": "cert-manager",
+    "message": "Kafka consumer group 'order-processor' lag: 12,500,000 messages (estimated catchup: 23min)",
+    "metadata": {
+      "host": "web-server-02",
+      "certificate": "*.staging.internal",
+      "days_remaining": 66
+    }
+  },
+  {
+    "timestamp": "2026-07-17T23:08:19.925720+00:00",
+    "source": "redis",
+    "level": "ERROR",
+    "service": "redis",
+    "message": "Redis pipeline execution failed: connection lost while sending 150 commands",
+    "metadata": {
+      "host": "cache-server-01",
+      "db_index": 7,
+      "client_ip": "10.52.74.66"
+    }
+  },
+  {
+    "timestamp": "2026-05-27T06:11:55.479310+00:00",
+    "source": "redis",
+    "level": "WARNING",
+    "service": "redis",
+    "message": "Cache hit rate dropped from 94% to 12% after Redis restart \u2014 thundering herd in progress",
+    "metadata": {
+      "host": "monitoring-01",
+      "db_index": 5,
+      "client_ip": "10.252.237.194"
+    }
+  },
+  {
+    "timestamp": "2026-07-10T08:51:44.475302+00:00",
+    "source": "message-broker",
+    "level": "CRITICAL",
+    "service": "message-broker",
+    "message": "Prometheus Alertmanager: 47 firing alerts including 'NodeCPUUsage > 90%'",
+    "metadata": {
+      "host": "monitoring-01",
+      "broker": "rabbit-1",
+      "partition": 2
+    }
+  },
+  {
+    "timestamp": "2026-06-22T07:10:09.904391+00:00",
+    "source": "systemd",
+    "level": "INFO",
+    "service": "systemd",
+    "message": "Kubernetes scheduler: unable to schedule pod gpu-inference-2 \u2014 0/7 nodes available (3 GPU unfit, 4 resource)",
+    "metadata": {
+      "host": "gpu-node-02",
+      "unit": "nginx",
+      "pid": 39759
+    }
+  },
+  {
+    "timestamp": "2026-05-20T04:15:06.542403+00:00",
+    "source": "application",
+    "level": "ERROR",
+    "service": "application",
+    "message": "Dead letter queue consumer processed 3400 messages in 60s (rate limit: 1000/s)",
+    "metadata": {
+      "host": "storage-node-01",
+      "request_id": "0e9058b6",
+      "endpoint": "/api/v1/payments",
+      "trace_id": "daf481a7"
+    }
+  },
+  {
+    "timestamp": "2026-07-04T17:30:41.472029+00:00",
+    "source": "message-broker",
+    "level": "CRITICAL",
+    "service": "message-broker",
+    "message": "GC times: young gen 45ms, old gen 340ms, full GC 11.2s \u2014 heap 7.8GB/8GB",
+    "metadata": {
+      "host": "gpu-node-02",
+      "broker": "rabbit-1",
+      "partition": 9
+    }
+  },
+  {
+    "timestamp": "2026-07-06T22:48:45.365729+00:00",
+    "source": "storage",
+    "level": "INFO",
+    "service": "storage",
+    "message": "Replication slot 'standby_1' active \u2014 WAL retention 200GB, removing old slot",
+    "metadata": {
+      "host": "cache-server-01",
+      "volume": "vol-04d3da",
+      "io_wait_ms": 478.9
+    }
+  },
+  {
+    "timestamp": "2026-08-09T21:57:10.278582+00:00",
+    "source": "systemd",
+    "level": "INFO",
+    "service": "systemd",
+    "message": "Message broker connection failed: amqp://rabbitmq.infraheal.internal:5672 refused",
+    "metadata": {
+      "host": "cache-server-01",
+      "unit": "gpu-operator",
+      "pid": 43344
+    }
+  },
+  {
+    "timestamp": "2026-07-16T04:27:46.372818+00:00",
+    "source": "postgresql",
+    "level": "INFO",
+    "service": "postgresql",
+    "message": "Connection limit reached: max_connections=200, 200 active connections",
+    "metadata": {
+      "host": "db-replica",
+      "database": "infraheal_staging",
+      "query_id": "28a39779",
+      "duration_ms": 1864.9
+    }
+  },
+  {
+    "timestamp": "2026-07-22T04:50:38.195949+00:00",
+    "source": "auth",
+    "level": "CRITICAL",
+    "service": "auth",
+    "message": "Circuit breaker opened for payments-svc: failure rate 62% (threshold 50%)",
+    "metadata": {
+      "host": "gpu-node-01",
+      "user": "deploy-bot",
+      "ip": "10.33.168.25",
+      "session_id": "62f5df2b"
+    }
+  },
+  {
+    "timestamp": "2026-05-20T20:02:39.454395+00:00",
+    "source": "auth",
+    "level": "WARNING",
+    "service": "auth",
+    "message": "Redis pipeline execution failed: connection lost while sending 150 commands",
+    "metadata": {
+      "host": "cache-server-01",
+      "user": "deploy-bot",
+      "ip": "10.158.200.34",
+      "session_id": "f020e992"
+    }
+  },
+  {
+    "timestamp": "2026-07-25T16:28:44.878944+00:00",
+    "source": "auth",
+    "level": "CRITICAL",
+    "service": "auth",
+    "message": "Autovacuum worker 12345 unable to process 'orders': conflicting with user query",
+    "metadata": {
+      "host": "cache-server-01",
+      "user": "admin",
+      "ip": "10.216.185.5",
+      "session_id": "5cd33369"
+    }
+  },
+  {
+    "timestamp": "2026-08-06T18:57:48.448347+00:00",
+    "source": "postgresql",
+    "level": "WARNING",
+    "service": "postgresql",
+    "message": "Sequential scan on orders = 3.2M rows \u2014 missing index on customer_id + status",
+    "metadata": {
+      "host": "cache-server-01",
+      "database": "infraheal_prod",
+      "query_id": "23377bbc",
+      "duration_ms": 386.7
+    }
+  },
+  {
+    "timestamp": "2026-07-21T21:05:21.825543+00:00",
+    "source": "cert-manager",
+    "level": "INFO",
+    "service": "cert-manager",
+    "message": "Autovacuum worker 12345 unable to process 'orders': conflicting with user query",
+    "metadata": {
+      "host": "storage-node-01",
+      "certificate": "*.infraheal.internal",
+      "days_remaining": 85
+    }
+  },
+  {
+    "timestamp": "2026-06-16T09:42:53.715516+00:00",
+    "source": "kubernetes",
+    "level": "WARNING",
+    "service": "kubernetes",
+    "message": "Service mesh sidecar proxy CPU throttled: 450ms/200ms quota \u2014 consider increasing CPU limit",
+    "metadata": {
+      "host": "monitoring-01",
+      "pod": "api-5c97d7",
+      "namespace": "security",
+      "container": "api",
+      "node": "gpu-node-02"
+    }
+  },
+  {
+    "timestamp": "2026-07-13T08:56:38.082938+00:00",
+    "source": "application",
+    "level": "CRITICAL",
+    "service": "application",
+    "message": "GlusterFS volume 'gv0' split-brain detected on file 'db.tar.gz' between brick1 and brick3",
+    "metadata": {
+      "host": "cache-server-01",
+      "request_id": "72ecf16e",
+      "endpoint": "/api/v1/users",
+      "trace_id": "d5c9fdc7"
+    }
+  },
+  {
+    "timestamp": "2026-07-21T17:59:14.180162+00:00",
+    "source": "kubernetes",
+    "level": "DEBUG",
+    "service": "kubernetes",
+    "message": "PostgreSQL replication lag: 1800 seconds on replica pg-replica-01",
+    "metadata": {
+      "host": "gpu-node-02",
+      "pod": "api-d65ab6",
+      "namespace": "staging",
+      "container": "api",
+      "node": "monitoring-01"
+    }
+  },
+  {
+    "timestamp": "2026-07-10T04:56:48.185526+00:00",
+    "source": "postgresql",
+    "level": "ERROR",
+    "service": "postgresql",
+    "message": "pg_hba.conf: new entry added for replication user from 10.0.0.0/8 with scram-sha-256",
+    "metadata": {
+      "host": "web-server-01",
+      "database": "infraheal_prod",
+      "query_id": "1feae1e0",
+      "duration_ms": 420.3
+    }
+  },
+  {
+    "timestamp": "2026-08-02T23:27:41.081015+00:00",
+    "source": "postgresql",
+    "level": "ERROR",
+    "service": "postgresql",
+    "message": "Volume vol-abc123: average write latency 780ms \u2014 exceeding SLA of 10ms",
+    "metadata": {
+      "host": "gpu-node-02",
+      "database": "infraheal_prod",
+      "query_id": "d11376e0",
+      "duration_ms": 4423.3
+    }
+  },
+  {
+    "timestamp": "2026-06-18T04:20:26.035497+00:00",
+    "source": "application",
+    "level": "CRITICAL",
+    "service": "application",
+    "message": "Volume vol-abc123: average write latency 780ms \u2014 exceeding SLA of 10ms",
+    "metadata": {
+      "host": "web-server-01",
+      "request_id": "5ffa46ef",
+      "endpoint": "/api/v1/orders",
+      "trace_id": "25637cc3"
+    }
+  },
+  {
+    "timestamp": "2026-07-15T03:30:55.783167+00:00",
+    "source": "application",
+    "level": "ERROR",
+    "service": "application",
+    "message": "Node reboot detected: 'gpu-node-02' has uptime 0.5m \u2014 systemd units restarting",
+    "metadata": {
+      "host": "gpu-node-02",
+      "request_id": "144823f7",
+      "endpoint": "/api/v1/payments",
+      "trace_id": "6c5a6c93"
+    }
+  },
+  {
+    "timestamp": "2026-06-09T14:29:11.689102+00:00",
+    "source": "cert-manager",
+    "level": "WARNING",
+    "service": "cert-manager",
+    "message": "Circuit breaker opened for payments-svc: failure rate 62% (threshold 50%)",
+    "metadata": {
+      "host": "db-replica",
+      "certificate": "*.infraheal.internal",
+      "days_remaining": 54
+    }
+  },
+  {
+    "timestamp": "2026-05-19T03:39:48.406262+00:00",
+    "source": "storage",
+    "level": "ERROR",
+    "service": "storage",
+    "message": "pg_stat_statements: top query by total_time = 4.3 hours (UPDATE inventory SET qty = qty - 1)",
+    "metadata": {
+      "host": "gpu-node-02",
+      "volume": "vol-0086a3",
+      "io_wait_ms": 316.0
+    }
+  },
+  {
+    "timestamp": "2026-06-08T17:08:50.976940+00:00",
+    "source": "message-broker",
+    "level": "WARNING",
+    "service": "message-broker",
+    "message": "DLQ for order-service: 2,340,000 messages \u2014 disk usage at 95%",
+    "metadata": {
+      "host": "db-primary",
+      "broker": "rabbit-1",
+      "partition": 3
+    }
+  },
+  {
+    "timestamp": "2026-07-12T07:02:31.242346+00:00",
+    "source": "message-broker",
+    "level": "CRITICAL",
+    "service": "message-broker",
+    "message": "WAL disk usage: 99% \u2014 PostgreSQL entering read-only mode",
+    "metadata": {
+      "host": "db-primary",
+      "broker": "kafka-1",
+      "partition": 6
+    }
+  },
+  {
+    "timestamp": "2026-08-09T19:02:42.549761+00:00",
+    "source": "systemd",
+    "level": "INFO",
+    "service": "systemd",
+    "message": "systemd-networkd-wait-online.service: timeout waiting for network (90s)",
+    "metadata": {
+      "host": "gpu-node-01",
+      "unit": "app-api",
+      "pid": 24402
+    }
+  },
+  {
+    "timestamp": "2026-06-04T04:49:55.188023+00:00",
+    "source": "cert-manager",
+    "level": "INFO",
+    "service": "cert-manager",
+    "message": "Rate limiter active: client 10.0.4.20 exceeded 1000 req/min \u2014 returning 429",
+    "metadata": {
+      "host": "cache-server-01",
+      "certificate": "*.staging.internal",
+      "days_remaining": 43
+    }
+  },
+  {
+    "timestamp": "2026-07-01T15:23:22.882735+00:00",
+    "source": "postgresql",
+    "level": "INFO",
+    "service": "postgresql",
+    "message": "Dependency 'auth-svc' latency p99=3400ms \u2014 degrading gracefully with cached tokens",
+    "metadata": {
+      "host": "cache-server-01",
+      "database": "infraheal_staging",
+      "query_id": "b20507bb",
+      "duration_ms": 3159.0
+    }
+  },
+  {
+    "timestamp": "2026-07-16T22:39:26.367868+00:00",
+    "source": "cert-manager",
+    "level": "INFO",
+    "service": "cert-manager",
+    "message": "Index scan on orders.created_at_seq reversed \u2014 index bloat suspected",
+    "metadata": {
+      "host": "web-server-02",
+      "certificate": "*.infraheal.internal",
+      "days_remaining": 38
+    }
+  },
+  {
+    "timestamp": "2026-08-01T05:18:26.038566+00:00",
+    "source": "redis",
+    "level": "INFO",
+    "service": "redis",
+    "message": "chronyd: clock skew too large (230ms) \u2014 stepping system clock",
+    "metadata": {
+      "host": "db-replica",
+      "db_index": 9,
+      "client_ip": "10.203.242.65"
+    }
+  },
+  {
+    "timestamp": "2026-06-14T15:03:51.192851+00:00",
+    "source": "application",
+    "level": "WARNING",
+    "service": "application",
+    "message": "Circuit breaker opened for payments-svc: failure rate 62% (threshold 50%)",
+    "metadata": {
+      "host": "k8s-node-01",
+      "request_id": "54f90429",
+      "endpoint": "/api/v1/orders",
+      "trace_id": "cca1b45c"
+    }
+  },
+  {
+    "timestamp": "2026-08-02T00:25:01.160770+00:00",
+    "source": "docker",
+    "level": "CRITICAL",
+    "service": "docker",
+    "message": "ALB target group health check failed: 5 of 8 targets unhealthy on port 8080",
+    "metadata": {
+      "host": "gpu-node-02",
+      "container_id": "b12b6680",
+      "image": "rocminference:5.7"
+    }
+  },
+  {
+    "timestamp": "2026-07-24T14:28:47.527636+00:00",
+    "source": "cert-manager",
+    "level": "ERROR",
+    "service": "cert-manager",
+    "message": "Message broker connection failed: amqp://rabbitmq.infraheal.internal:5672 refused",
+    "metadata": {
+      "host": "k8s-node-01",
+      "certificate": "api.infraheal.com",
+      "days_remaining": 78
+    }
+  },
+  {
+    "timestamp": "2026-06-11T09:49:00.065797+00:00",
+    "source": "postgresql",
+    "level": "CRITICAL",
+    "service": "postgresql",
+    "message": "etcd leader election: current leader member-2 health-check failed; new leader member-1",
+    "metadata": {
+      "host": "k8s-node-01",
+      "database": "infraheal_analytics",
+      "query_id": "b7b8c1a5",
+      "duration_ms": 834.1
+    }
+  },
+  {
+    "timestamp": "2026-05-17T07:29:13.746323+00:00",
+    "source": "systemd",
+    "level": "ERROR",
+    "service": "systemd",
+    "message": "Vault agent auto-auth failed: cannot renew token \u2014 backend unreachable",
+    "metadata": {
+      "host": "gpu-node-02",
+      "unit": "gpu-operator",
+      "pid": 29504
+    }
+  },
+  {
+    "timestamp": "2026-07-12T21:45:25.920037+00:00",
+    "source": "auth",
+    "level": "INFO",
+    "service": "auth",
+    "message": "autovacuum: table 'public.orders' bloat ratio 42%, reclaimable 12GB",
+    "metadata": {
+      "host": "web-server-02",
+      "user": "deploy-bot",
+      "ip": "10.81.15.37",
+      "session_id": "702c1821"
+    }
+  },
+  {
+    "timestamp": "2026-07-22T13:35:35.544389+00:00",
+    "source": "postgresql",
+    "level": "INFO",
+    "service": "postgresql",
+    "message": "Cron job 'db-vacuum-daily' failed: exit status 2 \u2014 vacuum output: ERROR: deadlock detected",
+    "metadata": {
+      "host": "db-replica",
+      "database": "infraheal_analytics",
+      "query_id": "9136f1f8",
+      "duration_ms": 3025.9
+    }
+  },
+  {
+    "timestamp": "2026-06-15T23:32:56.030988+00:00",
+    "source": "storage",
+    "level": "WARNING",
+    "service": "storage",
+    "message": "Cache hit rate dropped from 94% to 12% after Redis restart \u2014 thundering herd in progress",
+    "metadata": {
+      "host": "cache-server-01",
+      "volume": "vol-0467ff",
+      "io_wait_ms": 264.7
+    }
+  },
+  {
+    "timestamp": "2026-06-04T23:09:40.214454+00:00",
+    "source": "docker",
+    "level": "ERROR",
+    "service": "docker",
+    "message": "Prometheus unable to open TSDB: 'block 01J2XYZ is corrupted, skipping'",
+    "metadata": {
+      "host": "k8s-node-01",
+      "container_id": "8fc9c86b",
+      "image": "gpu-inference:2.3"
+    }
+  },
+  {
+    "timestamp": "2026-06-01T19:28:19.628095+00:00",
+    "source": "cert-manager",
+    "level": "WARNING",
+    "service": "cert-manager",
+    "message": "acpid: received event 'button/power PBTN 00000080' \u2014 initiating graceful shutdown",
+    "metadata": {
+      "host": "gpu-node-02",
+      "certificate": "*.staging.internal",
+      "days_remaining": 63
+    }
+  },
+  {
+    "timestamp": "2026-07-29T06:06:17.234028+00:00",
+    "source": "redis",
+    "level": "INFO",
+    "service": "redis",
+    "message": "WAL segment size 16MB filling every 8 seconds \u2014 archive_command falling behind",
+    "metadata": {
+      "host": "db-primary",
+      "db_index": 5,
+      "client_ip": "10.227.44.208"
+    }
+  },
+  {
+    "timestamp": "2026-07-16T08:36:26.825509+00:00",
+    "source": "storage",
+    "level": "WARNING",
+    "service": "storage",
+    "message": "pg_hba.conf: new entry added for replication user from 10.0.0.0/8 with scram-sha-256",
+    "metadata": {
+      "host": "cache-server-01",
+      "volume": "vol-094aa5",
+      "io_wait_ms": 445.7
+    }
+  },
+  {
+    "timestamp": "2026-06-28T06:54:44.674475+00:00",
+    "source": "postgresql",
+    "level": "WARNING",
+    "service": "postgresql",
+    "message": "OpenTelemetry span: POST /api/v1/orders took 4500ms (99th percentile: 800ms)",
+    "metadata": {
+      "host": "cache-server-01",
+      "database": "infraheal_prod",
+      "query_id": "cac4d0eb",
+      "duration_ms": 1184.4
+    }
+  },
+  {
+    "timestamp": "2026-07-02T08:41:10.696131+00:00",
+    "source": "systemd",
+    "level": "INFO",
+    "service": "systemd",
+    "message": "udev: event failed for /devices/pci0000:00/0000:00:03.0 \u2014 timeout processing",
+    "metadata": {
+      "host": "cache-server-01",
+      "unit": "redis-server",
+      "pid": 53668
+    }
+  },
+  {
+    "timestamp": "2026-08-01T01:58:20.370586+00:00",
+    "source": "gpu-operator",
+    "level": "WARNING",
+    "service": "gpu-operator",
+    "message": "GPU node gpu-node-01 VRAM usage critical at 97.2%",
+    "metadata": {
+      "host": "monitoring-01",
+      "gpu_id": 2,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-06-19T11:19:02.858292+00:00",
+    "source": "docker",
+    "level": "CRITICAL",
+    "service": "docker",
+    "message": "Cache hit rate dropped from 94% to 12% after Redis restart \u2014 thundering herd in progress",
+    "metadata": {
+      "host": "storage-node-01",
+      "container_id": "12fc7a87",
+      "image": "prometheus:v2.50"
+    }
+  },
+  {
+    "timestamp": "2026-05-25T01:12:09.933153+00:00",
+    "source": "storage",
+    "level": "ERROR",
+    "service": "storage",
+    "message": "pg_hba.conf: new entry added for replication user from 10.0.0.0/8 with scram-sha-256",
+    "metadata": {
+      "host": "cache-server-01",
+      "volume": "vol-05d2a4",
+      "io_wait_ms": 383.9
+    }
+  },
+  {
+    "timestamp": "2026-08-03T11:08:18.618883+00:00",
+    "source": "postgresql",
+    "level": "DEBUG",
+    "service": "postgresql",
+    "message": "Thread pool status: active=180, queued=450, rejected=23 \u2014 pool size=200",
+    "metadata": {
+      "host": "storage-node-01",
+      "database": "infraheal_prod",
+      "query_id": "84a2576c",
+      "duration_ms": 1521.3
+    }
+  },
+  {
+    "timestamp": "2026-06-13T15:24:35.488290+00:00",
+    "source": "postgresql",
+    "level": "ERROR",
+    "service": "postgresql",
+    "message": "acpid: received event 'button/power PBTN 00000080' \u2014 initiating graceful shutdown",
+    "metadata": {
+      "host": "db-replica",
+      "database": "infraheal_prod",
+      "query_id": "4027ab7d",
+      "duration_ms": 3175.7
+    }
+  },
+  {
+    "timestamp": "2026-07-08T18:02:53.882624+00:00",
+    "source": "gpu-operator",
+    "level": "ERROR",
+    "service": "gpu-operator",
+    "message": "ROCm bandwidth test: 312 GB/s H2D, 298 GB/s D2H on GPU-0",
+    "metadata": {
+      "host": "db-primary",
+      "gpu_id": 0,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-08-06T05:52:15.937666+00:00",
+    "source": "gpu-operator",
+    "level": "WARNING",
+    "service": "gpu-operator",
+    "message": "hipMemcpy returned HSA_STATUS_ERROR_MEMORY_FAULT",
+    "metadata": {
+      "host": "monitoring-01",
+      "gpu_id": 1,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-06-12T21:15:29.905447+00:00",
+    "source": "storage",
+    "level": "ERROR",
+    "service": "storage",
+    "message": "GC times: young gen 45ms, old gen 340ms, full GC 11.2s \u2014 heap 7.8GB/8GB",
+    "metadata": {
+      "host": "monitoring-01",
+      "volume": "vol-00e86f",
+      "io_wait_ms": 40.6
+    }
+  },
+  {
+    "timestamp": "2026-07-11T02:26:26.704928+00:00",
+    "source": "storage",
+    "level": "ERROR",
+    "service": "storage",
+    "message": "pg_stat_replication: replay_lag=45min on standby pg-replica-02",
+    "metadata": {
+      "host": "k8s-node-01",
+      "volume": "vol-00f81a",
+      "io_wait_ms": 249.0
+    }
+  },
+  {
+    "timestamp": "2026-07-10T06:31:11.081606+00:00",
+    "source": "storage",
+    "level": "ERROR",
+    "service": "storage",
+    "message": "AWS Transit Gateway route propagation delayed by 5 minutes from new VPC attachment",
+    "metadata": {
+      "host": "k8s-node-01",
+      "volume": "vol-0cfeb5",
+      "io_wait_ms": 148.7
+    }
+  },
+  {
+    "timestamp": "2026-06-22T01:32:52.367381+00:00",
+    "source": "nginx",
+    "level": "INFO",
+    "service": "nginx",
+    "message": "Standby pg-replica-01 in recovery conflict with hot-standby query on orders table",
+    "metadata": {
+      "host": "db-primary",
+      "upstream": "10.237.104.88",
+      "request_id": "9b4e164b",
+      "status_code": 404
+    }
+  },
+  {
+    "timestamp": "2026-08-09T06:48:29.218666+00:00",
+    "source": "backup-service",
+    "level": "ERROR",
+    "service": "backup-service",
+    "message": "Replication slot 'standby_1' active \u2014 WAL retention 200GB, removing old slot",
+    "metadata": {
+      "host": "cache-server-01",
+      "job_name": "wal-archive-cleanup",
+      "status": "completed"
+    }
+  },
+  {
+    "timestamp": "2026-05-24T12:38:50.365037+00:00",
+    "source": "kubernetes",
+    "level": "WARNING",
+    "service": "kubernetes",
+    "message": "WAL segment size 16MB filling every 8 seconds \u2014 archive_command falling behind",
+    "metadata": {
+      "host": "gpu-node-02",
+      "pod": "api-7eef39",
+      "namespace": "staging",
+      "container": "api",
+      "node": "web-server-01"
+    }
+  },
+  {
+    "timestamp": "2026-06-20T03:10:15.764172+00:00",
+    "source": "auth",
+    "level": "CRITICAL",
+    "service": "auth",
+    "message": "Service mesh sidecar proxy CPU throttled: 450ms/200ms quota \u2014 consider increasing CPU limit",
+    "metadata": {
+      "host": "monitoring-01",
+      "user": "deploy-bot",
+      "ip": "10.160.97.196",
+      "session_id": "28caaa1d"
+    }
+  },
+  {
+    "timestamp": "2026-07-31T14:48:12.360157+00:00",
+    "source": "gpu-operator",
+    "level": "CRITICAL",
+    "service": "gpu-operator",
+    "message": "ROCm 5.6.3 compatibility verified with kernel 6.2.0-rc4",
+    "metadata": {
+      "host": "gpu-node-02",
+      "gpu_id": 0,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-06-23T15:37:05.473667+00:00",
+    "source": "nginx",
+    "level": "DEBUG",
+    "service": "nginx",
+    "message": "dmesg: EDAC MC0: 1 CE error at 0x000000007f8a0000 (csrow:2 channel:0)",
+    "metadata": {
+      "host": "storage-node-01",
+      "upstream": "10.110.180.13",
+      "request_id": "0cf0374c",
+      "status_code": 500
+    }
+  },
+  {
+    "timestamp": "2026-06-30T19:15:07.266471+00:00",
+    "source": "message-broker",
+    "level": "CRITICAL",
+    "service": "message-broker",
+    "message": "Transaction ID wraparound imminent: vacuum required on database infraheal_prod",
+    "metadata": {
+      "host": "k8s-node-01",
+      "broker": "kafka-1",
+      "partition": 4
+    }
+  },
+  {
+    "timestamp": "2026-06-15T10:25:28.853177+00:00",
+    "source": "backup-service",
+    "level": "ERROR",
+    "service": "backup-service",
+    "message": "Kernel panic: Machine check exception \u2014 CPU-1 BANK-8 MCG_STATUS RIP 0xffffffff81000000",
+    "metadata": {
+      "host": "gpu-node-01",
+      "job_name": "nightly-snapshot",
+      "status": "warning"
+    }
+  },
+  {
+    "timestamp": "2026-06-27T21:11:30.994462+00:00",
+    "source": "auth",
+    "level": "INFO",
+    "service": "auth",
+    "message": "pg_hba.conf: new entry added for replication user from 10.0.0.0/8 with scram-sha-256",
+    "metadata": {
+      "host": "gpu-node-01",
+      "user": "deploy-bot",
+      "ip": "10.60.65.250",
+      "session_id": "18c01e2b"
+    }
+  },
+  {
+    "timestamp": "2026-08-06T00:07:44.056645+00:00",
+    "source": "kubernetes",
+    "level": "ERROR",
+    "service": "kubernetes",
+    "message": "systemd unit 'app-api.service' hashes do not match expected \u2014 possible drift after reboot",
+    "metadata": {
+      "host": "storage-node-01",
+      "pod": "api-cd829b",
+      "namespace": "security",
+      "container": "api",
+      "node": "web-server-01"
+    }
+  },
+  {
+    "timestamp": "2026-07-24T20:33:58.489990+00:00",
+    "source": "application",
+    "level": "WARNING",
+    "service": "application",
+    "message": "Pgbouncer pool exhausted: 150 of 150 connections used, 12 queued waiting",
+    "metadata": {
+      "host": "cache-server-01",
+      "request_id": "74fd33d1",
+      "endpoint": "/api/v1/users",
+      "trace_id": "9cf20859"
+    }
+  },
+  {
+    "timestamp": "2026-07-19T00:55:47.347820+00:00",
+    "source": "postgresql",
+    "level": "DEBUG",
+    "service": "postgresql",
+    "message": "Kubernetes scheduler: unable to schedule pod gpu-inference-2 \u2014 0/7 nodes available (3 GPU unfit, 4 resource)",
+    "metadata": {
+      "host": "monitoring-01",
+      "database": "infraheal_staging",
+      "query_id": "88476c56",
+      "duration_ms": 3544.0
+    }
+  },
+  {
+    "timestamp": "2026-06-15T15:39:10.329516+00:00",
+    "source": "auth",
+    "level": "CRITICAL",
+    "service": "auth",
+    "message": "pg_stat_replication: replay_lag=45min on standby pg-replica-02",
+    "metadata": {
+      "host": "web-server-01",
+      "user": "deploy-bot",
+      "ip": "10.13.242.68",
+      "session_id": "93dfd907"
+    }
+  },
+  {
+    "timestamp": "2026-06-25T17:46:09.742163+00:00",
+    "source": "backup-service",
+    "level": "INFO",
+    "service": "backup-service",
+    "message": "Autovacuum worker 12345 unable to process 'orders': conflicting with user query",
+    "metadata": {
+      "host": "monitoring-01",
+      "job_name": "wal-archive-cleanup",
+      "status": "warning"
+    }
+  },
+  {
+    "timestamp": "2026-07-26T10:47:18.199810+00:00",
+    "source": "message-broker",
+    "level": "CRITICAL",
+    "service": "message-broker",
+    "message": "Dependency 'auth-svc' latency p99=3400ms \u2014 degrading gracefully with cached tokens",
+    "metadata": {
+      "host": "db-primary",
+      "broker": "kafka-1",
+      "partition": 3
+    }
+  },
+  {
+    "timestamp": "2026-06-20T04:33:55.598564+00:00",
+    "source": "application",
+    "level": "CRITICAL",
+    "service": "application",
+    "message": "Prometheus TSDB WAL replay failed at segment 00001234: unexpected CRC mismatch",
+    "metadata": {
+      "host": "cache-server-01",
+      "request_id": "eba742d2",
+      "endpoint": "/api/v1/orders",
+      "trace_id": "b4adaf89"
+    }
+  },
+  {
+    "timestamp": "2026-06-11T18:06:25.179697+00:00",
+    "source": "gpu-operator",
+    "level": "WARNING",
+    "service": "gpu-operator",
+    "message": "ROCm profiler detected 15% IPC drop due to memory bank conflicts",
+    "metadata": {
+      "host": "storage-node-01",
+      "gpu_id": 3,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-08-07T14:26:26.387320+00:00",
+    "source": "gpu-operator",
+    "level": "CRITICAL",
+    "service": "gpu-operator",
+    "message": "MIOpen convolution kernel failed: insufficient shared memory",
+    "metadata": {
+      "host": "cache-server-01",
+      "gpu_id": 2,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-07-07T09:45:55.486692+00:00",
+    "source": "gpu-operator",
+    "level": "ERROR",
+    "service": "gpu-operator",
+    "message": "amdgpu: GPU reset triggered for device 0000:03:00.0",
+    "metadata": {
+      "host": "k8s-node-01",
+      "gpu_id": 1,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-08-06T05:36:31.608242+00:00",
+    "source": "auth",
+    "level": "ERROR",
+    "service": "auth",
+    "message": "acpid: received event 'button/power PBTN 00000080' \u2014 initiating graceful shutdown",
+    "metadata": {
+      "host": "db-replica",
+      "user": "jdoe",
+      "ip": "10.250.162.123",
+      "session_id": "46015028"
+    }
+  },
+  {
+    "timestamp": "2026-06-16T16:08:21.985471+00:00",
+    "source": "nginx",
+    "level": "CRITICAL",
+    "service": "nginx",
+    "message": "Consul agent: serf gossip protocol detected 3 nodes left cluster in last 60s",
+    "metadata": {
+      "host": "storage-node-01",
+      "upstream": "10.74.148.11",
+      "request_id": "b6d1f6bb",
+      "status_code": 404
+    }
+  },
+  {
+    "timestamp": "2026-06-01T18:12:41.419607+00:00",
+    "source": "systemd",
+    "level": "ERROR",
+    "service": "systemd",
+    "message": "Linux OOM killer invoked: process java (PID 4567) scored 87, killed /var/log/messages",
+    "metadata": {
+      "host": "gpu-node-02",
+      "unit": "gpu-operator",
+      "pid": 46624
+    }
+  },
+  {
+    "timestamp": "2026-07-07T21:51:44.619607+00:00",
+    "source": "auth",
+    "level": "WARNING",
+    "service": "auth",
+    "message": "dmesg: EDAC MC0: 1 CE error at 0x000000007f8a0000 (csrow:2 channel:0)",
+    "metadata": {
+      "host": "web-server-02",
+      "user": "jdoe",
+      "ip": "10.25.115.164",
+      "session_id": "3b9b2d45"
+    }
+  },
+  {
+    "timestamp": "2026-07-17T01:29:36.245402+00:00",
+    "source": "nginx",
+    "level": "DEBUG",
+    "service": "nginx",
+    "message": "Application startup: waiting for database connection... attempt 12/30",
+    "metadata": {
+      "host": "cache-server-01",
+      "upstream": "10.70.2.247",
+      "request_id": "edd97a1a",
+      "status_code": 500
+    }
+  },
+  {
+    "timestamp": "2026-07-11T01:09:48.868014+00:00",
+    "source": "storage",
+    "level": "WARNING",
+    "service": "storage",
+    "message": "acpid: received event 'button/power PBTN 00000080' \u2014 initiating graceful shutdown",
+    "metadata": {
+      "host": "gpu-node-02",
+      "volume": "vol-0a4701",
+      "io_wait_ms": 142.7
+    }
+  },
+  {
+    "timestamp": "2026-06-03T09:35:44.269143+00:00",
+    "source": "application",
+    "level": "INFO",
+    "service": "application",
+    "message": "Dead letter queue consumer processed 3400 messages in 60s (rate limit: 1000/s)",
+    "metadata": {
+      "host": "monitoring-01",
+      "request_id": "2cd10b9f",
+      "endpoint": "/api/v1/users",
+      "trace_id": "d61169a1"
+    }
+  },
+  {
+    "timestamp": "2026-08-05T19:04:29.599392+00:00",
+    "source": "cert-manager",
+    "level": "WARNING",
+    "service": "cert-manager",
+    "message": "systemd-journald: journal file /var/log/journal/ corrupted \u2014 rotating journal",
+    "metadata": {
+      "host": "db-primary",
+      "certificate": "*.infraheal.internal",
+      "days_remaining": 2
+    }
+  },
+  {
+    "timestamp": "2026-06-08T02:39:11.408674+00:00",
+    "source": "auth",
+    "level": "INFO",
+    "service": "auth",
+    "message": "Idx scan on idx_orders_created_at yielded 1.8M rows \u2014 partial index recommended",
+    "metadata": {
+      "host": "cache-server-01",
+      "user": "svc-account",
+      "ip": "10.68.239.70",
+      "session_id": "1cd66b09"
+    }
+  },
+  {
+    "timestamp": "2026-07-17T04:10:19.396793+00:00",
+    "source": "postgresql",
+    "level": "DEBUG",
+    "service": "postgresql",
+    "message": "JVM Full GC pause: 11.2 seconds \u2014 application unavailable during pause",
+    "metadata": {
+      "host": "k8s-node-01",
+      "database": "infraheal_staging",
+      "query_id": "317304b5",
+      "duration_ms": 3055.2
+    }
+  },
+  {
+    "timestamp": "2026-06-28T21:00:22.404071+00:00",
+    "source": "storage",
+    "level": "WARNING",
+    "service": "storage",
+    "message": "Health check FAILED: /health returns 503 \u2014 upstream dependencies unavailable",
+    "metadata": {
+      "host": "gpu-node-01",
+      "volume": "vol-0cd3a0",
+      "io_wait_ms": 334.6
+    }
+  },
+  {
+    "timestamp": "2026-06-11T14:58:46.586582+00:00",
+    "source": "postgresql",
+    "level": "WARNING",
+    "service": "postgresql",
+    "message": "Kubelet node status update: disk-pressure=True on monitoring-01 (/var 92% used)",
+    "metadata": {
+      "host": "gpu-node-02",
+      "database": "infraheal_prod",
+      "query_id": "42c2d2eb",
+      "duration_ms": 1178.4
+    }
+  },
+  {
+    "timestamp": "2026-06-09T16:12:10.849442+00:00",
+    "source": "cert-manager",
+    "level": "WARNING",
+    "service": "cert-manager",
+    "message": "JVM Full GC pause: 11.2 seconds \u2014 application unavailable during pause",
+    "metadata": {
+      "host": "cache-server-01",
+      "certificate": "api.infraheal.com",
+      "days_remaining": 84
+    }
+  },
+  {
+    "timestamp": "2026-07-12T14:25:04.828674+00:00",
+    "source": "kubernetes",
+    "level": "WARNING",
+    "service": "kubernetes",
+    "message": "Table 'audit_log' dead tuples: 2.4M (45% of live rows) \u2014 manual VACUUM needed",
+    "metadata": {
+      "host": "web-server-01",
+      "pod": "api-9d15b8",
+      "namespace": "staging",
+      "container": "sidecar",
+      "node": "storage-node-01"
+    }
+  },
+  {
+    "timestamp": "2026-07-09T23:36:59.264750+00:00",
+    "source": "backup-service",
+    "level": "ERROR",
+    "service": "backup-service",
+    "message": "udev: event failed for /devices/pci0000:00/0000:00:03.0 \u2014 timeout processing",
+    "metadata": {
+      "host": "web-server-02",
+      "job_name": "wal-archive-cleanup",
+      "status": "completed"
+    }
+  },
+  {
+    "timestamp": "2026-05-27T06:52:50.951023+00:00",
+    "source": "redis",
+    "level": "WARNING",
+    "service": "redis",
+    "message": "udev: event failed for /devices/pci0000:00/0000:00:03.0 \u2014 timeout processing",
+    "metadata": {
+      "host": "gpu-node-02",
+      "db_index": 13,
+      "client_ip": "10.241.111.196"
+    }
+  },
+  {
+    "timestamp": "2026-06-29T19:05:39.758768+00:00",
+    "source": "redis",
+    "level": "CRITICAL",
+    "service": "redis",
+    "message": "Cron job 'db-vacuum-daily' failed: exit status 2 \u2014 vacuum output: ERROR: deadlock detected",
+    "metadata": {
+      "host": "web-server-02",
+      "db_index": 2,
+      "client_ip": "10.57.31.213"
+    }
+  },
+  {
+    "timestamp": "2026-06-30T19:11:09.390634+00:00",
+    "source": "gpu-operator",
+    "level": "WARNING",
+    "service": "gpu-operator",
+    "message": "AMDGPU ECC uncorrectable error on GPU-2 at address 0x7f2a4c000000",
+    "metadata": {
+      "host": "monitoring-01",
+      "gpu_id": 2,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-07-13T17:26:15.770214+00:00",
+    "source": "gpu-operator",
+    "level": "CRITICAL",
+    "service": "gpu-operator",
+    "message": "amdgpu: restoring CE table for device 0000:04:00.0",
+    "metadata": {
+      "host": "web-server-02",
+      "gpu_id": 3,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-07-25T06:46:29.638786+00:00",
+    "source": "nginx",
+    "level": "CRITICAL",
+    "service": "nginx",
+    "message": "max_replication_slots (10) reached \u2014 cannot create new slot for additional replica",
+    "metadata": {
+      "host": "gpu-node-02",
+      "upstream": "10.212.233.145",
+      "request_id": "ce920136",
+      "status_code": 503
+    }
+  },
+  {
+    "timestamp": "2026-07-25T23:32:20.284856+00:00",
+    "source": "application",
+    "level": "CRITICAL",
+    "service": "application",
+    "message": "Cache hit rate dropped from 94% to 12% after Redis restart \u2014 thundering herd in progress",
+    "metadata": {
+      "host": "k8s-node-01",
+      "request_id": "0b981ccd",
+      "endpoint": "/api/v1/payments",
+      "trace_id": "b34c6c73"
+    }
+  },
+  {
+    "timestamp": "2026-08-10T06:03:23.241088+00:00",
+    "source": "gpu-operator",
+    "level": "INFO",
+    "service": "gpu-operator",
+    "message": "ROCm 5.6.3 compatibility verified with kernel 6.2.0-rc4",
+    "metadata": {
+      "host": "web-server-02",
+      "gpu_id": 0,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-07-21T16:58:46.758649+00:00",
+    "source": "auth",
+    "level": "CRITICAL",
+    "service": "auth",
+    "message": "pg_stat_replication: replay_lag=45min on standby pg-replica-02",
+    "metadata": {
+      "host": "db-primary",
+      "user": "deploy-bot",
+      "ip": "10.195.229.223",
+      "session_id": "60a399d4"
+    }
+  },
+  {
+    "timestamp": "2026-07-11T07:38:01.149304+00:00",
+    "source": "nginx",
+    "level": "CRITICAL",
+    "service": "nginx",
+    "message": "Jumbo frames enabled on all trunk ports \u2014 MTU 9000 verified end-to-end",
+    "metadata": {
+      "host": "db-primary",
+      "upstream": "10.201.65.187",
+      "request_id": "fa8dae42",
+      "status_code": 200
+    }
+  },
+  {
+    "timestamp": "2026-06-24T04:05:18.335691+00:00",
+    "source": "cert-manager",
+    "level": "INFO",
+    "service": "cert-manager",
+    "message": "Idx scan on idx_orders_created_at yielded 1.8M rows \u2014 partial index recommended",
+    "metadata": {
+      "host": "k8s-node-01",
+      "certificate": "api.infraheal.com",
+      "days_remaining": 69
+    }
+  },
+  {
+    "timestamp": "2026-06-23T22:57:02.165994+00:00",
+    "source": "docker",
+    "level": "WARNING",
+    "service": "docker",
+    "message": "Retry exhausted for queue 'email-notifications': message id e4f5a6 sent to DLQ",
+    "metadata": {
+      "host": "db-replica",
+      "container_id": "4690fb15",
+      "image": "nginx:1.25"
+    }
+  },
+  {
+    "timestamp": "2026-07-21T10:40:31.763388+00:00",
+    "source": "application",
+    "level": "CRITICAL",
+    "service": "application",
+    "message": "Inter-service deadlock: service-a holding lock on order:1234, waiting for inventory:5678",
+    "metadata": {
+      "host": "monitoring-01",
+      "request_id": "3d9c4e64",
+      "endpoint": "/api/v1/orders",
+      "trace_id": "08987462"
+    }
+  },
+  {
+    "timestamp": "2026-07-19T03:34:07.426259+00:00",
+    "source": "message-broker",
+    "level": "INFO",
+    "service": "message-broker",
+    "message": "autovacuum: table 'public.orders' bloat ratio 42%, reclaimable 12GB",
+    "metadata": {
+      "host": "db-replica",
+      "broker": "rabbit-1",
+      "partition": 3
+    }
+  },
+  {
+    "timestamp": "2026-05-26T02:41:34.232093+00:00",
+    "source": "gpu-operator",
+    "level": "WARNING",
+    "service": "gpu-operator",
+    "message": "HIP runtime error: invalid device ordinal requested",
+    "metadata": {
+      "host": "web-server-01",
+      "gpu_id": 1,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-07-06T07:30:07.835180+00:00",
+    "source": "backup-service",
+    "level": "ERROR",
+    "service": "backup-service",
+    "message": "Prometheus Alertmanager: 47 firing alerts including 'NodeCPUUsage > 90%'",
+    "metadata": {
+      "host": "monitoring-01",
+      "job_name": "prod-db-backup",
+      "status": "failed"
+    }
+  },
+  {
+    "timestamp": "2026-06-19T17:17:24.165330+00:00",
+    "source": "postgresql",
+    "level": "CRITICAL",
+    "service": "postgresql",
+    "message": "Redis pipeline execution failed: connection lost while sending 150 commands",
+    "metadata": {
+      "host": "db-replica",
+      "database": "infraheal_staging",
+      "query_id": "e95d2761",
+      "duration_ms": 3130.3
+    }
+  },
+  {
+    "timestamp": "2026-05-17T17:16:10.737902+00:00",
+    "source": "docker",
+    "level": "DEBUG",
+    "service": "docker",
+    "message": "Consul agent: serf gossip protocol detected 3 nodes left cluster in last 60s",
+    "metadata": {
+      "host": "gpu-node-02",
+      "container_id": "abdd1a8f",
+      "image": "rocminference:5.7"
+    }
+  },
+  {
+    "timestamp": "2026-05-26T22:18:36.118448+00:00",
+    "source": "backup-service",
+    "level": "CRITICAL",
+    "service": "backup-service",
+    "message": "OpenTelemetry span: POST /api/v1/orders took 4500ms (99th percentile: 800ms)",
+    "metadata": {
+      "host": "gpu-node-01",
+      "job_name": "prod-db-backup",
+      "status": "completed"
+    }
+  },
+  {
+    "timestamp": "2026-08-03T19:50:27.367592+00:00",
+    "source": "auth",
+    "level": "WARNING",
+    "service": "auth",
+    "message": "CHECKPOINT occurring every 20 seconds \u2014 immediate checkpoint requested by long-running tx",
+    "metadata": {
+      "host": "gpu-node-02",
+      "user": "svc-account",
+      "ip": "10.68.198.63",
+      "session_id": "41476506"
+    }
+  },
+  {
+    "timestamp": "2026-07-28T17:48:29.208911+00:00",
+    "source": "kubernetes",
+    "level": "INFO",
+    "service": "kubernetes",
+    "message": "Health check FAILED: /health returns 503 \u2014 upstream dependencies unavailable",
+    "metadata": {
+      "host": "gpu-node-02",
+      "pod": "api-6186ce",
+      "namespace": "production",
+      "container": "sidecar",
+      "node": "gpu-node-01"
+    }
+  },
+  {
+    "timestamp": "2026-05-17T01:25:21.781514+00:00",
+    "source": "storage",
+    "level": "ERROR",
+    "service": "storage",
+    "message": "Scheduler triggered: 12 worker nodes assigned to process backfill job",
+    "metadata": {
+      "host": "monitoring-01",
+      "volume": "vol-06f1cc",
+      "io_wait_ms": 239.7
+    }
+  },
+  {
+    "timestamp": "2026-06-01T13:30:17.235453+00:00",
+    "source": "kubernetes",
+    "level": "ERROR",
+    "service": "kubernetes",
+    "message": "Node gpu-node-01 NotReady due to kernel panic \u2014 cordoned and drained",
+    "metadata": {
+      "host": "web-server-01",
+      "pod": "api-f5351d",
+      "namespace": "staging",
+      "container": "worker",
+      "node": "monitoring-01"
+    }
+  },
+  {
+    "timestamp": "2026-08-03T20:40:23.349799+00:00",
+    "source": "backup-service",
+    "level": "WARNING",
+    "service": "backup-service",
+    "message": "pg_hba.conf: new entry added for replication user from 10.0.0.0/8 with scram-sha-256",
+    "metadata": {
+      "host": "gpu-node-01",
+      "job_name": "nightly-snapshot",
+      "status": "failed"
+    }
+  },
+  {
+    "timestamp": "2026-07-10T21:14:17.139802+00:00",
+    "source": "docker",
+    "level": "CRITICAL",
+    "service": "docker",
+    "message": "Replication slot 'standby_1' active \u2014 WAL retention 200GB, removing old slot",
+    "metadata": {
+      "host": "storage-node-01",
+      "container_id": "e1fff6c0",
+      "image": "prometheus:v2.50"
+    }
+  },
+  {
+    "timestamp": "2026-08-03T18:57:13.959427+00:00",
+    "source": "nginx",
+    "level": "DEBUG",
+    "service": "nginx",
+    "message": "udev: event failed for /devices/pci0000:00/0000:00:03.0 \u2014 timeout processing",
+    "metadata": {
+      "host": "cache-server-01",
+      "upstream": "10.160.211.12",
+      "request_id": "255b30e2",
+      "status_code": 404
+    }
+  },
+  {
+    "timestamp": "2026-05-27T05:12:31.125592+00:00",
+    "source": "gpu-operator",
+    "level": "CRITICAL",
+    "service": "gpu-operator",
+    "message": "GPU workload inference-pod-7a3b OOMKilled; VRAM limit exceeded",
+    "metadata": {
+      "host": "k8s-node-01",
+      "gpu_id": 1,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-06-27T10:29:28.326904+00:00",
+    "source": "docker",
+    "level": "DEBUG",
+    "service": "docker",
+    "message": "NetworkManager: connectivity check failed \u2014 server 'http://connectivity-check.internal' unreachable",
+    "metadata": {
+      "host": "db-replica",
+      "container_id": "d253d966",
+      "image": "prometheus:v2.50"
+    }
+  },
+  {
+    "timestamp": "2026-05-28T17:36:50.167649+00:00",
+    "source": "systemd",
+    "level": "WARNING",
+    "service": "systemd",
+    "message": "Idx scan on idx_orders_created_at yielded 1.8M rows \u2014 partial index recommended",
+    "metadata": {
+      "host": "cache-server-01",
+      "unit": "redis-server",
+      "pid": 13061
+    }
+  },
+  {
+    "timestamp": "2026-05-16T13:03:33.535713+00:00",
+    "source": "gpu-operator",
+    "level": "INFO",
+    "service": "gpu-operator",
+    "message": "GPU node gpu-node-01 VRAM usage critical at 97.2%",
+    "metadata": {
+      "host": "storage-node-01",
+      "gpu_id": 0,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-05-25T20:58:54.141144+00:00",
+    "source": "cert-manager",
+    "level": "INFO",
+    "service": "cert-manager",
+    "message": "Prometheus unable to open TSDB: 'block 01J2XYZ is corrupted, skipping'",
+    "metadata": {
+      "host": "gpu-node-01",
+      "certificate": "*.infraheal.internal",
+      "days_remaining": 20
+    }
+  },
+  {
+    "timestamp": "2026-06-23T12:58:51.108162+00:00",
+    "source": "application",
+    "level": "WARNING",
+    "service": "application",
+    "message": "Thread pool status: active=180, queued=450, rejected=23 \u2014 pool size=200",
+    "metadata": {
+      "host": "storage-node-01",
+      "request_id": "7ce40679",
+      "endpoint": "/api/v1/orders",
+      "trace_id": "694d7b00"
+    }
+  },
+  {
+    "timestamp": "2026-06-30T17:11:39.488336+00:00",
+    "source": "application",
+    "level": "DEBUG",
+    "service": "application",
+    "message": "acpid: received event 'button/power PBTN 00000080' \u2014 initiating graceful shutdown",
+    "metadata": {
+      "host": "k8s-node-01",
+      "request_id": "ac8d6c7d",
+      "endpoint": "/api/v1/users",
+      "trace_id": "261e2555"
+    }
+  },
+  {
+    "timestamp": "2026-06-05T05:13:23.894543+00:00",
+    "source": "redis",
+    "level": "CRITICAL",
+    "service": "redis",
+    "message": "Volume vol-abc123: average write latency 780ms \u2014 exceeding SLA of 10ms",
+    "metadata": {
+      "host": "storage-node-01",
+      "db_index": 11,
+      "client_ip": "10.207.235.145"
+    }
+  },
+  {
+    "timestamp": "2026-07-14T01:31:47.679658+00:00",
+    "source": "redis",
+    "level": "WARNING",
+    "service": "redis",
+    "message": "Message broker connection failed: amqp://rabbitmq.infraheal.internal:5672 refused",
+    "metadata": {
+      "host": "k8s-node-01",
+      "db_index": 1,
+      "client_ip": "10.47.207.98"
+    }
+  },
+  {
+    "timestamp": "2026-05-18T13:12:29.766667+00:00",
+    "source": "docker",
+    "level": "DEBUG",
+    "service": "docker",
+    "message": "JVM Full GC pause: 11.2 seconds \u2014 application unavailable during pause",
+    "metadata": {
+      "host": "gpu-node-02",
+      "container_id": "b3eda8f1",
+      "image": "nginx:1.25"
+    }
+  },
+  {
+    "timestamp": "2026-07-03T10:15:01.138947+00:00",
+    "source": "systemd",
+    "level": "DEBUG",
+    "service": "systemd",
+    "message": "Application startup: waiting for database connection... attempt 12/30",
+    "metadata": {
+      "host": "cache-server-01",
+      "unit": "gpu-operator",
+      "pid": 61237
+    }
+  },
+  {
+    "timestamp": "2026-08-02T14:44:58.529375+00:00",
+    "source": "application",
+    "level": "WARNING",
+    "service": "application",
+    "message": "PostgreSQL 15.2 detected data checksum failure on block 4281 of file base/12345/67890",
+    "metadata": {
+      "host": "db-replica",
+      "request_id": "45667c48",
+      "endpoint": "/api/v1/orders",
+      "trace_id": "a879d8f8"
+    }
+  },
+  {
+    "timestamp": "2026-08-08T00:46:24.420476+00:00",
+    "source": "postgresql",
+    "level": "ERROR",
+    "service": "postgresql",
+    "message": "WAL disk usage: 99% \u2014 PostgreSQL entering read-only mode",
+    "metadata": {
+      "host": "web-server-01",
+      "database": "infraheal_prod",
+      "query_id": "4c9d6907",
+      "duration_ms": 2820.2
+    }
+  },
+  {
+    "timestamp": "2026-06-12T08:32:11.232899+00:00",
+    "source": "message-broker",
+    "level": "CRITICAL",
+    "service": "message-broker",
+    "message": "Distributed tracing: request abc123 traced across 8 services with 1200ms total latency",
+    "metadata": {
+      "host": "storage-node-01",
+      "broker": "kafka-1",
+      "partition": 8
+    }
+  },
+  {
+    "timestamp": "2026-05-22T07:00:04.682496+00:00",
+    "source": "backup-service",
+    "level": "ERROR",
+    "service": "backup-service",
+    "message": "Gitleaks scan: exposed .env file containing DB_PASSWORD in commit abcdef1",
+    "metadata": {
+      "host": "web-server-01",
+      "job_name": "wal-archive-cleanup",
+      "status": "warning"
+    }
+  },
+  {
+    "timestamp": "2026-05-16T03:59:29.123958+00:00",
+    "source": "message-broker",
+    "level": "CRITICAL",
+    "service": "message-broker",
+    "message": "Read-only filesystem detected on /data/pg_wal after power loss \u2014 fsck required",
+    "metadata": {
+      "host": "cache-server-01",
+      "broker": "kafka-1",
+      "partition": 5
+    }
+  },
+  {
+    "timestamp": "2026-05-30T05:11:37.489683+00:00",
+    "source": "gpu-operator",
+    "level": "CRITICAL",
+    "service": "gpu-operator",
+    "message": "hipLaunchKernel failed: invalid configuration argument",
+    "metadata": {
+      "host": "gpu-node-01",
+      "gpu_id": 3,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-07-24T07:47:57.031490+00:00",
+    "source": "nginx",
+    "level": "CRITICAL",
+    "service": "nginx",
+    "message": "Message broker connection failed: amqp://rabbitmq.infraheal.internal:5672 refused",
+    "metadata": {
+      "host": "k8s-node-01",
+      "upstream": "10.137.78.98",
+      "request_id": "a247541d",
+      "status_code": 503
+    }
+  },
+  {
+    "timestamp": "2026-05-23T02:08:59.936123+00:00",
+    "source": "docker",
+    "level": "ERROR",
+    "service": "docker",
+    "message": "Sequential scan on orders = 3.2M rows \u2014 missing index on customer_id + status",
+    "metadata": {
+      "host": "cache-server-01",
+      "container_id": "450f69ee",
+      "image": "redis:7"
+    }
+  },
+  {
+    "timestamp": "2026-06-22T21:30:08.432519+00:00",
+    "source": "nginx",
+    "level": "ERROR",
+    "service": "nginx",
+    "message": "CHECKPOINT occurring every 20 seconds \u2014 immediate checkpoint requested by long-running tx",
+    "metadata": {
+      "host": "gpu-node-01",
+      "upstream": "10.52.13.23",
+      "request_id": "629ef3d8",
+      "status_code": 404
+    }
+  },
+  {
+    "timestamp": "2026-07-17T17:39:45.731215+00:00",
+    "source": "docker",
+    "level": "CRITICAL",
+    "service": "docker",
+    "message": "Kubelet node status update: disk-pressure=True on monitoring-01 (/var 92% used)",
+    "metadata": {
+      "host": "web-server-02",
+      "container_id": "6177a771",
+      "image": "redis:7"
+    }
+  },
+  {
+    "timestamp": "2026-06-26T21:08:51.774631+00:00",
+    "source": "auth",
+    "level": "ERROR",
+    "service": "auth",
+    "message": "Snapshot created for volume vol-abc456 completed in 340s (avg 120s)",
+    "metadata": {
+      "host": "k8s-node-01",
+      "user": "svc-account",
+      "ip": "10.153.247.201",
+      "session_id": "13b11e59"
+    }
+  },
+  {
+    "timestamp": "2026-07-05T22:37:18.551152+00:00",
+    "source": "auth",
+    "level": "WARNING",
+    "service": "auth",
+    "message": "systemd unit 'app-api.service' hashes do not match expected \u2014 possible drift after reboot",
+    "metadata": {
+      "host": "gpu-node-02",
+      "user": "svc-account",
+      "ip": "10.54.69.78",
+      "session_id": "654c11d9"
+    }
+  },
+  {
+    "timestamp": "2026-06-22T02:52:53.437438+00:00",
+    "source": "message-broker",
+    "level": "CRITICAL",
+    "service": "message-broker",
+    "message": "Distributed tracing: request abc123 traced across 8 services with 1200ms total latency",
+    "metadata": {
+      "host": "cache-server-01",
+      "broker": "rabbit-1",
+      "partition": 5
+    }
+  },
+  {
+    "timestamp": "2026-06-10T18:38:09.194576+00:00",
+    "source": "message-broker",
+    "level": "WARNING",
+    "service": "message-broker",
+    "message": "WAL disk usage: 99% \u2014 PostgreSQL entering read-only mode",
+    "metadata": {
+      "host": "gpu-node-02",
+      "broker": "rabbit-1",
+      "partition": 4
+    }
+  },
+  {
+    "timestamp": "2026-07-22T21:03:52.698037+00:00",
+    "source": "backup-service",
+    "level": "CRITICAL",
+    "service": "backup-service",
+    "message": "PostgreSQL 15.2 detected data checksum failure on block 4281 of file base/12345/67890",
+    "metadata": {
+      "host": "monitoring-01",
+      "job_name": "nightly-snapshot",
+      "status": "completed"
+    }
+  },
+  {
+    "timestamp": "2026-08-11T06:05:32.062480+00:00",
+    "source": "message-broker",
+    "level": "WARNING",
+    "service": "message-broker",
+    "message": "Scheduler triggered: 12 worker nodes assigned to process backfill job",
+    "metadata": {
+      "host": "monitoring-01",
+      "broker": "kafka-1",
+      "partition": 7
+    }
+  },
+  {
+    "timestamp": "2026-07-24T07:00:02.611540+00:00",
+    "source": "backup-service",
+    "level": "WARNING",
+    "service": "backup-service",
+    "message": "Hystrix fallback triggered for inventory-svc: timeout waiting for connection from pool",
+    "metadata": {
+      "host": "gpu-node-02",
+      "job_name": "nightly-snapshot",
+      "status": "warning"
+    }
+  },
+  {
+    "timestamp": "2026-06-04T06:45:56.599808+00:00",
+    "source": "systemd",
+    "level": "WARNING",
+    "service": "systemd",
+    "message": "Retry exhausted for queue 'email-notifications': message id e4f5a6 sent to DLQ",
+    "metadata": {
+      "host": "k8s-node-01",
+      "unit": "redis-server",
+      "pid": 52712
+    }
+  },
+  {
+    "timestamp": "2026-08-10T15:54:47.977862+00:00",
+    "source": "docker",
+    "level": "INFO",
+    "service": "docker",
+    "message": "Standby pg-replica-01 in recovery conflict with hot-standby query on orders table",
+    "metadata": {
+      "host": "gpu-node-02",
+      "container_id": "950df1a0",
+      "image": "rabbitmq:3.12"
+    }
+  },
+  {
+    "timestamp": "2026-07-15T15:31:48.216144+00:00",
+    "source": "gpu-operator",
+    "level": "INFO",
+    "service": "gpu-operator",
+    "message": "amd-smi: GPU-0 power draw 385W exceeds TDP of 350W",
+    "metadata": {
+      "host": "cache-server-01",
+      "gpu_id": 0,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-05-28T11:17:28.123746+00:00",
+    "source": "nginx",
+    "level": "ERROR",
+    "service": "nginx",
+    "message": "autovacuum: table 'public.orders' bloat ratio 42%, reclaimable 12GB",
+    "metadata": {
+      "host": "cache-server-01",
+      "upstream": "10.169.220.28",
+      "request_id": "02b34254",
+      "status_code": 404
+    }
+  },
+  {
+    "timestamp": "2026-07-02T17:15:56.805483+00:00",
+    "source": "redis",
+    "level": "CRITICAL",
+    "service": "redis",
+    "message": "systemd-unit: app-api.service failed to start \u2014 missing env var DB_PASSWORD",
+    "metadata": {
+      "host": "storage-node-01",
+      "db_index": 14,
+      "client_ip": "10.191.200.119"
+    }
+  },
+  {
+    "timestamp": "2026-07-14T15:20:40.489295+00:00",
+    "source": "cert-manager",
+    "level": "ERROR",
+    "service": "cert-manager",
+    "message": "Vault audit: unseal key rotated successfully by admin user",
+    "metadata": {
+      "host": "monitoring-01",
+      "certificate": "*.infraheal.internal",
+      "days_remaining": 38
+    }
+  },
+  {
+    "timestamp": "2026-07-27T07:38:46.782843+00:00",
+    "source": "docker",
+    "level": "INFO",
+    "service": "docker",
+    "message": "Redis pipeline execution failed: connection lost while sending 150 commands",
+    "metadata": {
+      "host": "web-server-02",
+      "container_id": "592c1107",
+      "image": "rocminference:5.7"
+    }
+  },
+  {
+    "timestamp": "2026-06-25T23:07:12.566509+00:00",
+    "source": "systemd",
+    "level": "WARNING",
+    "service": "systemd",
+    "message": "PostgreSQL 15.2 detected data checksum failure on block 4281 of file base/12345/67890",
+    "metadata": {
+      "host": "storage-node-01",
+      "unit": "app-api",
+      "pid": 29715
+    }
+  },
+  {
+    "timestamp": "2026-05-19T13:05:47.668162+00:00",
+    "source": "backup-service",
+    "level": "CRITICAL",
+    "service": "backup-service",
+    "message": "Node gpu-node-01 NotReady due to kernel panic \u2014 cordoned and drained",
+    "metadata": {
+      "host": "cache-server-01",
+      "job_name": "prod-db-backup",
+      "status": "failed"
+    }
+  },
+  {
+    "timestamp": "2026-08-05T04:37:56.943895+00:00",
+    "source": "storage",
+    "level": "INFO",
+    "service": "storage",
+    "message": "Kubelet node status update: disk-pressure=True on monitoring-01 (/var 92% used)",
+    "metadata": {
+      "host": "db-primary",
+      "volume": "vol-05951e",
+      "io_wait_ms": 276.0
+    }
+  },
+  {
+    "timestamp": "2026-06-03T08:48:28.736671+00:00",
+    "source": "kubernetes",
+    "level": "DEBUG",
+    "service": "kubernetes",
+    "message": "autovacuum: table 'public.orders' bloat ratio 42%, reclaimable 12GB",
+    "metadata": {
+      "host": "gpu-node-02",
+      "pod": "api-5e7076",
+      "namespace": "staging",
+      "container": "worker",
+      "node": "gpu-node-01"
+    }
+  },
+  {
+    "timestamp": "2026-07-31T23:29:25.183485+00:00",
+    "source": "docker",
+    "level": "INFO",
+    "service": "docker",
+    "message": "WAL segment size 16MB filling every 8 seconds \u2014 archive_command falling behind",
+    "metadata": {
+      "host": "monitoring-01",
+      "container_id": "979aa051",
+      "image": "rabbitmq:3.12"
+    }
+  },
+  {
+    "timestamp": "2026-06-07T13:13:29.402088+00:00",
+    "source": "application",
+    "level": "WARNING",
+    "service": "application",
+    "message": "Hystrix fallback triggered for inventory-svc: timeout waiting for connection from pool",
+    "metadata": {
+      "host": "db-replica",
+      "request_id": "93cd1291",
+      "endpoint": "/api/v1/users",
+      "trace_id": "5da49cb9"
+    }
+  },
+  {
+    "timestamp": "2026-06-06T02:41:00.003038+00:00",
+    "source": "redis",
+    "level": "DEBUG",
+    "service": "redis",
+    "message": "Sequential scan on orders = 3.2M rows \u2014 missing index on customer_id + status",
+    "metadata": {
+      "host": "web-server-02",
+      "db_index": 10,
+      "client_ip": "10.198.200.151"
+    }
+  },
+  {
+    "timestamp": "2026-07-28T14:19:06.433558+00:00",
+    "source": "nginx",
+    "level": "WARNING",
+    "service": "nginx",
+    "message": "Dependency 'auth-svc' latency p99=3400ms \u2014 degrading gracefully with cached tokens",
+    "metadata": {
+      "host": "cache-server-01",
+      "upstream": "10.152.43.173",
+      "request_id": "224a66a6",
+      "status_code": 200
+    }
+  },
+  {
+    "timestamp": "2026-05-29T23:22:34.174546+00:00",
+    "source": "redis",
+    "level": "ERROR",
+    "service": "redis",
+    "message": "max_replication_slots (10) reached \u2014 cannot create new slot for additional replica",
+    "metadata": {
+      "host": "web-server-02",
+      "db_index": 12,
+      "client_ip": "10.214.70.148"
+    }
+  },
+  {
+    "timestamp": "2026-06-26T07:12:27.597224+00:00",
+    "source": "docker",
+    "level": "CRITICAL",
+    "service": "docker",
+    "message": "Dependency 'auth-svc' latency p99=3400ms \u2014 degrading gracefully with cached tokens",
+    "metadata": {
+      "host": "db-primary",
+      "container_id": "8e0ec033",
+      "image": "prometheus:v2.50"
+    }
+  },
+  {
+    "timestamp": "2026-06-10T19:29:34.194003+00:00",
+    "source": "auth",
+    "level": "WARNING",
+    "service": "auth",
+    "message": "WAL segment size 16MB filling every 8 seconds \u2014 archive_command falling behind",
+    "metadata": {
+      "host": "db-primary",
+      "user": "admin",
+      "ip": "10.183.4.125",
+      "session_id": "22f3f068"
+    }
+  },
+  {
+    "timestamp": "2026-07-11T06:37:50.458526+00:00",
+    "source": "docker",
+    "level": "DEBUG",
+    "service": "docker",
+    "message": "CHECKPOINT occurring every 20 seconds \u2014 immediate checkpoint requested by long-running tx",
+    "metadata": {
+      "host": "storage-node-01",
+      "container_id": "af4847f0",
+      "image": "rabbitmq:3.12"
+    }
+  },
+  {
+    "timestamp": "2026-05-28T13:16:03.118241+00:00",
+    "source": "backup-service",
+    "level": "CRITICAL",
+    "service": "backup-service",
+    "message": "systemd-unit: app-api.service failed to start \u2014 missing env var DB_PASSWORD",
+    "metadata": {
+      "host": "gpu-node-02",
+      "job_name": "nightly-snapshot",
+      "status": "completed"
+    }
+  },
+  {
+    "timestamp": "2026-06-08T11:31:40.331658+00:00",
+    "source": "auth",
+    "level": "WARNING",
+    "service": "auth",
+    "message": "Index scan on orders.created_at_seq reversed \u2014 index bloat suspected",
+    "metadata": {
+      "host": "storage-node-01",
+      "user": "svc-account",
+      "ip": "10.57.58.69",
+      "session_id": "b80f16c5"
+    }
+  },
+  {
+    "timestamp": "2026-05-22T17:13:10.228711+00:00",
+    "source": "gpu-operator",
+    "level": "WARNING",
+    "service": "gpu-operator",
+    "message": "Comgr: compilation of rocBLAS kernel timed out after 60s",
+    "metadata": {
+      "host": "gpu-node-01",
+      "gpu_id": 1,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-06-06T03:40:51.187588+00:00",
+    "source": "auth",
+    "level": "INFO",
+    "service": "auth",
+    "message": "Health check FAILED: /health returns 503 \u2014 upstream dependencies unavailable",
+    "metadata": {
+      "host": "gpu-node-02",
+      "user": "svc-account",
+      "ip": "10.60.121.54",
+      "session_id": "a1fd4187"
+    }
+  },
+  {
+    "timestamp": "2026-07-23T03:16:28.234331+00:00",
+    "source": "postgresql",
+    "level": "CRITICAL",
+    "service": "postgresql",
+    "message": "Thread pool status: active=180, queued=450, rejected=23 \u2014 pool size=200",
+    "metadata": {
+      "host": "db-primary",
+      "database": "infraheal_staging",
+      "query_id": "89ecbc51",
+      "duration_ms": 1618.9
+    }
+  },
+  {
+    "timestamp": "2026-07-04T01:06:31.868630+00:00",
+    "source": "backup-service",
+    "level": "ERROR",
+    "service": "backup-service",
+    "message": "max_replication_slots (10) reached \u2014 cannot create new slot for additional replica",
+    "metadata": {
+      "host": "k8s-node-01",
+      "job_name": "wal-archive-cleanup",
+      "status": "completed"
+    }
+  },
+  {
+    "timestamp": "2026-08-10T19:46:12.890613+00:00",
+    "source": "postgresql",
+    "level": "DEBUG",
+    "service": "postgresql",
+    "message": "Zero-downtime deploy: old pods draining connections \u2014 active: 12, draining: 4",
+    "metadata": {
+      "host": "web-server-01",
+      "database": "infraheal_staging",
+      "query_id": "ddb7570e",
+      "duration_ms": 1249.1
+    }
+  },
+  {
+    "timestamp": "2026-07-21T00:46:58.616243+00:00",
+    "source": "backup-service",
+    "level": "ERROR",
+    "service": "backup-service",
+    "message": "Sequential scan on orders = 3.2M rows \u2014 missing index on customer_id + status",
+    "metadata": {
+      "host": "db-replica",
+      "job_name": "prod-db-backup",
+      "status": "warning"
+    }
+  },
+  {
+    "timestamp": "2026-06-16T06:22:20.021332+00:00",
+    "source": "storage",
+    "level": "WARNING",
+    "service": "storage",
+    "message": "Cache hit rate dropped from 94% to 12% after Redis restart \u2014 thundering herd in progress",
+    "metadata": {
+      "host": "gpu-node-01",
+      "volume": "vol-02faa1",
+      "io_wait_ms": 201.4
+    }
+  },
+  {
+    "timestamp": "2026-06-23T10:08:33.367203+00:00",
+    "source": "backup-service",
+    "level": "ERROR",
+    "service": "backup-service",
+    "message": "DLQ for order-service: 2,340,000 messages \u2014 disk usage at 95%",
+    "metadata": {
+      "host": "cache-server-01",
+      "job_name": "wal-archive-cleanup",
+      "status": "completed"
+    }
+  },
+  {
+    "timestamp": "2026-07-29T00:13:46.120612+00:00",
+    "source": "backup-service",
+    "level": "CRITICAL",
+    "service": "backup-service",
+    "message": "WAL disk usage: 99% \u2014 PostgreSQL entering read-only mode",
+    "metadata": {
+      "host": "cache-server-01",
+      "job_name": "prod-db-backup",
+      "status": "failed"
+    }
+  },
+  {
+    "timestamp": "2026-06-11T13:23:19.403211+00:00",
+    "source": "redis",
+    "level": "DEBUG",
+    "service": "redis",
+    "message": "acpid: received event 'button/power PBTN 00000080' \u2014 initiating graceful shutdown",
+    "metadata": {
+      "host": "k8s-node-01",
+      "db_index": 10,
+      "client_ip": "10.66.248.202"
+    }
+  },
+  {
+    "timestamp": "2026-05-22T11:04:53.193140+00:00",
+    "source": "kubernetes",
+    "level": "INFO",
+    "service": "kubernetes",
+    "message": "Index scan on orders.created_at_seq reversed \u2014 index bloat suspected",
+    "metadata": {
+      "host": "web-server-01",
+      "pod": "api-085607",
+      "namespace": "production",
+      "container": "api",
+      "node": "gpu-node-02"
+    }
+  },
+  {
+    "timestamp": "2026-05-31T17:00:26.372946+00:00",
+    "source": "systemd",
+    "level": "INFO",
+    "service": "systemd",
+    "message": "Zero-downtime deploy: old pods draining connections \u2014 active: 12, draining: 4",
+    "metadata": {
+      "host": "gpu-node-01",
+      "unit": "nginx",
+      "pid": 11418
+    }
+  },
+  {
+    "timestamp": "2026-06-05T00:50:27.029998+00:00",
+    "source": "auth",
+    "level": "INFO",
+    "service": "auth",
+    "message": "udev: event failed for /devices/pci0000:00/0000:00:03.0 \u2014 timeout processing",
+    "metadata": {
+      "host": "cache-server-01",
+      "user": "jdoe",
+      "ip": "10.26.202.161",
+      "session_id": "3bf0d9c1"
+    }
+  },
+  {
+    "timestamp": "2026-05-13T14:20:47.097507+00:00",
+    "source": "storage",
+    "level": "INFO",
+    "service": "storage",
+    "message": "Standby pg-replica-01 in recovery conflict with hot-standby query on orders table",
+    "metadata": {
+      "host": "web-server-02",
+      "volume": "vol-027e79",
+      "io_wait_ms": 66.3
+    }
+  },
+  {
+    "timestamp": "2026-05-14T08:03:35.304603+00:00",
+    "source": "redis",
+    "level": "CRITICAL",
+    "service": "redis",
+    "message": "OpenTelemetry span: POST /api/v1/orders took 4500ms (99th percentile: 800ms)",
+    "metadata": {
+      "host": "gpu-node-02",
+      "db_index": 13,
+      "client_ip": "10.67.244.19"
+    }
+  },
+  {
+    "timestamp": "2026-07-18T06:26:56.056597+00:00",
+    "source": "redis",
+    "level": "DEBUG",
+    "service": "redis",
+    "message": "Rate limiter active: client 10.0.4.20 exceeded 1000 req/min \u2014 returning 429",
+    "metadata": {
+      "host": "web-server-02",
+      "db_index": 3,
+      "client_ip": "10.160.188.226"
+    }
+  },
+  {
+    "timestamp": "2026-07-22T02:40:28.720867+00:00",
+    "source": "auth",
+    "level": "WARNING",
+    "service": "auth",
+    "message": "Distributed tracing: request abc123 traced across 8 services with 1200ms total latency",
+    "metadata": {
+      "host": "gpu-node-01",
+      "user": "jdoe",
+      "ip": "10.35.4.157",
+      "session_id": "a667b982"
+    }
+  },
+  {
+    "timestamp": "2026-07-09T00:39:10.378139+00:00",
+    "source": "systemd",
+    "level": "ERROR",
+    "service": "systemd",
+    "message": "GlusterFS volume 'gv0' split-brain detected on file 'db.tar.gz' between brick1 and brick3",
+    "metadata": {
+      "host": "db-replica",
+      "unit": "redis-server",
+      "pid": 57358
+    }
+  },
+  {
+    "timestamp": "2026-05-26T02:25:42.188893+00:00",
+    "source": "redis",
+    "level": "INFO",
+    "service": "redis",
+    "message": "OpenTelemetry span: POST /api/v1/orders took 4500ms (99th percentile: 800ms)",
+    "metadata": {
+      "host": "web-server-02",
+      "db_index": 12,
+      "client_ip": "10.179.219.81"
+    }
+  },
+  {
+    "timestamp": "2026-06-07T10:15:00.500403+00:00",
+    "source": "cert-manager",
+    "level": "INFO",
+    "service": "cert-manager",
+    "message": "Message broker connection failed: amqp://rabbitmq.infraheal.internal:5672 refused",
+    "metadata": {
+      "host": "db-replica",
+      "certificate": "*.infraheal.internal",
+      "days_remaining": 71
+    }
+  },
+  {
+    "timestamp": "2026-07-28T19:26:49.004125+00:00",
+    "source": "message-broker",
+    "level": "ERROR",
+    "service": "message-broker",
+    "message": "Kubernetes scheduler: unable to schedule pod gpu-inference-2 \u2014 0/7 nodes available (3 GPU unfit, 4 resource)",
+    "metadata": {
+      "host": "web-server-01",
+      "broker": "kafka-1",
+      "partition": 8
+    }
+  },
+  {
+    "timestamp": "2026-06-09T02:22:14.990458+00:00",
+    "source": "message-broker",
+    "level": "WARNING",
+    "service": "message-broker",
+    "message": "Circuit breaker opened for payments-svc: failure rate 62% (threshold 50%)",
+    "metadata": {
+      "host": "gpu-node-01",
+      "broker": "kafka-1",
+      "partition": 7
+    }
+  },
+  {
+    "timestamp": "2026-06-27T11:05:53.840936+00:00",
+    "source": "docker",
+    "level": "INFO",
+    "service": "docker",
+    "message": "Cache hit rate dropped from 94% to 12% after Redis restart \u2014 thundering herd in progress",
+    "metadata": {
+      "host": "db-replica",
+      "container_id": "fa4a58ef",
+      "image": "rocminference:5.7"
+    }
+  },
+  {
+    "timestamp": "2026-07-29T23:21:29.694612+00:00",
+    "source": "kubernetes",
+    "level": "WARNING",
+    "service": "kubernetes",
+    "message": "pg_stat_replication: replay_lag=45min on standby pg-replica-02",
+    "metadata": {
+      "host": "gpu-node-01",
+      "pod": "api-bb1757",
+      "namespace": "security",
+      "container": "worker",
+      "node": "db-primary"
+    }
+  },
+  {
+    "timestamp": "2026-05-15T00:02:56.788170+00:00",
+    "source": "cert-manager",
+    "level": "WARNING",
+    "service": "cert-manager",
+    "message": "Hystrix fallback triggered for inventory-svc: timeout waiting for connection from pool",
+    "metadata": {
+      "host": "web-server-02",
+      "certificate": "*.infraheal.internal",
+      "days_remaining": 34
+    }
+  },
+  {
+    "timestamp": "2026-08-06T21:08:55.656261+00:00",
+    "source": "redis",
+    "level": "INFO",
+    "service": "redis",
+    "message": "WAL disk usage: 99% \u2014 PostgreSQL entering read-only mode",
+    "metadata": {
+      "host": "web-server-01",
+      "db_index": 9,
+      "client_ip": "10.212.216.180"
+    }
+  },
+  {
+    "timestamp": "2026-06-30T21:20:08.064866+00:00",
+    "source": "docker",
+    "level": "INFO",
+    "service": "docker",
+    "message": "Retry exhausted for queue 'email-notifications': message id e4f5a6 sent to DLQ",
+    "metadata": {
+      "host": "storage-node-01",
+      "container_id": "4708203b",
+      "image": "gpu-inference:2.3"
+    }
+  },
+  {
+    "timestamp": "2026-08-09T04:31:00.876741+00:00",
+    "source": "nginx",
+    "level": "CRITICAL",
+    "service": "nginx",
+    "message": "PostgreSQL 15.2 detected data checksum failure on block 4281 of file base/12345/67890",
+    "metadata": {
+      "host": "db-replica",
+      "upstream": "10.33.158.179",
+      "request_id": "3d175712",
+      "status_code": 301
+    }
+  },
+  {
+    "timestamp": "2026-06-23T07:16:59.445703+00:00",
+    "source": "nginx",
+    "level": "DEBUG",
+    "service": "nginx",
+    "message": "Thread pool status: active=180, queued=450, rejected=23 \u2014 pool size=200",
+    "metadata": {
+      "host": "web-server-02",
+      "upstream": "10.158.89.31",
+      "request_id": "02e7df89",
+      "status_code": 500
+    }
+  },
+  {
+    "timestamp": "2026-06-15T23:14:16.694613+00:00",
+    "source": "kubernetes",
+    "level": "ERROR",
+    "service": "kubernetes",
+    "message": "Linux OOM killer invoked: process java (PID 4567) scored 87, killed /var/log/messages",
+    "metadata": {
+      "host": "db-primary",
+      "pod": "api-3c71ee",
+      "namespace": "production",
+      "container": "sidecar",
+      "node": "gpu-node-01"
+    }
+  },
+  {
+    "timestamp": "2026-07-16T14:37:05.578007+00:00",
+    "source": "auth",
+    "level": "INFO",
+    "service": "auth",
+    "message": "Cache hit rate dropped from 94% to 12% after Redis restart \u2014 thundering herd in progress",
+    "metadata": {
+      "host": "k8s-node-01",
+      "user": "svc-account",
+      "ip": "10.233.184.15",
+      "session_id": "911f730b"
+    }
+  },
+  {
+    "timestamp": "2026-07-22T02:23:25.940534+00:00",
+    "source": "kubernetes",
+    "level": "WARNING",
+    "service": "kubernetes",
+    "message": "Kafka consumer group 'order-processor' lag: 12,500,000 messages (estimated catchup: 23min)",
+    "metadata": {
+      "host": "k8s-node-01",
+      "pod": "api-74f16c",
+      "namespace": "security",
+      "container": "api",
+      "node": "web-server-01"
+    }
+  },
+  {
+    "timestamp": "2026-06-24T23:00:41.448556+00:00",
+    "source": "application",
+    "level": "WARNING",
+    "service": "application",
+    "message": "Deadlock detected: process 32145 waiting for ShareLock on orders_pkey; process 32147 waiting for ShareLock on inventory_pkey",
+    "metadata": {
+      "host": "web-server-01",
+      "request_id": "eb93f78c",
+      "endpoint": "/api/v1/users",
+      "trace_id": "db842660"
+    }
+  },
+  {
+    "timestamp": "2026-06-11T11:05:32.464535+00:00",
+    "source": "gpu-operator",
+    "level": "CRITICAL",
+    "service": "gpu-operator",
+    "message": "amdgpu: PCIe link down on bus 03:00.0 \u2014 scheduling GPU reset",
+    "metadata": {
+      "host": "db-replica",
+      "gpu_id": 2,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-06-16T01:15:56.304554+00:00",
+    "source": "auth",
+    "level": "INFO",
+    "service": "auth",
+    "message": "Replication slot 'standby_1' active \u2014 WAL retention 200GB, removing old slot",
+    "metadata": {
+      "host": "monitoring-01",
+      "user": "admin",
+      "ip": "10.91.114.206",
+      "session_id": "66a302d6"
+    }
+  },
+  {
+    "timestamp": "2026-06-11T22:58:11.967342+00:00",
+    "source": "systemd",
+    "level": "ERROR",
+    "service": "systemd",
+    "message": "JVM Full GC pause: 11.2 seconds \u2014 application unavailable during pause",
+    "metadata": {
+      "host": "k8s-node-01",
+      "unit": "nginx",
+      "pid": 14151
+    }
+  },
+  {
+    "timestamp": "2026-06-04T07:58:53.133873+00:00",
+    "source": "auth",
+    "level": "ERROR",
+    "service": "auth",
+    "message": "ZFS pool tank0 checksum errors: 47 on device wwn-0x5000c500a1b2c3d4",
+    "metadata": {
+      "host": "monitoring-01",
+      "user": "jdoe",
+      "ip": "10.77.3.239",
+      "session_id": "68f82063"
+    }
+  },
+  {
+    "timestamp": "2026-07-09T17:38:03.744053+00:00",
+    "source": "redis",
+    "level": "CRITICAL",
+    "service": "redis",
+    "message": "JVM Full GC pause: 11.2 seconds \u2014 application unavailable during pause",
+    "metadata": {
+      "host": "cache-server-01",
+      "db_index": 10,
+      "client_ip": "10.0.192.218"
+    }
+  },
+  {
+    "timestamp": "2026-05-31T23:13:11.443716+00:00",
+    "source": "backup-service",
+    "level": "ERROR",
+    "service": "backup-service",
+    "message": "pg_stat_replication: replay_lag=45min on standby pg-replica-02",
+    "metadata": {
+      "host": "web-server-02",
+      "job_name": "nightly-snapshot",
+      "status": "completed"
+    }
+  },
+  {
+    "timestamp": "2026-05-17T10:49:28.466108+00:00",
+    "source": "postgresql",
+    "level": "ERROR",
+    "service": "postgresql",
+    "message": "Rate limiter active: client 10.0.4.20 exceeded 1000 req/min \u2014 returning 429",
+    "metadata": {
+      "host": "web-server-02",
+      "database": "infraheal_staging",
+      "query_id": "e5449887",
+      "duration_ms": 2292.8
+    }
+  },
+  {
+    "timestamp": "2026-05-22T02:26:46.793504+00:00",
+    "source": "backup-service",
+    "level": "INFO",
+    "service": "backup-service",
+    "message": "Distributed tracing: request abc123 traced across 8 services with 1200ms total latency",
+    "metadata": {
+      "host": "monitoring-01",
+      "job_name": "wal-archive-cleanup",
+      "status": "failed"
+    }
+  },
+  {
+    "timestamp": "2026-05-19T02:31:51.546731+00:00",
+    "source": "nginx",
+    "level": "CRITICAL",
+    "service": "nginx",
+    "message": "Zero-downtime deploy: old pods draining connections \u2014 active: 12, draining: 4",
+    "metadata": {
+      "host": "monitoring-01",
+      "upstream": "10.121.149.67",
+      "request_id": "d9d57b02",
+      "status_code": 500
+    }
+  },
+  {
+    "timestamp": "2026-06-23T05:57:25.059606+00:00",
+    "source": "backup-service",
+    "level": "ERROR",
+    "service": "backup-service",
+    "message": "BGP route 203.0.113.0/22 withdrawn from peer AS64512 due to prefix-length mismatch",
+    "metadata": {
+      "host": "cache-server-01",
+      "job_name": "wal-archive-cleanup",
+      "status": "completed"
+    }
+  },
+  {
+    "timestamp": "2026-06-22T23:03:51.030429+00:00",
+    "source": "postgresql",
+    "level": "INFO",
+    "service": "postgresql",
+    "message": "chronyd: clock skew too large (230ms) \u2014 stepping system clock",
+    "metadata": {
+      "host": "db-primary",
+      "database": "infraheal_analytics",
+      "query_id": "c534ca08",
+      "duration_ms": 2260.1
+    }
+  },
+  {
+    "timestamp": "2026-05-21T15:18:32.825465+00:00",
+    "source": "systemd",
+    "level": "ERROR",
+    "service": "systemd",
+    "message": "Kubernetes scheduler: unable to schedule pod gpu-inference-2 \u2014 0/7 nodes available (3 GPU unfit, 4 resource)",
+    "metadata": {
+      "host": "web-server-02",
+      "unit": "gpu-operator",
+      "pid": 3643
+    }
+  },
+  {
+    "timestamp": "2026-05-21T17:01:11.539882+00:00",
+    "source": "redis",
+    "level": "ERROR",
+    "service": "redis",
+    "message": "PostgreSQL 15.2 detected data checksum failure on block 4281 of file base/12345/67890",
+    "metadata": {
+      "host": "db-primary",
+      "db_index": 1,
+      "client_ip": "10.153.133.210"
+    }
+  },
+  {
+    "timestamp": "2026-07-29T09:56:19.744741+00:00",
+    "source": "postgresql",
+    "level": "INFO",
+    "service": "postgresql",
+    "message": "pg_hba.conf: new entry added for replication user from 10.0.0.0/8 with scram-sha-256",
+    "metadata": {
+      "host": "gpu-node-01",
+      "database": "infraheal_prod",
+      "query_id": "183fea70",
+      "duration_ms": 510.4
+    }
+  },
+  {
+    "timestamp": "2026-05-14T13:49:37.034565+00:00",
+    "source": "cert-manager",
+    "level": "INFO",
+    "service": "cert-manager",
+    "message": "systemd-unit: app-api.service failed to start \u2014 missing env var DB_PASSWORD",
+    "metadata": {
+      "host": "web-server-02",
+      "certificate": "*.infraheal.internal",
+      "days_remaining": 26
+    }
+  },
+  {
+    "timestamp": "2026-07-04T21:49:09.879796+00:00",
+    "source": "docker",
+    "level": "ERROR",
+    "service": "docker",
+    "message": "CRITICAL: credential leak detected \u2014 AWS key pair AKIA*** found in public git push",
+    "metadata": {
+      "host": "web-server-02",
+      "container_id": "ff45f8a2",
+      "image": "postgres:15"
+    }
+  },
+  {
+    "timestamp": "2026-05-21T18:40:25.894197+00:00",
+    "source": "storage",
+    "level": "WARNING",
+    "service": "storage",
+    "message": "systemd-tmpfiles: failed to create file /tmp/cleanup-XXXX: read-only filesystem",
+    "metadata": {
+      "host": "db-primary",
+      "volume": "vol-03ebbf",
+      "io_wait_ms": 21.3
+    }
+  },
+  {
+    "timestamp": "2026-08-04T16:07:28.297752+00:00",
+    "source": "systemd",
+    "level": "INFO",
+    "service": "systemd",
+    "message": "Transaction ID wraparound imminent: vacuum required on database infraheal_prod",
+    "metadata": {
+      "host": "db-primary",
+      "unit": "redis-server",
+      "pid": 33514
+    }
+  },
+  {
+    "timestamp": "2026-05-29T01:15:48.879196+00:00",
+    "source": "application",
+    "level": "CRITICAL",
+    "service": "application",
+    "message": "VPC flow log: rejected connection to 10.0.1.50:6379 from 10.0.5.100 (no sg rule)",
+    "metadata": {
+      "host": "gpu-node-01",
+      "request_id": "47a48c42",
+      "endpoint": "/api/v1/users",
+      "trace_id": "4b8c031f"
+    }
+  },
+  {
+    "timestamp": "2026-05-18T23:42:53.240022+00:00",
+    "source": "docker",
+    "level": "DEBUG",
+    "service": "docker",
+    "message": "Prometheus rule evaluation error: query 'up == 0' returned 0 results for 54320 series",
+    "metadata": {
+      "host": "gpu-node-02",
+      "container_id": "620d4a1f",
+      "image": "rabbitmq:3.12"
+    }
+  },
+  {
+    "timestamp": "2026-07-09T06:25:46.127501+00:00",
+    "source": "redis",
+    "level": "CRITICAL",
+    "service": "redis",
+    "message": "Inter-service deadlock: service-a holding lock on order:1234, waiting for inventory:5678",
+    "metadata": {
+      "host": "db-replica",
+      "db_index": 12,
+      "client_ip": "10.183.245.140"
+    }
+  },
+  {
+    "timestamp": "2026-08-03T15:22:56.481069+00:00",
+    "source": "cert-manager",
+    "level": "WARNING",
+    "service": "cert-manager",
+    "message": "Replication slot 'standby_1' active \u2014 WAL retention 200GB, removing old slot",
+    "metadata": {
+      "host": "cache-server-01",
+      "certificate": "api.infraheal.com",
+      "days_remaining": 50
+    }
+  },
+  {
+    "timestamp": "2026-06-11T04:46:31.963553+00:00",
+    "source": "auth",
+    "level": "WARNING",
+    "service": "auth",
+    "message": "systemd-unit: app-api.service failed to start \u2014 missing env var DB_PASSWORD",
+    "metadata": {
+      "host": "web-server-01",
+      "user": "admin",
+      "ip": "10.143.29.208",
+      "session_id": "fdd4ff21"
+    }
+  },
+  {
+    "timestamp": "2026-08-11T11:08:54.287205+00:00",
+    "source": "gpu-operator",
+    "level": "ERROR",
+    "service": "gpu-operator",
+    "message": "AMDGPU ECC uncorrectable error on GPU-2 at address 0x7f2a4c000000",
+    "metadata": {
+      "host": "monitoring-01",
+      "gpu_id": 0,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-06-30T12:46:10.054235+00:00",
+    "source": "redis",
+    "level": "WARNING",
+    "service": "redis",
+    "message": "Thread pool status: active=180, queued=450, rejected=23 \u2014 pool size=200",
+    "metadata": {
+      "host": "k8s-node-01",
+      "db_index": 7,
+      "client_ip": "10.198.181.240"
+    }
+  },
+  {
+    "timestamp": "2026-07-05T19:50:31.703395+00:00",
+    "source": "postgresql",
+    "level": "WARNING",
+    "service": "postgresql",
+    "message": "Vault agent auto-auth failed: cannot renew token \u2014 backend unreachable",
+    "metadata": {
+      "host": "db-replica",
+      "database": "infraheal_staging",
+      "query_id": "b357f3f9",
+      "duration_ms": 4737.8
+    }
+  },
+  {
+    "timestamp": "2026-08-06T20:28:33.503013+00:00",
+    "source": "message-broker",
+    "level": "WARNING",
+    "service": "message-broker",
+    "message": "pg_stat_statements: top query by total_time = 4.3 hours (UPDATE inventory SET qty = qty - 1)",
+    "metadata": {
+      "host": "monitoring-01",
+      "broker": "rabbit-1",
+      "partition": 2
+    }
+  },
+  {
+    "timestamp": "2026-05-18T13:19:22.187607+00:00",
+    "source": "systemd",
+    "level": "INFO",
+    "service": "systemd",
+    "message": "systemd-unit: app-api.service failed to start \u2014 missing env var DB_PASSWORD",
+    "metadata": {
+      "host": "web-server-02",
+      "unit": "app-api",
+      "pid": 35501
+    }
+  },
+  {
+    "timestamp": "2026-08-04T02:39:20.741719+00:00",
+    "source": "systemd",
+    "level": "INFO",
+    "service": "systemd",
+    "message": "systemd unit 'app-api.service' hashes do not match expected \u2014 possible drift after reboot",
+    "metadata": {
+      "host": "cache-server-01",
+      "unit": "postgresql",
+      "pid": 23331
+    }
+  },
+  {
+    "timestamp": "2026-05-18T20:38:27.167083+00:00",
+    "source": "backup-service",
+    "level": "WARNING",
+    "service": "backup-service",
+    "message": "Redis pipeline execution failed: connection lost while sending 150 commands",
+    "metadata": {
+      "host": "cache-server-01",
+      "job_name": "wal-archive-cleanup",
+      "status": "warning"
+    }
+  },
+  {
+    "timestamp": "2026-07-29T23:02:45.772216+00:00",
+    "source": "postgresql",
+    "level": "INFO",
+    "service": "postgresql",
+    "message": "Cache hit rate dropped from 94% to 12% after Redis restart \u2014 thundering herd in progress",
+    "metadata": {
+      "host": "storage-node-01",
+      "database": "infraheal_analytics",
+      "query_id": "a981fa54",
+      "duration_ms": 2930.5
+    }
+  },
+  {
+    "timestamp": "2026-05-25T18:44:08.177036+00:00",
+    "source": "kubernetes",
+    "level": "ERROR",
+    "service": "kubernetes",
+    "message": "Read-only filesystem detected on /data/pg_wal after power loss \u2014 fsck required",
+    "metadata": {
+      "host": "cache-server-01",
+      "pod": "api-a272f8",
+      "namespace": "staging",
+      "container": "worker",
+      "node": "storage-node-01"
+    }
+  },
+  {
+    "timestamp": "2026-07-12T09:32:54.261836+00:00",
+    "source": "backup-service",
+    "level": "ERROR",
+    "service": "backup-service",
+    "message": "PostgreSQL replication lag: 1800 seconds on replica pg-replica-01",
+    "metadata": {
+      "host": "db-replica",
+      "job_name": "nightly-snapshot",
+      "status": "warning"
+    }
+  },
+  {
+    "timestamp": "2026-05-29T11:50:59.651352+00:00",
+    "source": "backup-service",
+    "level": "ERROR",
+    "service": "backup-service",
+    "message": "systemd-tmpfiles: failed to create file /tmp/cleanup-XXXX: read-only filesystem",
+    "metadata": {
+      "host": "db-primary",
+      "job_name": "nightly-snapshot",
+      "status": "warning"
+    }
+  },
+  {
+    "timestamp": "2026-06-11T03:20:54.706624+00:00",
+    "source": "application",
+    "level": "WARNING",
+    "service": "application",
+    "message": "systemd-unit: app-api.service failed to start \u2014 missing env var DB_PASSWORD",
+    "metadata": {
+      "host": "monitoring-01",
+      "request_id": "7f05fbf5",
+      "endpoint": "/api/v1/payments",
+      "trace_id": "beced21a"
+    }
+  },
+  {
+    "timestamp": "2026-05-28T14:38:12.552660+00:00",
+    "source": "redis",
+    "level": "ERROR",
+    "service": "redis",
+    "message": "Health check FAILED: /health returns 503 \u2014 upstream dependencies unavailable",
+    "metadata": {
+      "host": "cache-server-01",
+      "db_index": 10,
+      "client_ip": "10.228.5.68"
+    }
+  },
+  {
+    "timestamp": "2026-06-14T01:02:21.514914+00:00",
+    "source": "redis",
+    "level": "WARNING",
+    "service": "redis",
+    "message": "Rate limiter active: client 10.0.4.20 exceeded 1000 req/min \u2014 returning 429",
+    "metadata": {
+      "host": "web-server-02",
+      "db_index": 0,
+      "client_ip": "10.24.197.113"
+    }
+  },
+  {
+    "timestamp": "2026-08-01T02:37:56.333238+00:00",
+    "source": "backup-service",
+    "level": "CRITICAL",
+    "service": "backup-service",
+    "message": "PostgreSQL replication lag: 1800 seconds on replica pg-replica-01",
+    "metadata": {
+      "host": "db-primary",
+      "job_name": "nightly-snapshot",
+      "status": "warning"
+    }
+  },
+  {
+    "timestamp": "2026-07-23T11:39:24.437047+00:00",
+    "source": "docker",
+    "level": "INFO",
+    "service": "docker",
+    "message": "systemd-unit: app-api.service failed to start \u2014 missing env var DB_PASSWORD",
+    "metadata": {
+      "host": "gpu-node-02",
+      "container_id": "29a3db6d",
+      "image": "nginx:1.25"
+    }
+  },
+  {
+    "timestamp": "2026-05-15T07:22:06.515019+00:00",
+    "source": "cert-manager",
+    "level": "INFO",
+    "service": "cert-manager",
+    "message": "etcd leader election: current leader member-2 health-check failed; new leader member-1",
+    "metadata": {
+      "host": "k8s-node-01",
+      "certificate": "*.infraheal.internal",
+      "days_remaining": 10
+    }
+  },
+  {
+    "timestamp": "2026-05-27T23:33:13.352430+00:00",
+    "source": "kubernetes",
+    "level": "WARNING",
+    "service": "kubernetes",
+    "message": "Cache hit rate dropped from 94% to 12% after Redis restart \u2014 thundering herd in progress",
+    "metadata": {
+      "host": "gpu-node-01",
+      "pod": "api-2fab6a",
+      "namespace": "monitoring",
+      "container": "worker",
+      "node": "monitoring-01"
+    }
+  },
+  {
+    "timestamp": "2026-08-06T07:40:30.999001+00:00",
+    "source": "systemd",
+    "level": "INFO",
+    "service": "systemd",
+    "message": "Configuration reloaded: feature flag 'new-checkout-flow' enabled for 10% of users",
+    "metadata": {
+      "host": "gpu-node-01",
+      "unit": "gpu-operator",
+      "pid": 59310
+    }
+  },
+  {
+    "timestamp": "2026-05-22T14:43:00.738129+00:00",
+    "source": "docker",
+    "level": "WARNING",
+    "service": "docker",
+    "message": "Prometheus TSDB WAL replay failed at segment 00001234: unexpected CRC mismatch",
+    "metadata": {
+      "host": "web-server-01",
+      "container_id": "f9722cc1",
+      "image": "rabbitmq:3.12"
+    }
+  },
+  {
+    "timestamp": "2026-06-09T06:23:07.436372+00:00",
+    "source": "backup-service",
+    "level": "ERROR",
+    "service": "backup-service",
+    "message": "Lustre OST 3 in recovery mode after MDS failover \u2014 client evictions in progress",
+    "metadata": {
+      "host": "k8s-node-01",
+      "job_name": "wal-archive-cleanup",
+      "status": "failed"
+    }
+  },
+  {
+    "timestamp": "2026-05-13T20:14:29.889190+00:00",
+    "source": "postgresql",
+    "level": "INFO",
+    "service": "postgresql",
+    "message": "Health check FAILED: /health returns 503 \u2014 upstream dependencies unavailable",
+    "metadata": {
+      "host": "cache-server-01",
+      "database": "infraheal_analytics",
+      "query_id": "7af6cd41",
+      "duration_ms": 485.8
+    }
+  },
+  {
+    "timestamp": "2026-08-09T10:26:40.644090+00:00",
+    "source": "redis",
+    "level": "WARNING",
+    "service": "redis",
+    "message": "PostgreSQL 15.2 detected data checksum failure on block 4281 of file base/12345/67890",
+    "metadata": {
+      "host": "k8s-node-01",
+      "db_index": 3,
+      "client_ip": "10.157.203.121"
+    }
+  },
+  {
+    "timestamp": "2026-07-10T06:25:52.990633+00:00",
+    "source": "systemd",
+    "level": "ERROR",
+    "service": "systemd",
+    "message": "PostgreSQL 15.2 detected data checksum failure on block 4281 of file base/12345/67890",
+    "metadata": {
+      "host": "web-server-02",
+      "unit": "nginx",
+      "pid": 13227
+    }
+  },
+  {
+    "timestamp": "2026-06-22T01:50:21.528103+00:00",
+    "source": "systemd",
+    "level": "INFO",
+    "service": "systemd",
+    "message": "etcd leader election: current leader member-2 health-check failed; new leader member-1",
+    "metadata": {
+      "host": "k8s-node-01",
+      "unit": "postgresql",
+      "pid": 55858
+    }
+  },
+  {
+    "timestamp": "2026-07-20T04:49:40.465088+00:00",
+    "source": "auth",
+    "level": "INFO",
+    "service": "auth",
+    "message": "Application startup: waiting for database connection... attempt 12/30",
+    "metadata": {
+      "host": "db-primary",
+      "user": "admin",
+      "ip": "10.176.211.249",
+      "session_id": "85c7f3be"
+    }
+  },
+  {
+    "timestamp": "2026-07-31T20:22:20.488591+00:00",
+    "source": "gpu-operator",
+    "level": "CRITICAL",
+    "service": "gpu-operator",
+    "message": "ROCm 5.6.3 compatibility verified with kernel 6.2.0-rc4",
+    "metadata": {
+      "host": "monitoring-01",
+      "gpu_id": 2,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-06-27T16:32:21.033174+00:00",
+    "source": "nginx",
+    "level": "DEBUG",
+    "service": "nginx",
+    "message": "Pgbouncer pool exhausted: 150 of 150 connections used, 12 queued waiting",
+    "metadata": {
+      "host": "web-server-01",
+      "upstream": "10.75.61.244",
+      "request_id": "c1d71f4a",
+      "status_code": 301
+    }
+  },
+  {
+    "timestamp": "2026-05-24T20:33:42.325413+00:00",
+    "source": "postgresql",
+    "level": "WARNING",
+    "service": "postgresql",
+    "message": "Slow query detected: SELECT * FROM orders JOIN line_items ON ... (duration: 45600ms)",
+    "metadata": {
+      "host": "db-replica",
+      "database": "infraheal_prod",
+      "query_id": "6f75ee8a",
+      "duration_ms": 4986.3
+    }
+  },
+  {
+    "timestamp": "2026-06-05T17:02:04.335265+00:00",
+    "source": "storage",
+    "level": "INFO",
+    "service": "storage",
+    "message": "Hystrix fallback triggered for inventory-svc: timeout waiting for connection from pool",
+    "metadata": {
+      "host": "monitoring-01",
+      "volume": "vol-02c8ed",
+      "io_wait_ms": 194.0
+    }
+  },
+  {
+    "timestamp": "2026-07-29T14:18:29.628705+00:00",
+    "source": "docker",
+    "level": "DEBUG",
+    "service": "docker",
+    "message": "Pgbouncer pool exhausted: 150 of 150 connections used, 12 queued waiting",
+    "metadata": {
+      "host": "cache-server-01",
+      "container_id": "df9b7c1f",
+      "image": "rabbitmq:3.12"
+    }
+  },
+  {
+    "timestamp": "2026-05-26T20:06:41.188298+00:00",
+    "source": "nginx",
+    "level": "DEBUG",
+    "service": "nginx",
+    "message": "Application startup: waiting for database connection... attempt 12/30",
+    "metadata": {
+      "host": "db-primary",
+      "upstream": "10.54.51.202",
+      "request_id": "693016ea",
+      "status_code": 500
+    }
+  },
+  {
+    "timestamp": "2026-07-07T07:21:29.693582+00:00",
+    "source": "storage",
+    "level": "WARNING",
+    "service": "storage",
+    "message": "Dead letter queue consumer processed 3400 messages in 60s (rate limit: 1000/s)",
+    "metadata": {
+      "host": "monitoring-01",
+      "volume": "vol-0582a9",
+      "io_wait_ms": 137.7
+    }
+  },
+  {
+    "timestamp": "2026-07-13T18:33:20.824346+00:00",
+    "source": "postgresql",
+    "level": "CRITICAL",
+    "service": "postgresql",
+    "message": "WAL disk usage: 99% \u2014 PostgreSQL entering read-only mode",
+    "metadata": {
+      "host": "monitoring-01",
+      "database": "infraheal_analytics",
+      "query_id": "b0c58278",
+      "duration_ms": 247.4
+    }
+  },
+  {
+    "timestamp": "2026-05-15T07:42:10.941701+00:00",
+    "source": "systemd",
+    "level": "ERROR",
+    "service": "systemd",
+    "message": "Kubernetes scheduler: unable to schedule pod gpu-inference-2 \u2014 0/7 nodes available (3 GPU unfit, 4 resource)",
+    "metadata": {
+      "host": "cache-server-01",
+      "unit": "nginx",
+      "pid": 19372
+    }
+  },
+  {
+    "timestamp": "2026-05-25T14:16:21.811051+00:00",
+    "source": "systemd",
+    "level": "INFO",
+    "service": "systemd",
+    "message": "Connection limit reached: max_connections=200, 200 active connections",
+    "metadata": {
+      "host": "db-replica",
+      "unit": "nginx",
+      "pid": 18656
+    }
+  },
+  {
+    "timestamp": "2026-07-10T14:23:54.213661+00:00",
+    "source": "backup-service",
+    "level": "CRITICAL",
+    "service": "backup-service",
+    "message": "Network policy 'deny-all-ingress' applied to namespace 'staging' blocking all inbound",
+    "metadata": {
+      "host": "monitoring-01",
+      "job_name": "wal-archive-cleanup",
+      "status": "failed"
+    }
+  },
+  {
+    "timestamp": "2026-07-26T09:23:51.243290+00:00",
+    "source": "cert-manager",
+    "level": "ERROR",
+    "service": "cert-manager",
+    "message": "Service mesh sidecar proxy CPU throttled: 450ms/200ms quota \u2014 consider increasing CPU limit",
+    "metadata": {
+      "host": "cache-server-01",
+      "certificate": "*.infraheal.internal",
+      "days_remaining": 40
+    }
+  },
+  {
+    "timestamp": "2026-07-22T17:54:55.756785+00:00",
+    "source": "backup-service",
+    "level": "CRITICAL",
+    "service": "backup-service",
+    "message": "Kafka partition offline: topic 'orders' partition 3 lost leader in broker-2 (disk failure)",
+    "metadata": {
+      "host": "db-primary",
+      "job_name": "prod-db-backup",
+      "status": "completed"
+    }
+  },
+  {
+    "timestamp": "2026-05-16T11:26:00.442094+00:00",
+    "source": "redis",
+    "level": "INFO",
+    "service": "redis",
+    "message": "Circuit breaker opened for payments-svc: failure rate 62% (threshold 50%)",
+    "metadata": {
+      "host": "db-replica",
+      "db_index": 11,
+      "client_ip": "10.101.140.95"
+    }
+  },
+  {
+    "timestamp": "2026-07-13T19:20:11.826808+00:00",
+    "source": "systemd",
+    "level": "DEBUG",
+    "service": "systemd",
+    "message": "dmesg: EDAC MC0: 1 CE error at 0x000000007f8a0000 (csrow:2 channel:0)",
+    "metadata": {
+      "host": "web-server-02",
+      "unit": "nginx",
+      "pid": 33033
+    }
+  },
+  {
+    "timestamp": "2026-08-07T22:43:26.461508+00:00",
+    "source": "message-broker",
+    "level": "CRITICAL",
+    "service": "message-broker",
+    "message": "pg_hba.conf: new entry added for replication user from 10.0.0.0/8 with scram-sha-256",
+    "metadata": {
+      "host": "db-primary",
+      "broker": "rabbit-1",
+      "partition": 5
+    }
+  },
+  {
+    "timestamp": "2026-06-08T03:44:59.471157+00:00",
+    "source": "postgresql",
+    "level": "ERROR",
+    "service": "postgresql",
+    "message": "Flow log: unusual traffic to port 445 (SMB) from internet to internal IP range",
+    "metadata": {
+      "host": "web-server-02",
+      "database": "infraheal_prod",
+      "query_id": "db6ba39b",
+      "duration_ms": 3237.3
+    }
+  },
+  {
+    "timestamp": "2026-07-11T03:25:43.100288+00:00",
+    "source": "storage",
+    "level": "INFO",
+    "service": "storage",
+    "message": "max_replication_slots (10) reached \u2014 cannot create new slot for additional replica",
+    "metadata": {
+      "host": "k8s-node-01",
+      "volume": "vol-00a444",
+      "io_wait_ms": 432.3
+    }
+  },
+  {
+    "timestamp": "2026-06-25T04:02:59.877972+00:00",
+    "source": "cert-manager",
+    "level": "ERROR",
+    "service": "cert-manager",
+    "message": "NTP synchronization offset > 100ms on 3 nodes \u2014 potential chrony misconfiguration",
+    "metadata": {
+      "host": "web-server-01",
+      "certificate": "*.infraheal.internal",
+      "days_remaining": 29
+    }
+  },
+  {
+    "timestamp": "2026-06-20T15:25:21.681929+00:00",
+    "source": "auth",
+    "level": "ERROR",
+    "service": "auth",
+    "message": "Sequential scan on orders = 3.2M rows \u2014 missing index on customer_id + status",
+    "metadata": {
+      "host": "k8s-node-01",
+      "user": "deploy-bot",
+      "ip": "10.111.238.78",
+      "session_id": "1a312044"
+    }
+  },
+  {
+    "timestamp": "2026-07-10T18:15:32.325622+00:00",
+    "source": "gpu-operator",
+    "level": "ERROR",
+    "service": "gpu-operator",
+    "message": "ROCm bandwidth test: 312 GB/s H2D, 298 GB/s D2H on GPU-0",
+    "metadata": {
+      "host": "storage-node-01",
+      "gpu_id": 2,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-05-19T05:53:16.931104+00:00",
+    "source": "auth",
+    "level": "INFO",
+    "service": "auth",
+    "message": "Prometheus rule evaluation error: query 'up == 0' returned 0 results for 54320 series",
+    "metadata": {
+      "host": "gpu-node-02",
+      "user": "deploy-bot",
+      "ip": "10.141.133.168",
+      "session_id": "4c7d9313"
+    }
+  },
+  {
+    "timestamp": "2026-08-02T11:19:26.459941+00:00",
+    "source": "postgresql",
+    "level": "CRITICAL",
+    "service": "postgresql",
+    "message": "autovacuum: table 'public.orders' bloat ratio 42%, reclaimable 12GB",
+    "metadata": {
+      "host": "db-replica",
+      "database": "infraheal_staging",
+      "query_id": "4bacbedf",
+      "duration_ms": 4534.7
+    }
+  },
+  {
+    "timestamp": "2026-07-04T23:19:52.309966+00:00",
+    "source": "docker",
+    "level": "CRITICAL",
+    "service": "docker",
+    "message": "Kernel panic: Machine check exception \u2014 CPU-1 BANK-8 MCG_STATUS RIP 0xffffffff81000000",
+    "metadata": {
+      "host": "web-server-01",
+      "container_id": "b69f5eab",
+      "image": "prometheus:v2.50"
+    }
+  },
+  {
+    "timestamp": "2026-06-09T12:25:14.986810+00:00",
+    "source": "storage",
+    "level": "WARNING",
+    "service": "storage",
+    "message": "Configuration reloaded: feature flag 'new-checkout-flow' enabled for 10% of users",
+    "metadata": {
+      "host": "storage-node-01",
+      "volume": "vol-05cbdd",
+      "io_wait_ms": 146.9
+    }
+  },
+  {
+    "timestamp": "2026-07-17T18:24:11.290137+00:00",
+    "source": "systemd",
+    "level": "WARNING",
+    "service": "systemd",
+    "message": "Scheduler triggered: 12 worker nodes assigned to process backfill job",
+    "metadata": {
+      "host": "k8s-node-01",
+      "unit": "nginx",
+      "pid": 43889
+    }
+  },
+  {
+    "timestamp": "2026-06-02T14:23:17.947798+00:00",
+    "source": "nginx",
+    "level": "ERROR",
+    "service": "nginx",
+    "message": "pg_stat_replication: replay_lag=45min on standby pg-replica-02",
+    "metadata": {
+      "host": "cache-server-01",
+      "upstream": "10.169.190.67",
+      "request_id": "95e7f614",
+      "status_code": 500
+    }
+  },
+  {
+    "timestamp": "2026-07-30T11:24:34.842729+00:00",
+    "source": "nginx",
+    "level": "DEBUG",
+    "service": "nginx",
+    "message": "Cache hit rate dropped from 94% to 12% after Redis restart \u2014 thundering herd in progress",
+    "metadata": {
+      "host": "web-server-01",
+      "upstream": "10.241.99.129",
+      "request_id": "ae423568",
+      "status_code": 502
+    }
+  },
+  {
+    "timestamp": "2026-07-30T21:02:02.962041+00:00",
+    "source": "auth",
+    "level": "CRITICAL",
+    "service": "auth",
+    "message": "CoreDNS pod restarted 4 times in 10 minutes due to OOM",
+    "metadata": {
+      "host": "web-server-01",
+      "user": "svc-account",
+      "ip": "10.234.73.81",
+      "session_id": "14b00f62"
+    }
+  },
+  {
+    "timestamp": "2026-07-09T14:31:03.984131+00:00",
+    "source": "kubernetes",
+    "level": "WARNING",
+    "service": "kubernetes",
+    "message": "DLQ for order-service: 2,340,000 messages \u2014 disk usage at 95%",
+    "metadata": {
+      "host": "cache-server-01",
+      "pod": "api-e77385",
+      "namespace": "monitoring",
+      "container": "api",
+      "node": "db-primary"
+    }
+  },
+  {
+    "timestamp": "2026-07-23T04:03:20.002705+00:00",
+    "source": "message-broker",
+    "level": "WARNING",
+    "service": "message-broker",
+    "message": "Health check FAILED: /health returns 503 \u2014 upstream dependencies unavailable",
+    "metadata": {
+      "host": "gpu-node-02",
+      "broker": "kafka-1",
+      "partition": 9
+    }
+  },
+  {
+    "timestamp": "2026-06-21T02:41:41.888317+00:00",
+    "source": "docker",
+    "level": "CRITICAL",
+    "service": "docker",
+    "message": "DLQ for order-service: 2,340,000 messages \u2014 disk usage at 95%",
+    "metadata": {
+      "host": "gpu-node-01",
+      "container_id": "30c9a2be",
+      "image": "infraheal/api:latest"
+    }
+  },
+  {
+    "timestamp": "2026-06-02T20:44:02.170984+00:00",
+    "source": "storage",
+    "level": "ERROR",
+    "service": "storage",
+    "message": "Node reboot detected: 'gpu-node-02' has uptime 0.5m \u2014 systemd units restarting",
+    "metadata": {
+      "host": "db-replica",
+      "volume": "vol-042033",
+      "io_wait_ms": 51.4
+    }
+  },
+  {
+    "timestamp": "2026-05-19T09:01:11.886729+00:00",
+    "source": "gpu-operator",
+    "level": "ERROR",
+    "service": "gpu-operator",
+    "message": "hipMalloc failed: out of memory on device 0 (VRAM free: 0 bytes)",
+    "metadata": {
+      "host": "db-primary",
+      "gpu_id": 2,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-07-06T04:09:32.487154+00:00",
+    "source": "auth",
+    "level": "CRITICAL",
+    "service": "auth",
+    "message": "systemd-unit: app-api.service failed to start \u2014 missing env var DB_PASSWORD",
+    "metadata": {
+      "host": "storage-node-01",
+      "user": "deploy-bot",
+      "ip": "10.250.183.193",
+      "session_id": "303cb04b"
+    }
+  },
+  {
+    "timestamp": "2026-06-03T01:23:00.582883+00:00",
+    "source": "cert-manager",
+    "level": "WARNING",
+    "service": "cert-manager",
+    "message": "Zero-downtime deploy: old pods draining connections \u2014 active: 12, draining: 4",
+    "metadata": {
+      "host": "web-server-01",
+      "certificate": "*.infraheal.internal",
+      "days_remaining": 3
+    }
+  },
+  {
+    "timestamp": "2026-06-15T11:50:15.126085+00:00",
+    "source": "message-broker",
+    "level": "WARNING",
+    "service": "message-broker",
+    "message": "Dead letter queue consumer processed 3400 messages in 60s (rate limit: 1000/s)",
+    "metadata": {
+      "host": "web-server-02",
+      "broker": "rabbit-1",
+      "partition": 4
+    }
+  },
+  {
+    "timestamp": "2026-05-17T20:56:52.213260+00:00",
+    "source": "cert-manager",
+    "level": "ERROR",
+    "service": "cert-manager",
+    "message": "Rate limiter active: client 10.0.4.20 exceeded 1000 req/min \u2014 returning 429",
+    "metadata": {
+      "host": "monitoring-01",
+      "certificate": "*.staging.internal",
+      "days_remaining": 3
+    }
+  },
+  {
+    "timestamp": "2026-06-22T11:43:07.910843+00:00",
+    "source": "application",
+    "level": "INFO",
+    "service": "application",
+    "message": "OpenTelemetry span: POST /api/v1/orders took 4500ms (99th percentile: 800ms)",
+    "metadata": {
+      "host": "gpu-node-01",
+      "request_id": "8c1ab2c7",
+      "endpoint": "/api/v1/inventory",
+      "trace_id": "b3ada2ba"
+    }
+  },
+  {
+    "timestamp": "2026-06-20T09:04:56.445175+00:00",
+    "source": "redis",
+    "level": "INFO",
+    "service": "redis",
+    "message": "Application startup: waiting for database connection... attempt 12/30",
+    "metadata": {
+      "host": "k8s-node-01",
+      "db_index": 8,
+      "client_ip": "10.70.214.213"
+    }
+  },
+  {
+    "timestamp": "2026-05-24T02:18:24.004168+00:00",
+    "source": "nginx",
+    "level": "CRITICAL",
+    "service": "nginx",
+    "message": "Vault audit: unseal key rotated successfully by admin user",
+    "metadata": {
+      "host": "monitoring-01",
+      "upstream": "10.101.102.200",
+      "request_id": "33a0daa7",
+      "status_code": 503
+    }
+  },
+  {
+    "timestamp": "2026-05-17T01:06:58.782520+00:00",
+    "source": "docker",
+    "level": "ERROR",
+    "service": "docker",
+    "message": "Prometheus TSDB WAL replay failed at segment 00001234: unexpected CRC mismatch",
+    "metadata": {
+      "host": "db-primary",
+      "container_id": "7b0ccad9",
+      "image": "postgres:15"
+    }
+  },
+  {
+    "timestamp": "2026-08-03T02:51:39.224242+00:00",
+    "source": "application",
+    "level": "INFO",
+    "service": "application",
+    "message": "pg_stat_statements: top query by total_time = 4.3 hours (UPDATE inventory SET qty = qty - 1)",
+    "metadata": {
+      "host": "web-server-02",
+      "request_id": "82ff1f2e",
+      "endpoint": "/api/v1/orders",
+      "trace_id": "e79f9f3d"
+    }
+  },
+  {
+    "timestamp": "2026-08-10T11:31:06.277571+00:00",
+    "source": "storage",
+    "level": "INFO",
+    "service": "storage",
+    "message": "systemd-journald: journal file /var/log/journal/ corrupted \u2014 rotating journal",
+    "metadata": {
+      "host": "gpu-node-02",
+      "volume": "vol-0873b6",
+      "io_wait_ms": 232.1
+    }
+  },
+  {
+    "timestamp": "2026-07-29T04:51:25.780289+00:00",
+    "source": "nginx",
+    "level": "ERROR",
+    "service": "nginx",
+    "message": "Linux OOM killer invoked: process java (PID 4567) scored 87, killed /var/log/messages",
+    "metadata": {
+      "host": "web-server-01",
+      "upstream": "10.218.59.25",
+      "request_id": "e3ea2d7f",
+      "status_code": 200
+    }
+  },
+  {
+    "timestamp": "2026-06-14T16:15:33.095353+00:00",
+    "source": "postgresql",
+    "level": "WARNING",
+    "service": "postgresql",
+    "message": "Connection limit reached: max_connections=200, 200 active connections",
+    "metadata": {
+      "host": "cache-server-01",
+      "database": "infraheal_staging",
+      "query_id": "bbaa574f",
+      "duration_ms": 1863.7
+    }
+  },
+  {
+    "timestamp": "2026-06-18T13:40:45.951047+00:00",
+    "source": "kubernetes",
+    "level": "WARNING",
+    "service": "kubernetes",
+    "message": "Index scan on orders.created_at_seq reversed \u2014 index bloat suspected",
+    "metadata": {
+      "host": "web-server-02",
+      "pod": "api-8b2db4",
+      "namespace": "gpu-workloads",
+      "container": "worker",
+      "node": "gpu-node-02"
+    }
+  },
+  {
+    "timestamp": "2026-05-23T16:12:07.782393+00:00",
+    "source": "cert-manager",
+    "level": "WARNING",
+    "service": "cert-manager",
+    "message": "Thread pool status: active=180, queued=450, rejected=23 \u2014 pool size=200",
+    "metadata": {
+      "host": "db-primary",
+      "certificate": "*.infraheal.internal",
+      "days_remaining": 14
+    }
+  },
+  {
+    "timestamp": "2026-07-24T16:53:30.960735+00:00",
+    "source": "docker",
+    "level": "DEBUG",
+    "service": "docker",
+    "message": "Connection limit reached: max_connections=200, 200 active connections",
+    "metadata": {
+      "host": "gpu-node-02",
+      "container_id": "2172a0aa",
+      "image": "prometheus:v2.50"
+    }
+  },
+  {
+    "timestamp": "2026-05-17T15:18:00.802152+00:00",
+    "source": "nginx",
+    "level": "DEBUG",
+    "service": "nginx",
+    "message": "etcd leader election: current leader member-2 health-check failed; new leader member-1",
+    "metadata": {
+      "host": "gpu-node-02",
+      "upstream": "10.160.6.181",
+      "request_id": "df865633",
+      "status_code": 502
+    }
+  },
+  {
+    "timestamp": "2026-07-12T01:18:02.331890+00:00",
+    "source": "gpu-operator",
+    "level": "INFO",
+    "service": "gpu-operator",
+    "message": "ROCm kernel module amdgpu failed to load: unknown symbol",
+    "metadata": {
+      "host": "gpu-node-01",
+      "gpu_id": 3,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-07-28T00:18:40.773083+00:00",
+    "source": "kubernetes",
+    "level": "DEBUG",
+    "service": "kubernetes",
+    "message": "Circuit breaker opened for payments-svc: failure rate 62% (threshold 50%)",
+    "metadata": {
+      "host": "db-primary",
+      "pod": "api-05f650",
+      "namespace": "staging",
+      "container": "worker",
+      "node": "gpu-node-02"
+    }
+  },
+  {
+    "timestamp": "2026-07-20T03:05:19.688146+00:00",
+    "source": "systemd",
+    "level": "WARNING",
+    "service": "systemd",
+    "message": "Prometheus Alertmanager: 47 firing alerts including 'NodeCPUUsage > 90%'",
+    "metadata": {
+      "host": "web-server-02",
+      "unit": "postgresql",
+      "pid": 22685
+    }
+  },
+  {
+    "timestamp": "2026-06-02T13:02:45.924161+00:00",
+    "source": "auth",
+    "level": "INFO",
+    "service": "auth",
+    "message": "PostgreSQL replication lag: 1800 seconds on replica pg-replica-01",
+    "metadata": {
+      "host": "storage-node-01",
+      "user": "svc-account",
+      "ip": "10.120.40.118",
+      "session_id": "92b26acd"
+    }
+  },
+  {
+    "timestamp": "2026-06-10T22:41:34.437229+00:00",
+    "source": "nginx",
+    "level": "DEBUG",
+    "service": "nginx",
+    "message": "pg_stat_statements: top query by total_time = 4.3 hours (UPDATE inventory SET qty = qty - 1)",
+    "metadata": {
+      "host": "gpu-node-02",
+      "upstream": "10.9.52.104",
+      "request_id": "698f04f8",
+      "status_code": 502
+    }
+  },
+  {
+    "timestamp": "2026-07-23T18:15:06.825500+00:00",
+    "source": "gpu-operator",
+    "level": "INFO",
+    "service": "gpu-operator",
+    "message": "ROCm bandwidth test: 312 GB/s H2D, 298 GB/s D2H on GPU-0",
+    "metadata": {
+      "host": "web-server-02",
+      "gpu_id": 2,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-08-07T00:46:01.490828+00:00",
+    "source": "gpu-operator",
+    "level": "WARNING",
+    "service": "gpu-operator",
+    "message": "ROCm-Ex: HSA queue error \u2014 packet processor halted",
+    "metadata": {
+      "host": "gpu-node-02",
+      "gpu_id": 0,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-07-02T21:55:32.971545+00:00",
+    "source": "redis",
+    "level": "DEBUG",
+    "service": "redis",
+    "message": "PostgreSQL 15.2 detected data checksum failure on block 4281 of file base/12345/67890",
+    "metadata": {
+      "host": "cache-server-01",
+      "db_index": 11,
+      "client_ip": "10.231.58.25"
+    }
+  },
+  {
+    "timestamp": "2026-05-13T16:44:43.466041+00:00",
+    "source": "cert-manager",
+    "level": "ERROR",
+    "service": "cert-manager",
+    "message": "etcd leader election: current leader member-2 health-check failed; new leader member-1",
+    "metadata": {
+      "host": "db-replica",
+      "certificate": "*.staging.internal",
+      "days_remaining": 67
+    }
+  },
+  {
+    "timestamp": "2026-08-02T05:15:16.474841+00:00",
+    "source": "kubernetes",
+    "level": "INFO",
+    "service": "kubernetes",
+    "message": "pg_stat_statements: top query by total_time = 4.3 hours (UPDATE inventory SET qty = qty - 1)",
+    "metadata": {
+      "host": "web-server-01",
+      "pod": "api-47e8f4",
+      "namespace": "gpu-workloads",
+      "container": "api",
+      "node": "k8s-node-01"
+    }
+  },
+  {
+    "timestamp": "2026-05-24T08:48:39.398080+00:00",
+    "source": "message-broker",
+    "level": "WARNING",
+    "service": "message-broker",
+    "message": "WAL disk usage: 99% \u2014 PostgreSQL entering read-only mode",
+    "metadata": {
+      "host": "db-replica",
+      "broker": "kafka-1",
+      "partition": 7
+    }
+  },
+  {
+    "timestamp": "2026-05-23T04:46:26.450908+00:00",
+    "source": "cert-manager",
+    "level": "INFO",
+    "service": "cert-manager",
+    "message": "pg_stat_replication: replay_lag=45min on standby pg-replica-02",
+    "metadata": {
+      "host": "cache-server-01",
+      "certificate": "*.infraheal.internal",
+      "days_remaining": 82
+    }
+  },
+  {
+    "timestamp": "2026-07-21T23:50:00.870203+00:00",
+    "source": "storage",
+    "level": "ERROR",
+    "service": "storage",
+    "message": "Replication slot 'standby_1' active \u2014 WAL retention 200GB, removing old slot",
+    "metadata": {
+      "host": "web-server-02",
+      "volume": "vol-044ef0",
+      "io_wait_ms": 481.9
+    }
+  },
+  {
+    "timestamp": "2026-07-02T06:58:07.933559+00:00",
+    "source": "application",
+    "level": "DEBUG",
+    "service": "application",
+    "message": "Transaction ID wraparound imminent: vacuum required on database infraheal_prod",
+    "metadata": {
+      "host": "web-server-01",
+      "request_id": "941c23fa",
+      "endpoint": "/api/v1/users",
+      "trace_id": "1a82833c"
+    }
+  },
+  {
+    "timestamp": "2026-07-31T22:37:23.035032+00:00",
+    "source": "storage",
+    "level": "ERROR",
+    "service": "storage",
+    "message": "Deadlock detected: process 32145 waiting for ShareLock on orders_pkey; process 32147 waiting for ShareLock on inventory_pkey",
+    "metadata": {
+      "host": "monitoring-01",
+      "volume": "vol-0d65b3",
+      "io_wait_ms": 489.8
+    }
+  },
+  {
+    "timestamp": "2026-06-18T07:23:57.092436+00:00",
+    "source": "backup-service",
+    "level": "WARNING",
+    "service": "backup-service",
+    "message": "NetworkManager: connectivity check failed \u2014 server 'http://connectivity-check.internal' unreachable",
+    "metadata": {
+      "host": "k8s-node-01",
+      "job_name": "nightly-snapshot",
+      "status": "failed"
+    }
+  },
+  {
+    "timestamp": "2026-06-19T15:31:48.796552+00:00",
+    "source": "cert-manager",
+    "level": "INFO",
+    "service": "cert-manager",
+    "message": "max_replication_slots (10) reached \u2014 cannot create new slot for additional replica",
+    "metadata": {
+      "host": "db-primary",
+      "certificate": "api.infraheal.com",
+      "days_remaining": 90
+    }
+  },
+  {
+    "timestamp": "2026-07-09T10:22:47.620328+00:00",
+    "source": "gpu-operator",
+    "level": "ERROR",
+    "service": "gpu-operator",
+    "message": "amdgpu: GPU reset triggered for device 0000:03:00.0",
+    "metadata": {
+      "host": "storage-node-01",
+      "gpu_id": 1,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-08-04T09:46:27.160107+00:00",
+    "source": "message-broker",
+    "level": "ERROR",
+    "service": "message-broker",
+    "message": "Consul agent: serf gossip protocol detected 3 nodes left cluster in last 60s",
+    "metadata": {
+      "host": "cache-server-01",
+      "broker": "kafka-1",
+      "partition": 8
+    }
+  },
+  {
+    "timestamp": "2026-07-20T23:16:26.593102+00:00",
+    "source": "gpu-operator",
+    "level": "ERROR",
+    "service": "gpu-operator",
+    "message": "amd-smi: GPU-0 power draw 385W exceeds TDP of 350W",
+    "metadata": {
+      "host": "web-server-02",
+      "gpu_id": 3,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-06-08T05:36:15.974232+00:00",
+    "source": "message-broker",
+    "level": "CRITICAL",
+    "service": "message-broker",
+    "message": "JVM Full GC pause: 11.2 seconds \u2014 application unavailable during pause",
+    "metadata": {
+      "host": "storage-node-01",
+      "broker": "kafka-1",
+      "partition": 0
+    }
+  },
+  {
+    "timestamp": "2026-07-12T19:44:56.494092+00:00",
+    "source": "docker",
+    "level": "WARNING",
+    "service": "docker",
+    "message": "systemd unit 'app-api.service' hashes do not match expected \u2014 possible drift after reboot",
+    "metadata": {
+      "host": "web-server-01",
+      "container_id": "c918a346",
+      "image": "gpu-inference:2.3"
+    }
+  },
+  {
+    "timestamp": "2026-07-28T01:03:52.989281+00:00",
+    "source": "storage",
+    "level": "WARNING",
+    "service": "storage",
+    "message": "systemd-journald: journal file /var/log/journal/ corrupted \u2014 rotating journal",
+    "metadata": {
+      "host": "db-primary",
+      "volume": "vol-06872c",
+      "io_wait_ms": 376.8
+    }
+  },
+  {
+    "timestamp": "2026-05-22T17:21:24.529284+00:00",
+    "source": "application",
+    "level": "ERROR",
+    "service": "application",
+    "message": "systemd-unit: app-api.service failed to start \u2014 missing env var DB_PASSWORD",
+    "metadata": {
+      "host": "gpu-node-02",
+      "request_id": "8faf6d4a",
+      "endpoint": "/api/v1/users",
+      "trace_id": "b2357a3c"
+    }
+  },
+  {
+    "timestamp": "2026-06-17T09:07:04.947840+00:00",
+    "source": "backup-service",
+    "level": "INFO",
+    "service": "backup-service",
+    "message": "chronyd: clock skew too large (230ms) \u2014 stepping system clock",
+    "metadata": {
+      "host": "gpu-node-01",
+      "job_name": "wal-archive-cleanup",
+      "status": "completed"
+    }
+  },
+  {
+    "timestamp": "2026-07-08T08:24:47.745078+00:00",
+    "source": "application",
+    "level": "ERROR",
+    "service": "application",
+    "message": "Connection limit reached: max_connections=200, 200 active connections",
+    "metadata": {
+      "host": "db-replica",
+      "request_id": "d479cc36",
+      "endpoint": "/api/v1/payments",
+      "trace_id": "9a7791a2"
+    }
+  },
+  {
+    "timestamp": "2026-06-08T23:25:25.964752+00:00",
+    "source": "cert-manager",
+    "level": "ERROR",
+    "service": "cert-manager",
+    "message": "Prometheus TSDB WAL replay failed at segment 00001234: unexpected CRC mismatch",
+    "metadata": {
+      "host": "db-replica",
+      "certificate": "*.infraheal.internal",
+      "days_remaining": 23
+    }
+  },
+  {
+    "timestamp": "2026-05-17T03:46:11.795589+00:00",
+    "source": "backup-service",
+    "level": "INFO",
+    "service": "backup-service",
+    "message": "Prometheus rule evaluation error: query 'up == 0' returned 0 results for 54320 series",
+    "metadata": {
+      "host": "gpu-node-01",
+      "job_name": "wal-archive-cleanup",
+      "status": "failed"
+    }
+  },
+  {
+    "timestamp": "2026-07-28T15:23:26.388800+00:00",
+    "source": "postgresql",
+    "level": "WARNING",
+    "service": "postgresql",
+    "message": "DLQ for order-service: 2,340,000 messages \u2014 disk usage at 95%",
+    "metadata": {
+      "host": "monitoring-01",
+      "database": "infraheal_analytics",
+      "query_id": "efffa2f4",
+      "duration_ms": 200.7
+    }
+  },
+  {
+    "timestamp": "2026-07-28T09:10:56.493769+00:00",
+    "source": "kubernetes",
+    "level": "INFO",
+    "service": "kubernetes",
+    "message": "Kubernetes scheduler: unable to schedule pod gpu-inference-2 \u2014 0/7 nodes available (3 GPU unfit, 4 resource)",
+    "metadata": {
+      "host": "monitoring-01",
+      "pod": "api-fb297e",
+      "namespace": "security",
+      "container": "worker",
+      "node": "cache-server-01"
+    }
+  },
+  {
+    "timestamp": "2026-06-02T07:07:04.631965+00:00",
+    "source": "nginx",
+    "level": "WARNING",
+    "service": "nginx",
+    "message": "Scheduler triggered: 12 worker nodes assigned to process backfill job",
+    "metadata": {
+      "host": "storage-node-01",
+      "upstream": "10.34.81.107",
+      "request_id": "67465743",
+      "status_code": 404
+    }
+  },
+  {
+    "timestamp": "2026-06-12T07:06:13.388689+00:00",
+    "source": "redis",
+    "level": "WARNING",
+    "service": "redis",
+    "message": "systemd-journald: journal file /var/log/journal/ corrupted \u2014 rotating journal",
+    "metadata": {
+      "host": "cache-server-01",
+      "db_index": 6,
+      "client_ip": "10.243.4.30"
+    }
+  },
+  {
+    "timestamp": "2026-06-04T03:09:05.087145+00:00",
+    "source": "storage",
+    "level": "WARNING",
+    "service": "storage",
+    "message": "Kubelet node status update: disk-pressure=True on monitoring-01 (/var 92% used)",
+    "metadata": {
+      "host": "gpu-node-02",
+      "volume": "vol-0146ac",
+      "io_wait_ms": 341.3
+    }
+  },
+  {
+    "timestamp": "2026-06-17T05:29:31.268881+00:00",
+    "source": "kubernetes",
+    "level": "DEBUG",
+    "service": "kubernetes",
+    "message": "Idx scan on idx_orders_created_at yielded 1.8M rows \u2014 partial index recommended",
+    "metadata": {
+      "host": "web-server-02",
+      "pod": "api-90cef6",
+      "namespace": "production",
+      "container": "worker",
+      "node": "cache-server-01"
+    }
+  },
+  {
+    "timestamp": "2026-05-17T10:43:10.515240+00:00",
+    "source": "gpu-operator",
+    "level": "CRITICAL",
+    "service": "gpu-operator",
+    "message": "Comgr: compilation of rocBLAS kernel timed out after 60s",
+    "metadata": {
+      "host": "gpu-node-02",
+      "gpu_id": 1,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-05-28T13:34:22.036444+00:00",
+    "source": "kubernetes",
+    "level": "INFO",
+    "service": "kubernetes",
+    "message": "Database size: infraheal_prod = 1.2TB, growth rate 15GB/day",
+    "metadata": {
+      "host": "web-server-02",
+      "pod": "api-03c0d5",
+      "namespace": "production",
+      "container": "api",
+      "node": "db-replica"
+    }
+  },
+  {
+    "timestamp": "2026-06-01T00:03:06.720627+00:00",
+    "source": "storage",
+    "level": "WARNING",
+    "service": "storage",
+    "message": "Transaction ID wraparound imminent: vacuum required on database infraheal_prod",
+    "metadata": {
+      "host": "web-server-02",
+      "volume": "vol-024ecf",
+      "io_wait_ms": 373.4
+    }
+  },
+  {
+    "timestamp": "2026-07-17T00:26:07.775108+00:00",
+    "source": "postgresql",
+    "level": "INFO",
+    "service": "postgresql",
+    "message": "Dead letter queue consumer processed 3400 messages in 60s (rate limit: 1000/s)",
+    "metadata": {
+      "host": "gpu-node-02",
+      "database": "infraheal_prod",
+      "query_id": "12c0620c",
+      "duration_ms": 890.8
+    }
+  },
+  {
+    "timestamp": "2026-07-26T10:41:51.821680+00:00",
+    "source": "auth",
+    "level": "INFO",
+    "service": "auth",
+    "message": "etcd leader election: current leader member-2 health-check failed; new leader member-1",
+    "metadata": {
+      "host": "monitoring-01",
+      "user": "svc-account",
+      "ip": "10.198.230.162",
+      "session_id": "6789e7d0"
+    }
+  },
+  {
+    "timestamp": "2026-07-13T02:19:30.942580+00:00",
+    "source": "kubernetes",
+    "level": "INFO",
+    "service": "kubernetes",
+    "message": "Database size: infraheal_prod = 1.2TB, growth rate 15GB/day",
+    "metadata": {
+      "host": "gpu-node-01",
+      "pod": "api-03052f",
+      "namespace": "security",
+      "container": "api",
+      "node": "monitoring-01"
+    }
+  },
+  {
+    "timestamp": "2026-08-05T00:34:59.305293+00:00",
+    "source": "application",
+    "level": "INFO",
+    "service": "application",
+    "message": "Rate limiter active: client 10.0.4.20 exceeded 1000 req/min \u2014 returning 429",
+    "metadata": {
+      "host": "cache-server-01",
+      "request_id": "af95be79",
+      "endpoint": "/api/v1/orders",
+      "trace_id": "ed3b9d13"
+    }
+  },
+  {
+    "timestamp": "2026-06-25T03:48:48.179213+00:00",
+    "source": "docker",
+    "level": "CRITICAL",
+    "service": "docker",
+    "message": "Distributed tracing: request abc123 traced across 8 services with 1200ms total latency",
+    "metadata": {
+      "host": "web-server-01",
+      "container_id": "bf2b43b4",
+      "image": "gpu-inference:2.3"
+    }
+  },
+  {
+    "timestamp": "2026-07-13T10:56:39.617847+00:00",
+    "source": "storage",
+    "level": "INFO",
+    "service": "storage",
+    "message": "udev: event failed for /devices/pci0000:00/0000:00:03.0 \u2014 timeout processing",
+    "metadata": {
+      "host": "k8s-node-01",
+      "volume": "vol-005b57",
+      "io_wait_ms": 276.8
+    }
+  },
+  {
+    "timestamp": "2026-05-17T06:13:47.940279+00:00",
+    "source": "gpu-operator",
+    "level": "WARNING",
+    "service": "gpu-operator",
+    "message": "hipLaunchKernel failed: invalid configuration argument",
+    "metadata": {
+      "host": "web-server-02",
+      "gpu_id": 3,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-06-01T09:42:51.278008+00:00",
+    "source": "gpu-operator",
+    "level": "INFO",
+    "service": "gpu-operator",
+    "message": "GPU memory temperature 92C \u2014 liquid cooling pump RPM low",
+    "metadata": {
+      "host": "k8s-node-01",
+      "gpu_id": 2,
+      "driver_version": "5.7.1"
+    }
+  },
+  {
+    "timestamp": "2026-05-26T07:42:10.990675+00:00",
+    "source": "redis",
+    "level": "DEBUG",
+    "service": "redis",
+    "message": "Scheduler triggered: 12 worker nodes assigned to process backfill job",
+    "metadata": {
+      "host": "storage-node-01",
+      "db_index": 7,
+      "client_ip": "10.129.99.30"
+    }
+  },
+  {
+    "timestamp": "2026-07-29T02:59:50.929580+00:00",
+    "source": "postgresql",
+    "level": "CRITICAL",
+    "service": "postgresql",
+    "message": "pg_hba.conf: new entry added for replication user from 10.0.0.0/8 with scram-sha-256",
+    "metadata": {
+      "host": "web-server-01",
+      "database": "infraheal_analytics",
+      "query_id": "12b99a50",
+      "duration_ms": 3358.8
+    }
+  },
+  {
+    "timestamp": "2026-07-17T19:16:22.065030+00:00",
+    "source": "auth",
+    "level": "INFO",
+    "service": "auth",
+    "message": "Sequential scan on orders = 3.2M rows \u2014 missing index on customer_id + status",
+    "metadata": {
+      "host": "db-replica",
+      "user": "deploy-bot",
+      "ip": "10.182.65.172",
+      "session_id": "a7cd13cb"
+    }
+  },
+  {
+    "timestamp": "2026-05-19T18:47:13.887512+00:00",
+    "source": "nginx",
+    "level": "WARNING",
+    "service": "nginx",
+    "message": "Kernel panic: Machine check exception \u2014 CPU-1 BANK-8 MCG_STATUS RIP 0xffffffff81000000",
+    "metadata": {
+      "host": "monitoring-01",
+      "upstream": "10.162.248.116",
+      "request_id": "a8cfe589",
+      "status_code": 503
+    }
+  },
+  {
+    "timestamp": "2026-07-03T12:25:18.079751+00:00",
+    "source": "message-broker",
+    "level": "WARNING",
+    "service": "message-broker",
+    "message": "chronyd: clock skew too large (230ms) \u2014 stepping system clock",
+    "metadata": {
+      "host": "monitoring-01",
+      "broker": "rabbit-1",
+      "partition": 2
+    }
+  },
+  {
+    "timestamp": "2026-07-23T05:01:33.031414+00:00",
+    "source": "application",
+    "level": "ERROR",
+    "service": "application",
+    "message": "Transaction ID wraparound imminent: vacuum required on database infraheal_prod",
+    "metadata": {
+      "host": "db-replica",
+      "request_id": "5c074653",
+      "endpoint": "/api/v1/payments",
+      "trace_id": "e0bd202c"
+    }
+  },
+  {
+    "timestamp": "2026-07-22T05:29:47.892826+00:00",
+    "source": "systemd",
+    "level": "DEBUG",
+    "service": "systemd",
+    "message": "Sequential scan on orders = 3.2M rows \u2014 missing index on customer_id + status",
+    "metadata": {
+      "host": "cache-server-01",
+      "unit": "gpu-operator",
+      "pid": 8132
+    }
+  },
+  {
+    "timestamp": "2026-07-28T06:16:22.331750+00:00",
+    "source": "postgresql",
+    "level": "CRITICAL",
+    "service": "postgresql",
+    "message": "Distributed tracing: request abc123 traced across 8 services with 1200ms total latency",
+    "metadata": {
+      "host": "web-server-02",
+      "database": "infraheal_staging",
+      "query_id": "32495cff",
+      "duration_ms": 3668.0
+    }
+  },
+  {
+    "timestamp": "2026-08-01T18:56:49.915716+00:00",
+    "source": "storage",
+    "level": "INFO",
+    "service": "storage",
+    "message": "Replication slot 'standby_1' active \u2014 WAL retention 200GB, removing old slot",
+    "metadata": {
+      "host": "web-server-02",
+      "volume": "vol-00ff8b",
+      "io_wait_ms": 406.3
+    }
+  },
+  {
+    "timestamp": "2026-06-01T15:33:47.095707+00:00",
+    "source": "message-broker",
+    "level": "CRITICAL",
+    "service": "message-broker",
+    "message": "max_replication_slots (10) reached \u2014 cannot create new slot for additional replica",
+    "metadata": {
+      "host": "monitoring-01",
+      "broker": "rabbit-1",
+      "partition": 2
+    }
+  },
+  {
+    "timestamp": "2026-08-01T17:30:18.339975+00:00",
+    "source": "kubernetes",
+    "level": "DEBUG",
+    "service": "kubernetes",
+    "message": "systemd-journald: journal file /var/log/journal/ corrupted \u2014 rotating journal",
+    "metadata": {
+      "host": "db-replica",
+      "pod": "api-448c15",
+      "namespace": "gpu-workloads",
+      "container": "worker",
+      "node": "storage-node-01"
+    }
+  },
+  {
+    "timestamp": "2026-06-27T16:40:52.688926+00:00",
+    "source": "nginx",
+    "level": "DEBUG",
+    "service": "nginx",
+    "message": "dmesg: EDAC MC0: 1 CE error at 0x000000007f8a0000 (csrow:2 channel:0)",
+    "metadata": {
+      "host": "cache-server-01",
+      "upstream": "10.84.71.115",
+      "request_id": "28c2cce9",
+      "status_code": 502
+    }
   }
 ]
