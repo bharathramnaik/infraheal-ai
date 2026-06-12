@@ -16,20 +16,20 @@ from .base_agent import BaseAgent
 
 logger = logging.getLogger(__name__)
 
-RCA_SYSTEM_PROMPT = """You are an RCA agent. Analyze anomalies and triage data. BE CONCISE. Output ONLY valid JSON:
+RCA_SYSTEM_PROMPT = """You are an RCA agent. Analyze anomalies and triage data. For each claim, cite specific log/metric evidence. Explain the causal chain from symptoms to root cause. Output ONLY valid JSON:
 {
-  "root_cause": "specific root cause statement",
+  "root_cause": "specific root cause statement with evidence references",
   "root_cause_category": "infrastructure or application or network or security or database or storage",
-  "evidence_chain": ["brief evidence 1", "brief evidence 2"],
+  "evidence_chain": ["concrete evidence 1", "concrete evidence 2"],
   "confidence_score": 0.0 to 1.0,
   "related_runbook_id": null,
   "contributing_factors": ["factor"],
   "timeline_of_events": [{"timestamp": "T", "event": "E"}],
   "affected_components": ["component"],
   "blast_radius": "short impact description",
-  "reasoning_summary": "1 sentence explaining logic"
+  "reasoning_summary": "1-2 sentences explaining logic, linking symptoms to root cause"
 }
-Distinguish symptoms from causes. No prose. No markdown. ONLY valid JSON."""
+Distinguish symptoms from causes. Consider deployments, config changes, traffic spikes. No prose, no markdown. ONLY valid JSON."""
 
 
 class RCAAgent(BaseAgent):
