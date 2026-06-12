@@ -1164,11 +1164,11 @@ def create_dashboard(
         logs_html = format_log_table(sc.get("logs", []))
         return desc_html, logs_html
 
-    def _run_analysis(scenario_name: str) -> Tuple[str, str, str, str, str, str]:
+    def _run_analysis(scenario_name: str) -> Tuple[str, str, str, str, str]:
         """Run the full orchestrator pipeline on a scenario."""
         if not scenario_name or scenario_name not in scenarios:
             empty = _empty_state("Select a scenario first")
-            return empty, empty, empty, empty, empty, empty
+            return empty, empty, empty, empty, empty
 
         sc = dict(scenarios[scenario_name])  # shallow copy so we can inject anomalies
 
@@ -1297,7 +1297,7 @@ def create_dashboard(
                     "execution_results": result.get("execution_results", []),
                 })
 
-                return triage_html, rca_html, remed_html, report_html, reasoning_html, _refresh_risk()
+                return triage_html, rca_html, remed_html, report_html, reasoning_html
 
             except Exception as exc:
                 logger.error("Orchestrator failed: %s", exc, exc_info=True)
@@ -1309,7 +1309,7 @@ def create_dashboard(
                     f'Ensure vLLM server is running at {VLLM_BASE_URL}</div>'
                     f'</div>'
                 )
-                return error_html, error_html, error_html, error_html, error_html, error_html
+                return error_html, error_html, error_html, error_html, error_html
 
         # ---- Demo mode (no orchestrator) ----
         demo_triage = format_agent_output("Triage", {
@@ -1398,7 +1398,7 @@ def create_dashboard(
             },
         })
 
-        return demo_triage, demo_rca, demo_remed, demo_report, demo_reasoning, _refresh_risk()
+        return demo_triage, demo_rca, demo_remed, demo_report, demo_reasoning
 
     def _run_error_level_resolution(scenario_name: str, level_filter: str) -> str:
         """Run error-level specific resolution analysis with progress timing."""
@@ -2051,7 +2051,7 @@ def create_dashboard(
                 analyze_btn.click(
                     fn=_run_analysis,
                     inputs=[scenario_dropdown],
-                    outputs=[triage_panel, rca_panel, remed_panel, report_panel, reasoning_panel, risk_panel],
+                    outputs=[triage_panel, rca_panel, remed_panel, report_panel, reasoning_panel],
                 )
                 level_resolve_btn.click(
                     fn=_run_error_level_resolution,
@@ -2350,8 +2350,6 @@ def create_dashboard(
                     q4 = gr.Button("Explain evidence", elem_classes="chat-quick-btn", scale=1)
                     q5 = gr.Button("Re-analyze", elem_classes="chat-quick-btn", scale=1)
 
-                risk_panel = gr.HTML(value="")
-
                 def _update_model_info(model_label: str):
                     model_id = model_choices.get(model_label, MODEL_NAME)
                     info = MODEL_REGISTRY.get(model_id, {})
@@ -2423,6 +2421,8 @@ def create_dashboard(
                       </div>
                       {safety_html}
                     </div>'''
+
+                risk_panel = gr.HTML(value=_refresh_risk())
 
                 model_selector.change(
                     fn=_update_model_info,
