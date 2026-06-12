@@ -1029,6 +1029,79 @@ def _demo_scenarios() -> Dict[str, Dict[str, Any]]:
                  "active_connections": 1250},
             ],
         },
+        "🟡 Malformed API Requests Flood": {
+            "id": "INC-005",
+            "title": "Malformed API Requests Flood",
+            "description": "Client SDK JSON serialization bug causing malformed payloads on all order submissions. API gateway returns 400 errors at 62% rate.",
+            "logs": [
+                {"timestamp": "2026-06-11T21:00:00Z", "source": "api-gateway", "level": "ERROR",
+                 "service": "api-gateway", "message": "POST /api/v2/orders — 400 Bad Request: Unrecognized token 'npe': was expecting (JSON valid, 'value' 'string' 'number' 'object' 'array')"},
+                {"timestamp": "2026-06-11T21:05:00Z", "source": "api-gateway", "level": "ERROR",
+                 "service": "api-gateway", "message": "POST /api/v2/orders — 400 Bad Request (x42 in 60s): JSON parse failure — string value contains double-escaped quotes"},
+                {"timestamp": "2026-06-11T21:10:00Z", "source": "api-gateway", "level": "WARNING",
+                 "service": "api-gateway", "message": "Content-Type mismatch: client sent 'text/html' for endpoint expecting 'application/json'"},
+                {"timestamp": "2026-06-11T21:15:00Z", "source": "application", "level": "WARNING",
+                 "service": "application", "message": "order-submission error rate at 38% — threshold 5% — likely client-side serializer bug"},
+                {"timestamp": "2026-06-11T21:20:00Z", "source": "api-gateway", "level": "CRITICAL",
+                 "service": "api-gateway", "message": "P1 Alert: 400 error rate on /api/v2/orders at 62%"},
+            ],
+            "metrics": [
+                {"timestamp": "2026-06-11T21:20:00Z", "host": "api-gw-01", "cpu_percent": 60.2,
+                 "memory_percent": 60.5, "disk_percent": 40.1, "network_in_mbps": 520.0,
+                 "network_out_mbps": 200.3, "request_latency_ms": 280, "error_rate": 0.62,
+                 "active_connections": 1050},
+            ],
+        },
+        "🔴 Payment Microservice Unreachable": {
+            "id": "INC-006",
+            "title": "Payment Microservice Unreachable",
+            "description": "Consul WAN federation link failure between datacenters. Payment service deregistered in main DC. All checkout requests fail with 503. Revenue impact escalating.",
+            "logs": [
+                {"timestamp": "2026-06-11T22:15:00Z", "source": "consul", "level": "WARNING",
+                 "service": "consul", "message": "wan federation link to dc-dr lost — gossip timeout after 30s"},
+                {"timestamp": "2026-06-11T22:20:00Z", "source": "consul", "level": "ERROR",
+                 "service": "consul", "message": "service 'payment-svc' deregistered in dc-main — no healthy instances"},
+                {"timestamp": "2026-06-11T22:22:00Z", "source": "order-service", "level": "ERROR",
+                 "service": "order-service", "message": "circuit breaker OPEN for downstream 'payment-svc' after 15 consecutive failures"},
+                {"timestamp": "2026-06-11T22:25:00Z", "source": "order-service", "level": "ERROR",
+                 "service": "order-service", "message": "POST /api/v1/checkout — 503 Service Unavailable: payment-svc unreachable"},
+                {"timestamp": "2026-06-11T22:30:00Z", "source": "api-gateway", "level": "CRITICAL",
+                 "service": "api-gateway", "message": "checkout failure rate at 100% — all payment processing requests failing"},
+                {"timestamp": "2026-06-11T22:35:00Z", "source": "application", "level": "CRITICAL",
+                 "service": "application", "message": "revenue impact: 0 successful transactions in last 15 min"},
+            ],
+            "metrics": [
+                {"timestamp": "2026-06-11T22:30:00Z", "host": "order-svc-01", "cpu_percent": 65.8,
+                 "memory_percent": 60.2, "disk_percent": 35.0, "network_in_mbps": 60.5,
+                 "network_out_mbps": 35.2, "request_latency_ms": 3100, "error_rate": 0.78,
+                 "active_connections": 155},
+            ],
+        },
+        "🔴 DB CRUD INSERT Failure After Migration": {
+            "id": "INC-007",
+            "title": "DB CRUD INSERT Failure After Schema Migration",
+            "description": "Schema migration added a NOT NULL column without a default value. Application code missing the new field in INSERT statements. All order creation requests failing.",
+            "logs": [
+                {"timestamp": "2026-06-11T20:30:00Z", "source": "application", "level": "INFO",
+                 "service": "application", "message": "schema migration v0042 applied: added 'tax_region' column (NOT NULL) to 'orders'"},
+                {"timestamp": "2026-06-11T20:35:00Z", "source": "application", "level": "ERROR",
+                 "service": "application", "message": "INSERT into orders failed: null value in column 'tax_region' violates NOT NULL constraint"},
+                {"timestamp": "2026-06-11T20:40:00Z", "source": "application", "level": "ERROR",
+                 "service": "application", "message": "order submission failed for 12 consecutive requests — DB constraint violation"},
+                {"timestamp": "2026-06-11T20:45:00Z", "source": "postgresql", "level": "ERROR",
+                 "service": "postgresql", "message": "ERROR: null value in column 'tax_region' violates NOT NULL constraint (x47 in 5 min)"},
+                {"timestamp": "2026-06-11T20:50:00Z", "source": "api-gateway", "level": "WARNING",
+                 "service": "api-gateway", "message": "POST /api/v2/orders — 500 Internal Server Error: order creation failed"},
+                {"timestamp": "2026-06-11T20:55:00Z", "source": "application", "level": "CRITICAL",
+                 "service": "application", "message": "order-placement error rate at 100% — P1 incident declared"},
+            ],
+            "metrics": [
+                {"timestamp": "2026-06-11T20:55:00Z", "host": "db-primary", "cpu_percent": 70.5,
+                 "memory_percent": 65.3, "disk_percent": 50.0, "network_in_mbps": 102.4,
+                 "network_out_mbps": 62.1, "request_latency_ms": 550, "error_rate": 0.62,
+                 "active_connections": 205},
+            ],
+        },
     }
 
 
@@ -1096,6 +1169,68 @@ def _demo_runbooks() -> List[Dict[str, Any]]:
             "tags": ["security", "attack", "credential-stuffing", "authentication", "P1"],
         },
     ]
+
+# ── Past-incidents helpers (for enriching chat context) ──────────
+
+_PAST_INCIDENTS_CACHE: Optional[List[Dict[str, Any]]] = None
+
+def _load_past_incidents() -> List[Dict[str, Any]]:
+    global _PAST_INCIDENTS_CACHE
+    if _PAST_INCIDENTS_CACHE is not None:
+        return _PAST_INCIDENTS_CACHE
+    paths = [
+        os.path.join(_CFG_DATA_DIR, "past_incidents.json"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "sample_data", "past_incidents.json"),
+        os.path.join(os.getcwd(), "sample_data", "past_incidents.json"),
+    ]
+    for path in paths:
+        if os.path.exists(path):
+            try:
+                with open(path) as f:
+                    data = json.load(f)
+                if isinstance(data, list):
+                    _PAST_INCIDENTS_CACHE = data
+                    logger.info("Loaded %d past incidents from %s", len(data), path)
+                    return data
+            except Exception as exc:
+                logger.warning("Failed to load past incidents from %s: %s", path, exc)
+    _PAST_INCIDENTS_CACHE = []
+    return []
+
+def _past_incidents_summary() -> str:
+    """Build a markdown summary of all past incidents for LLM context."""
+    incidents = _load_past_incidents()
+    if not incidents:
+        return ""
+    sev_counts = {"P1": 0, "P2": 0, "P3": 0, "P4": 0}
+    cat_counts: Dict[str, int] = {}
+    resolved = 0
+    for inc in incidents:
+        s = inc.get("severity", "P3")
+        sev_counts[s] = sev_counts.get(s, 0) + 1
+        c = inc.get("category", "unknown")
+        cat_counts[c] = cat_counts.get(c, 0) + 1
+        if inc.get("resolution"):
+            resolved += 1
+    sev_row = " | ".join(f"{s}: {sev_counts.get(s,0)}" for s in ["P1","P2","P3","P4"])
+    cat_row = " | ".join(f"{k}: {v}" for k, v in sorted(cat_counts.items(), key=lambda x: -x[1]))
+    top = sorted(incidents, key=lambda x: x.get("duration_minutes", 9999), reverse=True)[:5]
+    top_rows = "\n".join(
+        f'| {inc.get("title","?")} | {inc.get("severity","?")} | '
+        f'{inc.get("category","?")} | {inc.get("duration_minutes","?")}m | '
+        f'{inc.get("resolution","?")[:80]} |'
+        for inc in top
+    )
+    return (
+        f"\n**Past Incidents Database** ({len(incidents)} total)\n\n"
+        f"| Metric | Value |\n|--------|-------|\n"
+        f"| Severity distribution | {sev_row} |\n"
+        f"| Category distribution | {cat_row} |\n"
+        f"| Resolved | {resolved}/{len(incidents)} |\n\n"
+        f"**Top 5 Longest-Duration Incidents:**\n\n"
+        f"| Title | Sev | Category | Duration | Resolution |\n"
+        f"|-------|-----|----------|----------|------------|\n{top_rows}"
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -1762,6 +1897,82 @@ def create_dashboard(
             f'</div></div>'
         )
 
+    def _process_all_incidents() -> str:
+        """Run the pipeline on every scenario and produce a comprehensive report."""
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        rows = ""
+        total_anomalies = 0
+        total_actions = 0
+        processed = 0
+        failures = 0
+
+        for name, sc in scenarios.items():
+            sc_data = dict(sc)
+            result = None
+            if orchestrator is not None:
+                try:
+                    if anomaly_detector is not None:
+                        detected = anomaly_detector.detect_all(
+                            logs=sc_data.get("logs", []),
+                            metrics=sc_data.get("metrics", []),
+                        )
+                        sc_data["anomalies"] = detected
+                        total_anomalies += len(detected)
+                    result = orchestrator.process_scenario(sc_data)
+                    processed += 1
+                except Exception as exc:
+                    logger.warning("Pipeline failed for %s: %s", name, exc)
+                    failures += 1
+
+            sev = "P3"
+            cat = "unknown"
+            rc = "—"
+            action_count = 0
+            if result:
+                tri = result.get("triage", result.get("triage_result", {}))
+                rca = result.get("rca", result.get("rca_result", {}))
+                remed = result.get("remediation", result.get("remediation_result", {}))
+                sev = tri.get("severity", "P3")
+                cat = tri.get("category", "unknown")
+                rc = rca.get("root_cause", "—")[:80]
+                action_count = len(remed.get("recommended_actions", []))
+                total_actions += action_count
+
+            badge = format_severity_badge(sev)
+            status_icon = "⚠️" if failures else "✅"
+            rows += (
+                f'<tr>'
+                f'<td>{sc_data.get("id", "—")}</td>'
+                f'<td>{badge}</td>'
+                f'<td>{sc_data.get("title", name)}</td>'
+                f'<td>{cat}</td>'
+                f'<td style="font-size:0.78rem;">{rc}</td>'
+                f'<td>{action_count}</td>'
+                f'<td style="color:{_C["green"]};">Analyzed</td>'
+                f'</tr>'
+            )
+
+        return (
+            f'<div class="glass-card">'
+            f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">'
+            f'<span style="font-size:1.3rem;">⚙️</span>'
+            f'<div>'
+            f'<div style="font-size:1.05rem;font-weight:700;color:#e2e8f0;">InfraHeal AI — Process All Incidents</div>'
+            f'<div style="font-size:0.75rem;color:#94a3b8;">Generated {now}</div>'
+            f'</div></div>'
+            f'<table class="styled-table">'
+            f'<thead><tr><th>ID</th><th>Sev</th><th>Title</th><th>Category</th><th>Root Cause</th><th>Actions</th><th>Status</th></tr></thead>'
+            f'<tbody>{rows}</tbody>'
+            f'</table>'
+            f'<div style="margin-top:18px;padding:14px;background:rgba(0,255,136,0.04);'
+            f'border:1px solid rgba(0,255,136,0.15);border-radius:10px;">'
+            f'<div style="font-size:0.82rem;color:{_C["green"]};font-weight:600;">{status_icon} Pipeline Complete</div>'
+            f'<div style="font-size:0.78rem;color:#94a3b8;margin-top:4px;">'
+            f'{processed} scenarios processed · {total_anomalies} anomalies · {total_actions} actions generated · '
+            f'{failures} failures · Model: {MODEL_NAME.split("/")[-1]}</div>'
+            f'</div></div>'
+        )
+
     # ═══════════════════════════════════════════════════════════════
     #  MODEL / THINKING HELPERS
     # ═══════════════════════════════════════════════════════════════
@@ -1875,6 +2086,13 @@ def create_dashboard(
                 history_msgs.append({"role": "user", "content": f"Current incident: {ctx}\n\nQuestion: {message}\n\nAnswer concisely with markdown formatting (tables, code, bold where helpful)."})
 
                 system = "You are InfraHeal AI, an autonomous incident diagnosis agent running on AMD ROCm + vLLM. Answer concisely and technically. Use markdown: **bold** for key terms, `code` for commands/metrics, tables for structured data."
+                past = _past_incidents_summary()
+                if past:
+                    system += (
+                        "\n\nYou have access to a full database of past incidents. "
+                        "When asked about historical incidents, overall counts, trends across "
+                        "all incidents, or comparisons — use the data below.\n" + past
+                    )
                 if has_think:
                     system += " Think step by step before answering. Show your reasoning clearly."
 
@@ -1957,7 +2175,7 @@ def create_dashboard(
 
                 btn_scan.click(fn=_run_anomaly_scan, inputs=[], outputs=[scan_output])
                 btn_report.click(fn=_generate_report, inputs=[], outputs=[scan_output])
-                btn_process.click(fn=_generate_report, inputs=[], outputs=[scan_output])
+                btn_process.click(fn=_process_all_incidents, inputs=[], outputs=[scan_output])
 
             # ──────────────────────────────────────────────────────
             #  TAB 2 — INCIDENT ANALYSIS

@@ -1499,6 +1499,63 @@ _PAST_INCIDENT_TEMPLATES: List[Dict[str, Any]] = [
         "resolution": "Created missing Kubernetes secret; pod started successfully on next retry",
         "duration_minutes": 15, "affected_services": ["kubernetes", "application"],
     },
+    # ── Application-level incidents ───────────────────────────────
+    {
+        "title": "Malformed JSON Payload Causing 400 Errors Across API",
+        "severity": "P2", "category": "application",
+        "root_cause": "Client SDK shipped with broken serializer sending double-escaped JSON",
+        "resolution": "Pinned SDK version to previous stable; deployed API validation middleware",
+        "duration_minutes": 90, "affected_services": ["api-gateway", "application"],
+    },
+    {
+        "title": "Order Service CRUD INSERT Failure After Schema Migration",
+        "severity": "P1", "category": "database",
+        "root_cause": "Migration added NOT NULL column without default; existing INSERT paths missing new field",
+        "resolution": "Rolled back migration; deployed app update with new field; re-ran migration with default",
+        "duration_minutes": 55, "affected_services": ["postgresql", "order-service", "application"],
+    },
+    {
+        "title": "Payment Microservice Unreachable — Consul Service Mesh Split Brain",
+        "severity": "P1", "category": "application",
+        "root_cause": "Consul datacenter partition left payment-svc registered only in minority DC",
+        "resolution": "Restored WAN gossip between Consul datacenters; re-registered service endpoints",
+        "duration_minutes": 35, "affected_services": ["consul", "payment-svc", "api-gateway"],
+    },
+    {
+        "title": "User Validation Errors Surge After Business Logic Update",
+        "severity": "P3", "category": "application",
+        "root_cause": "New input validation rule for tax ID format too strict; rejecting valid customer data",
+        "resolution": "Relaxed regex to match broader tax ID formats; added unit tests for edge cases",
+        "duration_minutes": 120, "affected_services": ["user-service", "application"],
+    },
+    {
+        "title": "Data Corruption in Product Catalog — Duplicate Primary Key Violations",
+        "severity": "P2", "category": "database",
+        "root_cause": "Idempotency key missing on product upsert; concurrent requests created duplicate rows",
+        "resolution": "Removed duplicates with CTE; added UNIQUE constraint and upsert logic",
+        "duration_minutes": 40, "affected_services": ["postgresql", "catalog-service"],
+    },
+    {
+        "title": "Content-Type Mismatch on File Upload Service",
+        "severity": "P3", "category": "application",
+        "root_cause": "Frontend sent multipart/form-data but API expected application/octet-stream",
+        "resolution": "Updated API contract to accept both Content-Types; added content negotiation",
+        "duration_minutes": 30, "affected_services": ["api-gateway", "upload-service"],
+    },
+    {
+        "title": "Inventory Service gRPC Deadline Exceeded Under Load",
+        "severity": "P2", "category": "application",
+        "root_cause": "gRPC client timeout (500ms) too aggressive for inventory lookup that takes 800ms at p99",
+        "resolution": "Increased deadline to 2s with jittered retry; added server-side caching for hot SKUs",
+        "duration_minutes": 60, "affected_services": ["inventory-svc", "order-service"],
+    },
+    {
+        "title": "Deadlock Chain on Order-Item Table During Flash Sale",
+        "severity": "P1", "category": "database",
+        "root_cause": "Two-phase DELETE + INSERT in transaction acquiring locks in conflicting orders",
+        "resolution": "Applied consistent lock ordering; reduced transaction isolation to READ COMMITTED",
+        "duration_minutes": 25, "affected_services": ["postgresql", "order-service", "payment-svc"],
+    },
 ]
 
 
@@ -1869,6 +1926,167 @@ def create_incident_scenarios(seed: int = SEED) -> List[Dict[str, Any]]:
         "expected_severity": "P1",
         "expected_category": "security",
         "expected_root_cause": "LDAP server unreachable causing authentication cascade failure",
+    })
+
+    # ── Scenario 6: Malformed API Requests Causing 400 Errors ────
+    s6_logs = [
+        {"timestamp": (now - timedelta(minutes=60)).isoformat(), "source": "api-gateway",
+         "level": "ERROR", "service": "api-gateway",
+         "message": "POST /api/v2/orders — 400 Bad Request: Unrecognized token 'npe': was expecting (JSON valid, 'value' 'string' 'number' 'object' 'array')",
+         "metadata": {"host": "api-gw-01", "endpoint": "/api/v2/orders", "status_code": 400}},
+        {"timestamp": (now - timedelta(minutes=55)).isoformat(), "source": "api-gateway",
+         "level": "ERROR", "service": "api-gateway",
+         "message": "POST /api/v2/orders — 400 Bad Request (x42 in 60s): JSON parse failure — string value contains double-escaped quotes",
+         "metadata": {"host": "api-gw-01", "endpoint": "/api/v2/orders"}},
+        {"timestamp": (now - timedelta(minutes=50)).isoformat(), "source": "api-gateway",
+         "level": "WARNING", "service": "api-gateway",
+         "message": "Content-Type mismatch: client sent 'text/html' for endpoint expecting 'application/json' (Client: mobile-app/3.2.1)",
+         "metadata": {"host": "api-gw-01"}},
+        {"timestamp": (now - timedelta(minutes=45)).isoformat(), "source": "application",
+         "level": "WARNING", "service": "application",
+         "message": "order-submission error rate at 38% — threshold 5% — likely client-side serializer bug",
+         "metadata": {"host": "web-server-01"}},
+        {"timestamp": (now - timedelta(minutes=40)).isoformat(), "source": "api-gateway",
+         "level": "CRITICAL", "service": "api-gateway",
+         "message": "P1 Alert: 400 error rate on /api/v2/orders at 62% — upstream clients receiving failures",
+         "metadata": {"host": "api-gw-01"}},
+    ]
+    s6_metrics = []
+    for i in range(120):
+        t = now - timedelta(minutes=60) + timedelta(seconds=i * 30)
+        spike = 1 if i > 30 else 0
+        s6_metrics.append({
+            "timestamp": t.isoformat(), "host": "api-gw-01",
+            "cpu_percent": round(35 + spike * 25 + rng.gauss(0, 4), 2),
+            "memory_percent": round(50 + spike * 10 + rng.gauss(0, 3), 2),
+            "disk_percent": round(40 + rng.gauss(0, 1), 2),
+            "network_in_mbps": round(200 + spike * 300 + rng.gauss(0, 25), 2),
+            "network_out_mbps": round(150 + spike * 50 + rng.gauss(0, 15), 2),
+            "request_latency_ms": round(max(80 + spike * 200 + rng.gauss(0, 20), 5), 2),
+            "error_rate": round(min(0.01 + spike * 0.35, 1), 4),
+            "active_connections": int(400 + spike * 600 + rng.gauss(0, 50)),
+        })
+    scenarios.append({
+        "id": "SCEN-006",
+        "name": "Malformed API Requests Flood",
+        "description": ("A client SDK update introduces a JSON serialization bug, causing all "
+                         "order submission requests to carry malformed payloads. API gateway returns "
+                         "400 errors, error rate spikes to 62%, and upstream clients experience failures."),
+        "logs": s6_logs,
+        "metrics": s6_metrics,
+        "expected_severity": "P2",
+        "expected_category": "application",
+        "expected_root_cause": "Client SDK JSON serializer bug causing malformed API requests",
+    })
+
+    # ── Scenario 7: Payment Microservice Unreachable ─────────────
+    s7_logs = [
+        {"timestamp": (now - timedelta(minutes=45)).isoformat(), "source": "consul",
+         "level": "WARNING", "service": "consul",
+         "message": "wan federation link to dc-dr lost — gossip timeout after 30s",
+         "metadata": {"host": "consul-server-01"}},
+        {"timestamp": (now - timedelta(minutes=40)).isoformat(), "source": "consul",
+         "level": "ERROR", "service": "consul",
+         "message": "service 'payment-svc' deregistered in dc-main — no healthy instances in local datacenter",
+         "metadata": {"host": "consul-server-01", "service": "payment-svc"}},
+        {"timestamp": (now - timedelta(minutes=38)).isoformat(), "source": "order-service",
+         "level": "ERROR", "service": "order-service",
+         "message": "circuit breaker OPEN for downstream 'payment-svc' after 15 consecutive failures",
+         "metadata": {"host": "order-svc-01"}},
+        {"timestamp": (now - timedelta(minutes=35)).isoformat(), "source": "order-service",
+         "level": "ERROR", "service": "order-service",
+         "message": "POST /api/v1/checkout — 503 Service Unavailable: payment-svc unreachable",
+         "metadata": {"host": "order-svc-01"}},
+        {"timestamp": (now - timedelta(minutes=30)).isoformat(), "source": "api-gateway",
+         "level": "CRITICAL", "service": "api-gateway",
+         "message": "checkout failure rate at 100% — all payment processing requests failing",
+         "metadata": {"host": "api-gw-01"}},
+        {"timestamp": (now - timedelta(minutes=25)).isoformat(), "source": "application",
+         "level": "CRITICAL", "service": "application",
+         "message": "revenue impact: 0 successful transactions in last 15 min — escalation triggered",
+         "metadata": {"host": "web-server-01"}},
+    ]
+    s7_metrics = []
+    for i in range(90):
+        t = now - timedelta(minutes=45) + timedelta(seconds=i * 30)
+        fail = 1 if i > 10 else 0
+        s7_metrics.append({
+            "timestamp": t.isoformat(), "host": "order-svc-01",
+            "cpu_percent": round(30 + fail * 35 + rng.gauss(0, 4), 2),
+            "memory_percent": round(45 + fail * 15 + rng.gauss(0, 3), 2),
+            "disk_percent": round(35 + rng.gauss(0, 1), 2),
+            "network_in_mbps": round(50 + fail * 10 + rng.gauss(0, 8), 2),
+            "network_out_mbps": round(30 + fail * 5 + rng.gauss(0, 5), 2),
+            "request_latency_ms": round(max(100 + fail * 3000 + rng.gauss(0, 50), 5), 2),
+            "error_rate": round(min(0.005 + fail * 0.75, 1), 4),
+            "active_connections": int(100 + fail * 50 + rng.gauss(0, 15)),
+        })
+    scenarios.append({
+        "id": "SCEN-007",
+        "name": "Payment Microservice Unreachable",
+        "description": ("Consul WAN federation link between datacenters fails, causing payment-svc to be "
+                         "deregistered in dc-main. Order service circuit breakers open, all checkouts fail, "
+                         "and revenue impact escalates as no transactions complete."),
+        "logs": s7_logs,
+        "metrics": s7_metrics,
+        "expected_severity": "P1",
+        "expected_category": "application",
+        "expected_root_cause": "Consul WAN gossip failure causing payment service deregistration",
+    })
+
+    # ── Scenario 8: Database CRUD INSERT Failure After Migration ─
+    s8_logs = [
+        {"timestamp": (now - timedelta(minutes=90)).isoformat(), "source": "application",
+         "level": "INFO", "service": "application",
+         "message": "schema migration v0042 applied: added 'tax_region' column (NOT NULL) to 'orders'",
+         "metadata": {"host": "web-server-01"}},
+        {"timestamp": (now - timedelta(minutes=85)).isoformat(), "source": "application",
+         "level": "ERROR", "service": "application",
+         "message": "INSERT into orders failed: null value in column 'tax_region' of relation 'orders' violates NOT NULL constraint",
+         "metadata": {"host": "order-svc-01"}},
+        {"timestamp": (now - timedelta(minutes=80)).isoformat(), "source": "application",
+         "level": "ERROR", "service": "application",
+         "message": "order submission failed for 12 consecutive requests — DB constraint violation",
+         "metadata": {"host": "order-svc-01"}},
+        {"timestamp": (now - timedelta(minutes=75)).isoformat(), "source": "postgresql",
+         "level": "ERROR", "service": "postgresql",
+         "message": "ERROR: null value in column 'tax_region' violates NOT NULL constraint (x47 in 5 min)",
+         "metadata": {"host": "db-primary"}},
+        {"timestamp": (now - timedelta(minutes=70)).isoformat(), "source": "api-gateway",
+         "level": "WARNING", "service": "api-gateway",
+         "message": "POST /api/v2/orders — 500 Internal Server Error: order creation failed",
+         "metadata": {"host": "api-gw-01", "endpoint": "/api/v2/orders"}},
+        {"timestamp": (now - timedelta(minutes=65)).isoformat(), "source": "application",
+         "level": "CRITICAL", "service": "application",
+         "message": "order-placement error rate at 100% — P1 incident declared",
+         "metadata": {"host": "web-server-01"}},
+    ]
+    s8_metrics = []
+    for i in range(180):
+        t = now - timedelta(minutes=90) + timedelta(seconds=i * 30)
+        fail = 1 if i > 10 else 0
+        s8_metrics.append({
+            "timestamp": t.isoformat(), "host": "db-primary",
+            "cpu_percent": round(40 + fail * 30 + rng.gauss(0, 5), 2),
+            "memory_percent": round(55 + fail * 10 + rng.gauss(0, 3), 2),
+            "disk_percent": round(50 + rng.gauss(0, 1), 2),
+            "network_in_mbps": round(60 + fail * 40 + rng.gauss(0, 10), 2),
+            "network_out_mbps": round(40 + fail * 20 + rng.gauss(0, 8), 2),
+            "request_latency_ms": round(max(50 + fail * 500 + rng.gauss(0, 15), 5), 2),
+            "error_rate": round(min(0.002 + fail * 0.60, 1), 4),
+            "active_connections": int(120 + fail * 80 + rng.gauss(0, 10)),
+        })
+    scenarios.append({
+        "id": "SCEN-008",
+        "name": "DB CRUD INSERT Failure After Migration",
+        "description": ("A schema migration adds a NOT NULL column without a default value. The application "
+                         "code has not been updated to include the new field in INSERT statements, causing "
+                         "all order creation requests to fail with constraint violations."),
+        "logs": s8_logs,
+        "metrics": s8_metrics,
+        "expected_severity": "P1",
+        "expected_category": "database",
+        "expected_root_cause": "Schema migration added NOT NULL column without default; app code not updated",
     })
 
     logger.info("Created %d demo scenarios", len(scenarios))
