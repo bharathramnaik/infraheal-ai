@@ -16,20 +16,20 @@ from .base_agent import BaseAgent
 
 logger = logging.getLogger(__name__)
 
-RCA_SYSTEM_PROMPT = """You are an RCA agent. Analyze anomalies and triage data. Output ONLY valid JSON:
+RCA_SYSTEM_PROMPT = """You are an RCA agent. Analyze anomalies and triage data. BE CONCISE. Output ONLY valid JSON:
 {
   "root_cause": "specific root cause statement",
   "root_cause_category": "infrastructure or application or network or security or database or storage",
-  "evidence_chain": ["evidence item 1", "evidence item 2"],
+  "evidence_chain": ["brief evidence 1", "brief evidence 2"],
   "confidence_score": 0.0 to 1.0,
   "related_runbook_id": null,
-  "contributing_factors": ["factor that worsened incident"],
+  "contributing_factors": ["factor"],
   "timeline_of_events": [{"timestamp": "T", "event": "E"}],
-  "affected_components": ["component name"],
-  "blast_radius": "description of total impact",
-  "reasoning_summary": "paragraph explaining logic"
+  "affected_components": ["component"],
+  "blast_radius": "short impact description",
+  "reasoning_summary": "1 sentence explaining logic"
 }
-Distinguish symptoms from causes. Consider cascading failures. No prose, no markdown. ONLY valid JSON."""
+Distinguish symptoms from causes. No prose. No markdown. ONLY valid JSON."""
 
 
 class RCAAgent(BaseAgent):
@@ -112,15 +112,15 @@ class RCAAgent(BaseAgent):
         from config import MAX_RAG_CHARS
         tri = triage_result
         parts = [
-            f"triage sev={tri.get('severity','?')} cat={tri.get('category','?')} impact={tri.get('impact_assessment','?')[:80]} svc={','.join(tri.get('affected_services',[]))}",
+            f"triage sev={tri.get('severity','?')} cat={tri.get('category','?')} impact={str(tri.get('impact_assessment',''))[:60]}",
             "anomalies:"
         ]
         for a in anomalies:
-            desc = a.get('description','')[:60].replace(',',' ')
+            desc = a.get('description','')[:40].replace(',',' ')
             parts.append(f"  {a.get('severity','?')} {a.get('type','?')} {a.get('source','?')} \"{desc}\" conf={a.get('confidence',0)}")
         if runbook_context:
             parts.append(f"runbooks: {runbook_context[:MAX_RAG_CHARS]}")
-        parts.append("Analyze the evidence above. Identify root cause as valid JSON per system prompt. No prose. No markdown. ONLY valid JSON.")
+        parts.append("Analyze above. Output root cause as valid JSON per system prompt. ONLY JSON.")
         return "\n".join(parts)
 
     def _validate_result(self, result: dict) -> dict:

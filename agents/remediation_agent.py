@@ -24,13 +24,13 @@ from config import AVAILABLE_TOOLS
 
 logger = logging.getLogger(__name__)
 
-REMEDIATION_SYSTEM_PROMPT = """You are a remediation planner. Given root cause + triage, generate ordered actions using ONLY tools listed below. Each action needs justification, risk level, and rollback strategy. Tools:
+REMEDIATION_SYSTEM_PROMPT = """You are a remediation planner. Given root cause + triage, generate ordered actions using ONLY tools listed below. Tools:
 
 {tools_section}
 
-Safety: high-risk actions must set requires_approval=true. Always prefer least-privilege. Output ONLY this JSON:
+Safety: high-risk actions must set requires_approval=true. BE CONCISE. Output ONLY this JSON:
 
-{"recommended_actions":[{"step":1,"tool_name":"tool","parameters":{"k":"v"},"rationale":"why","risk_level":"low|medium|high","requires_approval":bool,"expected_outcome":"result"}],"execution_order":"sequential|parallel","rollback_plan":"steps","estimated_resolution_time":"duration","warnings":["caveat"],"confidence":0-1}
+{"recommended_actions":[{"step":1,"tool_name":"tool","parameters":{"k":"v"},"risk_level":"low|medium|high","requires_approval":bool}],"execution_order":"seq|par","rollback_plan":"brief","estimated_resolution_time":"duration","warnings":["caveat"],"confidence":0-1}
 
 No prose, no markdown, only JSON."""
 
@@ -242,16 +242,13 @@ class RemediationAgent(BaseAgent):
         tri = triage_result
         rca = rca_result
         parts = [
-            f"incident sev={tri.get('severity','?')} cat={tri.get('category','?')} slamin={tri.get('sla_minutes','?')} impact={tri.get('impact_assessment','?')[:80]} svc={','.join(tri.get('affected_services',[]))}",
-            f"rca root={rca.get('root_cause','?')} cat={rca.get('root_cause_category','?')} conf={rca.get('confidence_score',0)} blast={rca.get('blast_radius','?')}",
+            f"incident sev={tri.get('severity','?')} cat={tri.get('category','?')} impact={str(tri.get('impact_assessment',''))[:60]}",
+            f"rca root={rca.get('root_cause','?')} conf={rca.get('confidence_score',0)}",
         ]
         evidence = rca.get("evidence_chain", [])
         if evidence:
-            parts.append("evidence: " + " | ".join(e[:80] for e in evidence[:3]))
-        factors = rca.get("contributing_factors", [])
-        if factors:
-            parts.append("factors: " + " | ".join(f[:80] for f in factors[:3]))
-        parts.append("Generate remediation plan. Return ONLY the JSON.")
+            parts.append("ev: " + " | ".join(e[:50] for e in evidence[:2]))
+        parts.append("Plan remediation. ONLY JSON.")
         return "\n".join(parts)
 
     def _validate_result(self, result: dict) -> dict:
@@ -276,13 +273,13 @@ class RemediationAgent(BaseAgent):
                 "step": action.get("step", idx),
                 "tool_name": tool_name,
                 "parameters": action.get("parameters", {}),
-                "rationale": action.get("rationale", "No rationale provided."),
+                "rationale": action.get("rationale", "Auto-generated."),
                 "risk_level": action.get("risk_level", "medium"),
                 "requires_approval": action.get(
                     "requires_approval",
                     action.get("risk_level", "medium") == "high",
                 ),
-                "expected_outcome": action.get("expected_outcome", "Expected improvement."),
+                "expected_outcome": action.get("expected_outcome", "See rationale."),
             })
 
         return {
