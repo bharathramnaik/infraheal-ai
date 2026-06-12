@@ -1029,77 +1029,27 @@ def _demo_scenarios() -> Dict[str, Dict[str, Any]]:
                  "active_connections": 1250},
             ],
         },
-        "🟡 Malformed API Requests Flood": {
+        "🔴 Application-Level Cascade Failure": {
             "id": "INC-005",
-            "title": "Malformed API Requests Flood",
-            "description": "Client SDK JSON serialization bug causing malformed payloads on all order submissions. API gateway returns 400 errors at 62% rate.",
+            "title": "Application-Level Cascade Failure",
+            "description": "Client SDK serialization bug causes malformed API requests. Downstream circuit-breakers open on microservice timeouts. DB schema migration adds NOT NULL constraint without updating app INSERT code. All three failure modes cascade — illustrating common application-layer issues.",
             "logs": [
                 {"timestamp": "2026-06-11T21:00:00Z", "source": "api-gateway", "level": "ERROR",
-                 "service": "api-gateway", "message": "POST /api/v2/orders — 400 Bad Request: Unrecognized token 'npe': was expecting (JSON valid, 'value' 'string' 'number' 'object' 'array')"},
-                {"timestamp": "2026-06-11T21:05:00Z", "source": "api-gateway", "level": "ERROR",
-                 "service": "api-gateway", "message": "POST /api/v2/orders — 400 Bad Request (x42 in 60s): JSON parse failure — string value contains double-escaped quotes"},
-                {"timestamp": "2026-06-11T21:10:00Z", "source": "api-gateway", "level": "WARNING",
+                 "service": "api-gateway", "message": "POST /api/v2/orders — 400 Bad Request: JSON parse failure — double-escaped quotes"},
+                {"timestamp": "2026-06-11T21:05:00Z", "source": "api-gateway", "level": "WARNING",
                  "service": "api-gateway", "message": "Content-Type mismatch: client sent 'text/html' for endpoint expecting 'application/json'"},
-                {"timestamp": "2026-06-11T21:15:00Z", "source": "application", "level": "WARNING",
-                 "service": "application", "message": "order-submission error rate at 38% — threshold 5% — likely client-side serializer bug"},
-                {"timestamp": "2026-06-11T21:20:00Z", "source": "api-gateway", "level": "CRITICAL",
-                 "service": "api-gateway", "message": "P1 Alert: 400 error rate on /api/v2/orders at 62%"},
+                {"timestamp": "2026-06-11T21:10:00Z", "source": "order-service", "level": "ERROR",
+                 "service": "order-service", "message": "circuit breaker OPEN for downstream 'inventory-svc' after gRPC deadline exceeded"},
+                {"timestamp": "2026-06-11T21:15:00Z", "source": "postgresql", "level": "ERROR",
+                 "service": "postgresql", "message": "null value in column 'tax_region' violates NOT NULL constraint — INSERT from order-service failed"},
+                {"timestamp": "2026-06-11T21:20:00Z", "source": "application", "level": "CRITICAL",
+                 "service": "application", "message": "order submission error rate at 100% — malformed requests + DB constraints + timeout — P1 declared"},
             ],
             "metrics": [
-                {"timestamp": "2026-06-11T21:20:00Z", "host": "api-gw-01", "cpu_percent": 60.2,
-                 "memory_percent": 60.5, "disk_percent": 40.1, "network_in_mbps": 520.0,
-                 "network_out_mbps": 200.3, "request_latency_ms": 280, "error_rate": 0.62,
-                 "active_connections": 1050},
-            ],
-        },
-        "🔴 Payment Microservice Unreachable": {
-            "id": "INC-006",
-            "title": "Payment Microservice Unreachable",
-            "description": "Consul WAN federation link failure between datacenters. Payment service deregistered in main DC. All checkout requests fail with 503. Revenue impact escalating.",
-            "logs": [
-                {"timestamp": "2026-06-11T22:15:00Z", "source": "consul", "level": "WARNING",
-                 "service": "consul", "message": "wan federation link to dc-dr lost — gossip timeout after 30s"},
-                {"timestamp": "2026-06-11T22:20:00Z", "source": "consul", "level": "ERROR",
-                 "service": "consul", "message": "service 'payment-svc' deregistered in dc-main — no healthy instances"},
-                {"timestamp": "2026-06-11T22:22:00Z", "source": "order-service", "level": "ERROR",
-                 "service": "order-service", "message": "circuit breaker OPEN for downstream 'payment-svc' after 15 consecutive failures"},
-                {"timestamp": "2026-06-11T22:25:00Z", "source": "order-service", "level": "ERROR",
-                 "service": "order-service", "message": "POST /api/v1/checkout — 503 Service Unavailable: payment-svc unreachable"},
-                {"timestamp": "2026-06-11T22:30:00Z", "source": "api-gateway", "level": "CRITICAL",
-                 "service": "api-gateway", "message": "checkout failure rate at 100% — all payment processing requests failing"},
-                {"timestamp": "2026-06-11T22:35:00Z", "source": "application", "level": "CRITICAL",
-                 "service": "application", "message": "revenue impact: 0 successful transactions in last 15 min"},
-            ],
-            "metrics": [
-                {"timestamp": "2026-06-11T22:30:00Z", "host": "order-svc-01", "cpu_percent": 65.8,
-                 "memory_percent": 60.2, "disk_percent": 35.0, "network_in_mbps": 60.5,
-                 "network_out_mbps": 35.2, "request_latency_ms": 3100, "error_rate": 0.78,
-                 "active_connections": 155},
-            ],
-        },
-        "🔴 DB CRUD INSERT Failure After Migration": {
-            "id": "INC-007",
-            "title": "DB CRUD INSERT Failure After Schema Migration",
-            "description": "Schema migration added a NOT NULL column without a default value. Application code missing the new field in INSERT statements. All order creation requests failing.",
-            "logs": [
-                {"timestamp": "2026-06-11T20:30:00Z", "source": "application", "level": "INFO",
-                 "service": "application", "message": "schema migration v0042 applied: added 'tax_region' column (NOT NULL) to 'orders'"},
-                {"timestamp": "2026-06-11T20:35:00Z", "source": "application", "level": "ERROR",
-                 "service": "application", "message": "INSERT into orders failed: null value in column 'tax_region' violates NOT NULL constraint"},
-                {"timestamp": "2026-06-11T20:40:00Z", "source": "application", "level": "ERROR",
-                 "service": "application", "message": "order submission failed for 12 consecutive requests — DB constraint violation"},
-                {"timestamp": "2026-06-11T20:45:00Z", "source": "postgresql", "level": "ERROR",
-                 "service": "postgresql", "message": "ERROR: null value in column 'tax_region' violates NOT NULL constraint (x47 in 5 min)"},
-                {"timestamp": "2026-06-11T20:50:00Z", "source": "api-gateway", "level": "WARNING",
-                 "service": "api-gateway", "message": "POST /api/v2/orders — 500 Internal Server Error: order creation failed"},
-                {"timestamp": "2026-06-11T20:55:00Z", "source": "application", "level": "CRITICAL",
-                 "service": "application", "message": "order-placement error rate at 100% — P1 incident declared"},
-            ],
-            "metrics": [
-                {"timestamp": "2026-06-11T20:55:00Z", "host": "db-primary", "cpu_percent": 70.5,
-                 "memory_percent": 65.3, "disk_percent": 50.0, "network_in_mbps": 102.4,
-                 "network_out_mbps": 62.1, "request_latency_ms": 550, "error_rate": 0.62,
-                 "active_connections": 205},
+                {"timestamp": "2026-06-11T21:20:00Z", "host": "api-gw-01", "cpu_percent": 70.2,
+                 "memory_percent": 65.5, "disk_percent": 40.1, "network_in_mbps": 420.0,
+                 "network_out_mbps": 155.3, "request_latency_ms": 2100, "error_rate": 0.58,
+                 "active_connections": 720},
             ],
         },
     }
@@ -1303,7 +1253,8 @@ def create_dashboard(
         """Run the full orchestrator pipeline on a scenario."""
         if not scenario_name or scenario_name not in scenarios:
             empty = _empty_state("Select a scenario first")
-            return empty, empty, empty, empty, empty
+            return empty, empty, empty, empty, empty, \
+                   _chat_update_status()[0], _chat_update_status()[1], _chat_refresh_risk()
 
         sc = dict(scenarios[scenario_name])  # shallow copy so we can inject anomalies
 
@@ -1432,7 +1383,8 @@ def create_dashboard(
                     "execution_results": result.get("execution_results", []),
                 })
 
-                return triage_html, rca_html, remed_html, report_html, reasoning_html
+                return triage_html, rca_html, remed_html, report_html, reasoning_html, \
+                       _chat_update_status()[0], _chat_update_status()[1], _chat_refresh_risk()
 
             except Exception as exc:
                 logger.error("Orchestrator failed: %s", exc, exc_info=True)
@@ -1444,7 +1396,8 @@ def create_dashboard(
                     f'Ensure vLLM server is running at {VLLM_BASE_URL}</div>'
                     f'</div>'
                 )
-                return error_html, error_html, error_html, error_html, error_html
+                return error_html, error_html, error_html, error_html, error_html, \
+                       _chat_update_status()[0], _chat_update_status()[1], _chat_refresh_risk()
 
         # ---- Demo mode (no orchestrator) ----
         demo_triage = format_agent_output("Triage", {
@@ -1533,7 +1486,21 @@ def create_dashboard(
             },
         })
 
-        return demo_triage, demo_rca, demo_remed, demo_report, demo_reasoning
+        # Update pipeline state for chat context
+        _last_pipeline_state.update({
+            "triage": {
+                "severity": "P1" if "🔴" in scenario_name else ("P2" if "🟠" in scenario_name else "P3"),
+                "category": "application" if "Application" in scenario_name else "infrastructure",
+                "impact_assessment": sc.get("description", "")[:120],
+            },
+            "rca": {"root_cause": sc.get("description", "Unknown")[:100], "confidence_score": 0.87},
+            "remediation": {"recommended_actions": [{"tool_name": "restart_service"}]},
+            "critique": {"confirmed": True},
+            "anomalies": sc.get("logs", []),
+        })
+
+        return demo_triage, demo_rca, demo_remed, demo_report, demo_reasoning, \
+               _chat_update_status()[0], _chat_update_status()[1], _chat_refresh_risk()
 
     def _run_error_level_resolution(scenario_name: str, level_filter: str) -> str:
         """Run error-level specific resolution analysis with progress timing."""
@@ -1806,13 +1773,38 @@ def create_dashboard(
         return _format_anomalies_html(demo_anomalies)
 
     def _get_command_center_metrics() -> str:
-        """Build the command center metric cards row."""
+        """Build the command center metric cards from actual data."""
+        total_incidents = len(scenarios)
+        past_inc = _load_past_incidents()
+        if past_inc:
+            avg_resolution = sum(i.get("duration_minutes", 30) for i in past_inc) / len(past_inc)
+            resolution_str = f"{avg_resolution:.1f} min"
+        else:
+            resolution_str = "—"
+
+        # Compute anomaly count from all scenario logs
+        all_logs = []
+        for sc in scenarios.values():
+            all_logs.extend(sc.get("logs", []))
+        error_logs = [l for l in all_logs if l.get("level") in ("CRITICAL", "ERROR")]
+        anomaly_count = len(error_logs)
+
+        # Compute system health from average error rate across all scenario metrics
+        all_metrics = []
+        for sc in scenarios.values():
+            all_metrics.extend(sc.get("metrics", []))
+        if all_metrics:
+            avg_err = sum(m.get("error_rate", 0) for m in all_metrics) / len(all_metrics)
+            health_pct = max(0, min(100, round((1 - avg_err) * 100, 1)))
+        else:
+            health_pct = 100.0
+
         return (
             f'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;">'
-            f'{_metric_card_html("🚨", "Active Incidents", "4", _C["red"])}'
-            f'{_metric_card_html("⚡", "Anomalies Detected", "7", _C["amber"])}'
-            f'{_metric_card_html("⏱️", "Mean Resolution", "4.2 min", _C["cyan"])}'
-            f'{_metric_card_html("💚", "System Health", "94.3%", _C["green"])}'
+            f'{_metric_card_html("🚨", "Active Incidents", str(total_incidents), _C["red"])}'
+            f'{_metric_card_html("⚡", "Anomalies Detected", str(anomaly_count), _C["amber"])}'
+            f'{_metric_card_html("⏱️", "Mean Resolution", resolution_str, _C["cyan"])}'
+            f'{_metric_card_html("💚", "System Health", f"{health_pct}%", _C["green"])}'
             f'</div>'
         )
 
@@ -2269,7 +2261,8 @@ def create_dashboard(
                 analyze_btn.click(
                     fn=_run_analysis,
                     inputs=[scenario_dropdown],
-                    outputs=[triage_panel, rca_panel, remed_panel, report_panel, reasoning_panel],
+                    outputs=[triage_panel, rca_panel, remed_panel, report_panel, reasoning_panel,
+                             status_dot, status_text, risk_panel],
                 )
                 level_resolve_btn.click(
                     fn=_run_error_level_resolution,
