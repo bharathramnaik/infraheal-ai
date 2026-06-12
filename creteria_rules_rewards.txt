@@ -1,0 +1,247 @@
+TCS & AMD AI Hackathon 2026
+Innovate. Build. Accelerate with AI 
+
+The TCS & AMD AI Hackathon is an innovation‑driven challenge designed to empower TCS developers and engineers to build real‑world, enterprise‑ready AI solutions using modern AI frameworks and AMD‑powered accelerated computing. Focused on applied AI—including GenAI, RAG, AI agents, vision, speech, and multimodal systems—the hackathon brings together AMD’s AI platforms, tools, and learning resources with TCS’s engineering and innovation ecosystem, enabling participants to move rapidly from ideas to working prototypes, collaborate with peers and mentors, and showcase impactful solutions to business and technology leaders. 
+
+Key Dates:
+
+Event	Date
+Hackathon Announcement	25th May 2026
+Registration Closes	5th June 2026
+Virtual Kick-off	8th June 2026
+Hands-on Workshop	9th June 2026
+Hackathon Build Phase	8th June – 14th June 2026
+Submission close by	14th June 2026 11:59 PM IST
+
+
+
+Who Can Participate?
+
+Open to TCS developers and engineers across business groups 
+Participants should have an interest in AI/ML, data, cloud, or application development experience 
+ Participation Format:
+
+Individual participation OR
+
+Team-based participation (Teams of 2–3 members) 
+ Teams are encouraged to be cross-functional; however, this is not mandatory.
+
+Hackathon Challenges:
+Come build the next generation of AI agents and high-performance applications - powered by AMD.
+
+Refer the tracks below and choose your usecase:
+
+Track 1 – Agents
+
+Description:  Single or multiple agents orchestrating different tasks and communicating with each other. Can include RAG pipelines, agents, regression models, and chatbots to drive efficiency in BU-specific tasks. Use public datasets to build use cases using open-source stacks (Llama, Deepseek, Qwen, Graph AI, predictive ML models). Focus on productivity, efficiency (tokens used, latency), and accuracy.
+
+
+Track 2 – Multimodal
+
+Description: Applicable for complex environments like manufacturing, networking, industrial, and pharma. Involves multiple models working together to analyze, react, and enable decision-making. Build combined pipelines (vision, reasoning, speech, video analysis models) to create effective end-to-end solutions
+
+
+
+Track 3 – Fine Tuning (Advanced Users) 
+
+Description: Open-source LLMs may hallucinate in domain-specific use cases such as code generation or telecom/pharma expertise.  Apply fine-tuning techniques like PEFT, GRPO, etc., to adapt models for specific domains/tasks. Demonstrate measurable improvements in accuracy and performance after fine-tuning
+
+Find the list of usecases here or here
+
+
+
+Pre-requisites:
+
+Coding experience in a language of their choice: Python, Java, Go, Rust. etc...
+
+Knowledge of common AI/ML libraries/frameworks (e.g., TensorFlow, PyTorch, Scikit-learn, or similar
+
+Problem-solving mindset with focus on real-world applications
+Steps to follow:
+
+Step 1: Register - Click here to Register 
+
+Register via Ultimatix Prime Hub 
+Confirm individual or team participation 
+
+A handbook explaining the next steps will be shared with you. You can also Download the handbook 
+Step 2: Prepare 
+
+Review the hackathon theme, rules, and evaluation criteria 
+
+Select a use case from the provided list and brainstorm
+
+Attend the virtual launch and technical workshop, sign up for AMD AI Developer Program, AMD Developer Cloud and Discord (Download the handbook from here)
+Set up your development environment on the AMD Developer Cloud as guided
+Step 3: Build 
+
+Design and build your AI solution during the hackathon window 
+Use approved tools, frameworks, and platforms 
+Focus on functionality, clarity, and real-world relevance 
+Step 4: Submit 
+
+Submit your code, a ppt/pdf and a demo video via Ultimatix Prime events.
+Step 5: Demo & Evaluation 
+
+Shortlisted teams may be invited to present or demo at the grand finale 
+Winners will be announced post jury evaluation 
+
+What to Submit?
+
+Each team must submit the code files, a 3–5 slide presentation (PDF or PPT) and demo recording as part of the final submission. The PPT/PDF should follow the following structure - the template can be downloaded Here
+
+Slide 1 – Basic Information 
+
+Team name 
+Names of the team members / individual / role in the team for the Hackathon (Research, coding, building the business case, presentation, etc) 
+Usecase detail
+Short Description 
+Slide 2 – Problem & Context 
+
+Problem statement 
+Target users / stakeholders 
+Why this problem matters (business or operational relevance) 
+Mapped hackathon challenge 
+Slide 3 – Solution Overview 
+
+Solution architecture / workflow diagram 
+AI approach used (e.g., GenAI, RAG, agents, vision, speech, multimodal) 
+Key technologies / frameworks leveraged  
+What was built during the hackathon 
+Slide 4 - Model Insights
+
+Models used 
+Dataset(s) used (if fine-tuning) 
+Training time (if fine tuning) 
+Number of tokens used for a couple of example scenarios 
+End-to-end latency 
+GPU usage including memory (gives a sense of right sizing) 
+Slide 5 – Impact & Demo Summary 
+
+Expected impact or value (efficiency, productivity, scale, experience) 
+Key differentiators / innovation 
+Demo flow overview (what the jury should notice) 
+
+Future extension (Planned if any)
+
+
+Evaluation Criteria
+
+Submissions will be evaluated using the following criteria.
+
+
+
+Criteria 
+
+Description 
+
+Weightage 
+
+Problem Definition & Relevance 
+
+Clarity of problem, relevance to real-world / enterprise scenarios 
+
+10% 
+
+Technical Implementation 
+
+Correct and effective application of AI/ML techniques, working solution 
+
+40% 
+
+Learnings and Future work 
+
+Impact, usefulness, scalability, applicability 
+
+20% 
+
+Innovation & Creativity 
+
+Novelty, differentiation, unique approach 
+
+15% 
+
+Presentation & Demo Quality 
+
+Clarity of explanation, demo flow, storytelling 
+
+15% 
+
+ 
+
+Guidelines to be followed
+
+All development must be done during the hackathon period 
+Teams may use open-source libraries and frameworks, but must clearly state what was built during the hackathon 
+Code reuse from prior work must be disclosed 
+Submissions must include a demo, presentation, link to code and datasets used 
+Any form of plagiarism or rule violation may result in disqualification 
+Judges’ decisions will be final
+
+
+
+Rewards and Recognition
+
+Prizes and recognition aim to celebrate innovation, execution, and impact.
+
+Category 
+
+Rewards 
+
+1st Prize 
+
+Winner Certificate + 30,000 Gems
+
+2nd Prize 
+
+1st Runner-up Certificate + 25,000 Gems
+
+3rd Prize 
+
+2nd Runner-up Certificate + 20,000 Gems
+
+4th–10th Prize 
+
+Certificate of Excellence + 2,000 Gems
+
+All Participants with Solution Submission 
+
+Certificate of Participation 
+
+ 
+
+Community / Expert Connect:
+
+Stay connected with AMD experts through Discord for the duration of the Hackathon to get answers for your technical queries: 
+Discord link and details will be shared in the handbook.
+
+
+
+Why participate in the TCS & AMD .AI Hackathon?
+
+By participating in the TCS & AMD AI Hackathon, you will:
+
+
+
+Build practical AI solutions to industry-relevant use cases
+Get hands-on exposure to AMD’s AI ecosystem and developer platforms
+Enhance your AI skills in areas such as GenAI, AI Agents, RAG, vision, speech, and multimodal AI
+Collaborate with peers across TCS business units and learn through experimentation
+Gain visibility for your work through demos and evaluations
+Earn recognition and awards, including certificates, trophies, and Gems.
+
+This hackathon is designed to be hands-on, outcome-driven, and skill-building.
+
+
+For more details contact:
+
+1. reetu.asthana@tcs.com
+2. k.abhi@tcs.com
+
+CLICK HERE TO REGISTER!!
+
+
+
+TCS logo
+Ultimatix Release ver. 9.1.0:4-ffd5930 | Copyright © 2026 Tata Consultancy Services
+Third Party Notices | Privacy Policy | Terms of Use | Browser and Display compatibility | Accessibility Declaration

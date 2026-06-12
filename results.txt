@@ -1,0 +1,211 @@
+🏠 Command Center
+🔍 Incident Analysis
+📊 Performance Metrics
+🌟 Visualization
+📋 Knowledge Base
+💬 Agent Chat
+🏠 Command Center
+🔍 Incident Analysis
+📊 Performance Metrics
+🌟 Visualization
+📋 Knowledge Base
+💬 Agent Chat
+🔍 Incident Analysis Pipeline
+Select a scenario and run the full multi-agent analysis pipeline.
+Select Incident Scenario
+Malformed API Requests Flood
+🚀 Analyze Incident
+📋
+Malformed API Requests Flood
+(SCEN-006)
+A client SDK update introduces a JSON serialization bug, causing all order submission requests to carry malformed payloads. API gateway returns 400 errors, error rate spikes to 62%, and upstream clients experience failures.
+Timestamp	Level	Service	Source	Message
+2026-06-12T17:54:40.978387+00:00	ERROR	api-gateway	api-gateway	POST /api/v2/orders — 400 Bad Request: Unrecognized token 'npe': was expecting (JSON valid, 'value' 'string' 'number' 'object' 'array')
+2026-06-12T17:59:40.978387+00:00	ERROR	api-gateway	api-gateway	POST /api/v2/orders — 400 Bad Request (x42 in 60s): JSON parse failure — string value contains double-escaped quotes
+2026-06-12T18:04:40.978387+00:00	WARNING	api-gateway	api-gateway	Content-Type mismatch: client sent 'text/html' for endpoint expecting 'application/json' (Client: mobile-app/3.2.1)
+2026-06-12T18:09:40.978387+00:00	WARNING	application	application	order-submission error rate at 38% — threshold 5% — likely client-side serializer bug
+2026-06-12T18:14:40.978387+00:00	CRITICAL	api-gateway	api-gateway	P1 Alert: 400 error rate on /api/v2/orders at 62% — upstream clients receiving failures
+Agent Outputs
+🔍
+Triage
+Severity
+P1 — Critical
+Category
+database
+Confidence
+61%
+Severity Label
+Critical
+Impact Assessment
+Latency on db-primary is critically high, exceeding the threshold multiple times. This could lead to service disruptions and data integrity issues.
+Affected Services
+[
+  "db-primary"
+]
+Urgency Reasoning
+Latency is a critical performance metric that directly impacts system functionality and user experience. High latency can lead to service degradation or failure.
+Escalation Needed
+true
+Sla Minutes
+15
+⚙️
+Root Cause Analysis
+Root Cause
+Too many concurrent connections to the database server.
+Root Cause Category
+database
+Evidence Chain
+[
+  "P1 latency_breach db-primary 'Latency critical on db-primary: 6847.8 (threshold: 5000)' conf=0.36955599999999994",
+  "P1 latency_breach db-primary 'Latency critical on db-primary: 6999.8 (threshold: 5000)' conf=0.39996800000000005",
+  "P1 latency_breach db-primary 'Latency critical on db-primary: 7133.2 (threshold: 5000)' conf=0.42663999999999996",
+  "P1 latency_breach db-primary 'Latency critical on db-primary: 7160.7 (threshold: 5000)' conf=0.43213999999999997",
+  ""
+]
+Confidence Score
+0.3
+Related Runbook Id
+null
+Contributing Factors
+[]
+Timeline Of Events
+[]
+Affected Components
+[]
+Blast Radius
+Unknown
+Reasoning Summary
+No reasoning summary available.
+🔧
+Remediation
+Confidence
+50%
+🛡️ SafetyGuard Audit
+✅ 2/3 passed
+🛑 1 blocked
+⚠️ 0 flagged
+🛑 Blocked Setting a config value to empty could break the service.
+Recommended Actions
+[
+  {
+    "step": 1,
+    "tool_name": "flush_cache",
+    "parameters": {
+      "cache_type": "application",
+      "service_name": "db-primary"
+    },
+    "rationale": "Clearing the application cache can reduce load on the database and improve performance temporarily.",
+    "risk_level": "low",
+    "requires_approval": false,
+    "expected_outcome": "Temporary reduction in latency due to reduced cache pressure."
+  },
+  {
+    "step": 2,
+    "tool_name": "rotate_logs",
+    "parameters": {
+      "service_name": "db-primary",
+      "max_size_mb": 100
+    },
+    "rationale": "Rotating logs can free up disk space and prevent potential disk full issues that could exacerbate the problem.",
+    "risk_level": "low",
+    "requires_approval": false,
+    "expected_outcome": "Disk space freed up and logs rotated."
+  },
+  {
+    "step": 3,
+    "tool_name": "update_config",
+    "parameters": {
+      "service_name": "db-primary",
+      "config_key": "max_connections",
+      "config_value": ""
+    },
+    "rationale": "No rationale provided.",
+    "risk_level": "medium",
+    "requires_approval": false,
+    "expected_outcome": "Expected improvement."
+  }
+]
+Execution Order
+sequential
+Rollback Plan
+No rollback plan specified.
+Estimated Resolution Time
+Unknown
+Warnings
+[]
+⚙️
+Incident Report
+Severity
+P1 — Critical
+Incident Id
+INC-20260612-1EFE
+Title
+P1 Database Incident — Too many concurrent connections to the database server.
+Status
+resolved
+Executive Summary
+Incident P1 (database): Too many concurrent connections to the database server.. 21 anomalies detected, 3 remediation actions taken, all services restored.
+Timeline
+[
+  {
+    "timestamp": "2026-06-12T18:57:28.466672+00:00",
+    "event": "Incident resolved by InfraHeal AI"
+  }
+]
+Root Cause Summary
+Too many concurrent connections to the database server.
+Actions Taken
+[
+  {
+    "action": "flush_cache: Clearing the application cache can reduce load on the database and improve performance temporarily.",
+    "status": "success",
+    "result": "Temporary reduction in latency due to reduced cache pressure."
+  },
+  {
+    "action": "rotate_logs: Rotating logs can free up disk space and prevent potential disk full issues that could exacerbate the problem.",
+    "status": "success",
+    "result": "Disk space freed up and logs rotated."
+  },
+  {
+    "action": "update_config: No rationale provided.",
+    "status": "blocked_by_safety",
+    "result": "Expected improvement."
+  }
+]
+Business Impact
+Latency on db-primary is critically high, exceeding the threshold multiple times. This could lead to service disruptions and data integrity issues.
+Prevention Recommendations
+[]
+Postmortem Notes
+Auto-resolved by InfraHeal AI. Severity: P1, Category: database, Confidence: 0.30
+Metrics Summary
+{
+  "time_to_detect_minutes": "N/A",
+  "time_to_resolve_minutes": "N/A",
+  "affected_users_estimate": "N/A"
+}
+Tags
+[
+  "P1",
+  "database",
+  "infraheal-ai"
+]
+Generated At
+2026-06-12T18:57:28.466672+00:00
+
+🧠 Agent Reasoning Chain
+▼
+Agent Reasoning Chain
+Triage Agent: Latency is a critical performance metric that directly impacts system functionality and user experience. High latency can lead to service degradation or failure.
+RCA Agent: No reasoning summary available.
+Critique Agent: ⚠ Error: string indices must be integers, not 'str'
+Remediation Agent: No rollback plan specified.
+Reporting Agent: Incident P1 (database): Too many concurrent connections to the database server.. 21 anomalies detected, 3 remediation actions taken, all services restored.
+🎯 Resolution by Error Level
+Pipeline outputs grouped by log severity — shows resolution steps for each error level independently.
+Filter by Log Level
+ALL
+🔄 Run Level-Specific Resolution
+📭
+Level-specific resolution
+Select a scenario and click 'Run Level-Specific Resolution'.
