@@ -1974,7 +1974,10 @@ def create_dashboard(
                     tune_btn = gr.Button("🚀 Run GPU Benchmark", variant="primary", scale=1)
                     tune_status = gr.HTML(value=_empty_state("Benchmark not run", "Click to profile GPU throughput."), scale=3)
                 tune_config = gr.HTML(value=_empty_state("Optimal config", "Run benchmark to get recommendations."))
-                tune_plot = gr.Plot(value=_empty_fig2, show_label=False)
+                _tune_empty_fig = go.Figure()
+                _tune_empty_fig.update_layout(paper_bgcolor="#0a0a1a", plot_bgcolor="#0a0a1a",
+                                              xaxis=dict(visible=False), yaxis=dict(visible=False), height=350)
+                tune_plot = gr.Plot(value=_tune_empty_fig, show_label=False)
 
                 def _on_tune():
                     from gpu_autotuner import GPUTuner
