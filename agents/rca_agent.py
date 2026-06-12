@@ -16,11 +16,20 @@ from .base_agent import BaseAgent
 
 logger = logging.getLogger(__name__)
 
-RCA_SYSTEM_PROMPT = """You are an RCA agent. Given anomalies, triage data, and optional runbook context, identify root cause. Output ONLY this JSON:
-
-{"root_cause":"specific root cause","root_cause_category":"infrastructure|application|network|security|database|storage","evidence_chain":["evidence1"],"confidence_score":0-1,"related_runbook_id":"id or null","contributing_factors":["factor"],"timeline_of_events":[{"timestamp":"t","event":"e"}],"affected_components":["comp"],"blast_radius":"scope","reasoning_summary":"logic summary"}
-
-Distinguish symptoms from causes. Consider cascading failures. If runbooks match, boost confidence. No prose, no markdown, only JSON."""
+RCA_SYSTEM_PROMPT = """You are an RCA agent. Analyze anomalies and triage data. Output ONLY valid JSON:
+{
+  "root_cause": "specific root cause statement",
+  "root_cause_category": "infrastructure or application or network or security or database or storage",
+  "evidence_chain": ["evidence item 1", "evidence item 2"],
+  "confidence_score": 0.0 to 1.0,
+  "related_runbook_id": null,
+  "contributing_factors": ["factor that worsened incident"],
+  "timeline_of_events": [{"timestamp": "T", "event": "E"}],
+  "affected_components": ["component name"],
+  "blast_radius": "description of total impact",
+  "reasoning_summary": "paragraph explaining logic"
+}
+Distinguish symptoms from causes. Consider cascading failures. No prose, no markdown. ONLY valid JSON."""
 
 
 class RCAAgent(BaseAgent):
@@ -111,13 +120,19 @@ class RCAAgent(BaseAgent):
             parts.append(f"  {a.get('severity','?')} {a.get('type','?')} {a.get('source','?')} \"{desc}\" conf={a.get('confidence',0)}")
         if runbook_context:
             parts.append(f"runbooks: {runbook_context[:MAX_RAG_CHARS]}")
-        parts.append("Identify root cause. Return ONLY the JSON.")
+        parts.append("Analyze the evidence above. Identify root cause as valid JSON per system prompt. No prose. No markdown. ONLY valid JSON.")
         return "\n".join(parts)
 
     def _validate_result(self, result: dict) -> dict:
         """Ensure all required fields are present with sensible defaults."""
+        # If parsing failed, preserve the error and provide defaults
+        if "error" in result:
+            defaults = RCAAgent._default_result()
+            defaults["error"] = result["error"]
+            defaults["raw"] = result.get("raw", "")
+            return defaults
+
         timeline = result.get("timeline_of_events", [])
-        # Normalise timeline entries
         validated_timeline: List[Dict[str, str]] = []
         for entry in timeline:
             if isinstance(entry, dict):

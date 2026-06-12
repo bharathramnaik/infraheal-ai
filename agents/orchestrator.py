@@ -189,21 +189,27 @@ class InfraHealOrchestrator:
         )
 
         # ── Step 3b: Self-Critique / Reflection ──────────────────
-        logger.info("Step 3b/5: Running self-critique on RCA…")
-        try:
-            critique = self._critique_analysis(anomalies, triage_result, rca_result)
-            if critique.get("confirmed"):
-                logger.info("Critique CONFIRMED RCA (confidence=%.2f)", critique.get("refined_confidence", rca_result.get("confidence_score", 0)))
-            else:
-                logger.warning("Critique found gaps: %s", critique.get("gaps", []))
-                rca_result["refined_confidence"] = critique.get("refined_confidence", rca_result.get("confidence_score", 0))
-                rca_result["refined_reasoning"] = critique.get("refined_reasoning", rca_result.get("reasoning_summary", ""))
-                rca_result["critique_gaps"] = critique.get("gaps", [])
-                rca_result["critique_suggestions"] = critique.get("suggestions", [])
-            result["critique"] = critique
-        except Exception as exc:
-            logger.warning("Critique failed (continuing without): %s", exc)
-            result["critique"] = {"confirmed": True, "error": str(exc)}
+        rc_text = rca_result.get("root_cause", "")
+        is_fallback = ("Unable to determine" in rc_text or "No anomalies provided" in rc_text)
+        if is_fallback:
+            logger.warning("Skipping critique — RCA returned fallback (no actionable root cause)")
+            result["critique"] = {"confirmed": True, "refined_reasoning": "Critique skipped — RCA had no root cause to analyze.", "skipped": True}
+        else:
+            logger.info("Step 3b/5: Running self-critique on RCA…")
+            try:
+                critique = self._critique_analysis(anomalies, triage_result, rca_result)
+                if critique.get("confirmed"):
+                    logger.info("Critique CONFIRMED RCA (confidence=%.2f)", critique.get("refined_confidence", rca_result.get("confidence_score", 0)))
+                else:
+                    logger.warning("Critique found gaps: %s", critique.get("gaps", []))
+                    rca_result["refined_confidence"] = critique.get("refined_confidence", rca_result.get("confidence_score", 0))
+                    rca_result["refined_reasoning"] = critique.get("refined_reasoning", rca_result.get("reasoning_summary", ""))
+                    rca_result["critique_gaps"] = critique.get("gaps", [])
+                    rca_result["critique_suggestions"] = critique.get("suggestions", [])
+                result["critique"] = critique
+            except Exception as exc:
+                logger.warning("Critique failed (continuing without): %s", exc)
+                result["critique"] = {"confirmed": True, "error": str(exc)}
 
         # ── Step 4: Remediation Plan ────────────────────────────
         logger.info("Step 4/5: Running Remediation Agent…")
@@ -282,7 +288,18 @@ class InfraHealOrchestrator:
             ("Reporting Agent", report, "report_latency", "executive_summary"),
         ]
         for name, agent_out, latency_key, reason_key in rc_items:
-            thought = agent_out.get(reason_key, "") if isinstance(agent_out, dict) else ""
+            if isinstance(agent_out, dict):
+                err = agent_out.get("error", "")
+                if err:
+                    reasoning_chain.append({
+                        "agent": name,
+                        "reasoning": f"⚠ Error: {err[:500]}",
+                        "latency_ms": 0,
+                    })
+                    continue
+                thought = agent_out.get(reason_key, "")
+            else:
+                thought = ""
             rc_latency = result.get(latency_key, 0)
             reasoning_chain.append({
                 "agent": name,
