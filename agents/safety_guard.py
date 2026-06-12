@@ -148,6 +148,8 @@ class SafetyGuard:
                     reason = rule["reason"]
                     if verdict == "blocked":
                         verdict = "block"
+                    elif verdict == "high":
+                        verdict = "flag"
 
                     self._audit_log.append({
                         "timestamp": datetime.now(timezone.utc).isoformat(),

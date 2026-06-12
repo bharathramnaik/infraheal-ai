@@ -267,7 +267,7 @@ class InfraHealOrchestrator:
                     execution_results.insert(i, {
                         "step": i + 1,
                         "tool_name": actions[i].get("tool_name", "?"),
-                        "status": s["verdict"] + "ed_by_safety",
+                        "status": {"block": "blocked", "flag": "flagged"}.get(s["verdict"], s["verdict"]) + "_by_safety",
                         "message": s.get("reason", ""),
                         "risk_level": s.get("risk", "unknown"),
                     })

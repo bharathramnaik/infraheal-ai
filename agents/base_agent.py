@@ -217,19 +217,69 @@ class BaseAgent:
 
         if truncated:
             # Attempt to salvage partial JSON by closing unclosed brackets/braces
+            # in the correct nesting order (LIFO).
             try:
                 fixed = cleaned.rstrip().rstrip(",")
-                ob = fixed.count("{") - fixed.count("}")
-                oarr = fixed.count("[") - fixed.count("]")
-                if ob > 0:
-                    fixed += "}" * ob
-                if oarr > 0:
-                    fixed += "]" * oarr
+                # Build a stack of opening brackets to track nesting order;
+                # also track whether we're inside an unclosed string.
+                stack = []
+                in_string = False
+                escape = False
+                for ch in fixed:
+                    if escape:
+                        escape = False
+                        continue
+                    if ch == '\\' and in_string:
+                        escape = True
+                        continue
+                    if ch == '"':
+                        in_string = not in_string
+                        continue
+                    if in_string:
+                        continue
+                    if ch in ('{', '['):
+                        stack.append(ch)
+                    elif ch == '}' and stack and stack[-1] == '{':
+                        stack.pop()
+                    elif ch == ']' and stack and stack[-1] == '[':
+                        stack.pop()
+                # Close unclosed string, then remaining brackets in LIFO order
+                if in_string:
+                    fixed += '"'
+                for ch in reversed(stack):
+                    fixed += '}' if ch == '{' else ']'
                 partial = json.loads(fixed)
                 partial["_partial"] = True
                 self.logger.warning("Salvaged partial JSON from %s (recovered %d fields)", self.name, len(partial))
                 return partial
             except (json.JSONDecodeError, Exception) as salvage_err:
+                # Fallback: strip incomplete trailing content after last `,`
+                try:
+                    last_comma = fixed.rfind(",")
+                    if last_comma > 0:
+                        stripped = fixed[:last_comma].rstrip().rstrip(",")
+                        # Re-close brackets for the stripped version
+                        stack = []
+                        in_string = False
+                        escape = False
+                        for ch in stripped:
+                            if escape: escape = False; continue
+                            if ch == '\\' and in_string: escape = True; continue
+                            if ch == '"': in_string = not in_string; continue
+                            if in_string: continue
+                            if ch in ('{', '['): stack.append(ch)
+                            elif ch == '}' and stack and stack[-1] == '{': stack.pop()
+                            elif ch == ']' and stack and stack[-1] == '[': stack.pop()
+                        if in_string:
+                            stripped += '"'
+                        for ch in reversed(stack):
+                            stripped += '}' if ch == '{' else ']'
+                        fallback = json.loads(stripped)
+                        fallback["_partial"] = True
+                        self.logger.warning("Salvaged partial JSON from %s via fallback (recovered %d fields)", self.name, len(fallback))
+                        return fallback
+                except (json.JSONDecodeError, Exception):
+                    pass
                 self.logger.warning("Could not salvage truncated JSON from %s: %s", self.name, salvage_err)
             return {"error": "LLM response truncated (max_tokens too low). JSON incomplete.", "raw": text, "_truncated": True}
         return {"error": "Failed to parse response", "raw": text}
