@@ -212,7 +212,7 @@ class BaseAgent:
             except json.JSONDecodeError:
                 pass
 
-        self.logger.error("Failed to parse JSON from %s: %s", self.name, cleaned[:300])
+        self.logger.warning("Failed to parse JSON from %s (attempting salvage): %s", self.name, cleaned[:200])
 
         # Detect truncation — if text is cut off mid-JSON
         truncated = False
