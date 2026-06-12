@@ -15,6 +15,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="gradio")
 import gradio as gr
 import plotly.graph_objects as go
 

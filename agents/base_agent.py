@@ -194,7 +194,10 @@ class BaseAgent:
 
         # Attempt direct parse first
         try:
-            return json.loads(cleaned)
+            result = json.loads(cleaned)
+            if isinstance(result, list):
+                return result[0] if len(result) == 1 and isinstance(result[0], dict) else {"error": "Expected JSON object, got array", "raw": text, "_array": result}
+            return result
         except json.JSONDecodeError:
             pass
 
@@ -202,7 +205,10 @@ class BaseAgent:
         match = re.search(r"\{[\s\S]*\}", cleaned)
         if match:
             try:
-                return json.loads(match.group())
+                result = json.loads(match.group())
+                if isinstance(result, list):
+                    return result[0] if len(result) == 1 and isinstance(result[0], dict) else {"error": "Expected JSON object, got array", "raw": text, "_array": result}
+                return result
             except json.JSONDecodeError:
                 pass
 

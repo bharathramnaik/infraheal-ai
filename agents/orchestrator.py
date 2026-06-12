@@ -584,9 +584,9 @@ class InfraHealOrchestrator:
     # ── Self-Critique / Reflection ───────────────────────────────
 
     CRITIQUE_PROMPT = """Review this RCA analysis. Identify gaps or weak evidence. Either confirm or refine.
-triage: sev={sev} cat={cat} impact={impact[:80]}
+triage: sev={sev} cat={cat} impact={impact}
 rca: cause={rc} conf={conf}
-evidence: {ev[:250]}
+evidence: {ev}
 Return JSON: {{"confirmed":true/false,"refined_confidence":0-1,"refined_reasoning":"summary","gaps":["gap"],"suggestions":["suggestion"]}}"""
 
     def _critique_analysis(self, anomalies, triage_result, rca_result) -> dict:
@@ -594,10 +594,10 @@ Return JSON: {{"confirmed":true/false,"refined_confidence":0-1,"refined_reasonin
         prompt = self.CRITIQUE_PROMPT.format(
             sev=triage_result.get("severity","?"),
             cat=triage_result.get("category","?"),
-            impact=triage_result.get("impact_assessment",""),
+            impact=str(triage_result.get("impact_assessment",""))[:120],
             rc=rca_result.get("root_cause","?"),
             conf=rca_result.get("confidence_score",0),
-            ev=ev,
+            ev=ev[:250],
         )
         messages = [
             {"role": "system", "content": "You are a critique agent. Respond ONLY with the JSON object."},
