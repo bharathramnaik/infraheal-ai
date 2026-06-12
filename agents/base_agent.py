@@ -56,7 +56,7 @@ class BaseAgent:
         self.client = client or OpenAI(base_url=VLLM_BASE_URL, api_key=VLLM_API_KEY)
         self.model_name = model_name or MODEL_NAME
         self.tools = tools or []
-        self.max_tokens = max_tokens or AGENT_MAX_TOKENS.get(name, MAX_TOKENS)
+        self.max_tokens = max_tokens or AGENT_MAX_TOKENS.get(name, AGENT_MAX_TOKENS.get(name.removesuffix("_agent"), MAX_TOKENS))
         self.logger = logging.getLogger(f"infraheal.{name}")
         self.execution_log: List[Dict[str, Any]] = []
 
