@@ -2258,12 +2258,6 @@ def create_dashboard(
                     inputs=[scenario_dropdown],
                     outputs=[scenario_desc, scenario_logs],
                 )
-                analyze_btn.click(
-                    fn=_run_analysis,
-                    inputs=[scenario_dropdown],
-                    outputs=[triage_panel, rca_panel, remed_panel, report_panel, reasoning_panel,
-                             status_dot, status_text, risk_panel],
-                )
                 level_resolve_btn.click(
                     fn=_run_error_level_resolution,
                     inputs=[scenario_dropdown, level_filter],
@@ -2683,6 +2677,14 @@ def create_dashboard(
                         inputs=[chatbot, model_selector],
                         outputs=[chatbot, chat_msg],
                     )
+
+                # Wire analysis button to also update chat status/risk components
+                analyze_btn.click(
+                    fn=_run_analysis,
+                    inputs=[scenario_dropdown],
+                    outputs=[triage_panel, rca_panel, remed_panel, report_panel, reasoning_panel,
+                             status_dot, status_text, risk_panel],
+                )
 
     logger.info("InfraHeal AI dashboard created successfully")
     return demo
