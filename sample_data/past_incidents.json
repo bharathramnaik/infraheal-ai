@@ -1,0 +1,216 @@
+[
+  {
+    "id": "INC-004",
+    "timestamp": "2026-03-15T21:34:43.393183+00:00",
+    "title": "Certificate Expiry on API Gateway",
+    "severity": "P2",
+    "category": "security",
+    "root_cause": "Certbot renewal cron disabled during maintenance and never re-enabled",
+    "resolution": "Manually renewed certificate and restored cron job",
+    "duration_minutes": 60,
+    "affected_services": [
+      "nginx",
+      "application"
+    ]
+  },
+  {
+    "id": "INC-010",
+    "timestamp": "2026-03-18T22:57:43.393183+00:00",
+    "title": "Log Volume Disk Full",
+    "severity": "P3",
+    "category": "storage",
+    "root_cause": "Debug logging accidentally left enabled in production after troubleshooting session",
+    "resolution": "Set log level back to INFO; rotated and compressed old logs; freed 45GB",
+    "duration_minutes": 15,
+    "affected_services": [
+      "application",
+      "systemd"
+    ]
+  },
+  {
+    "id": "INC-001",
+    "timestamp": "2026-03-21T18:30:43.393183+00:00",
+    "title": "Web Server CPU Spike Causing 504 Timeouts",
+    "severity": "P1",
+    "category": "infrastructure",
+    "root_cause": "Runaway regex evaluation in request validation middleware",
+    "resolution": "Deployed hotfix to replace catastrophic backtracking regex; restarted nginx workers",
+    "duration_minutes": 45,
+    "affected_services": [
+      "nginx",
+      "application"
+    ]
+  },
+  {
+    "id": "INC-012",
+    "timestamp": "2026-03-27T12:40:43.393183+00:00",
+    "title": "NFS Stale Mount on Worker Nodes",
+    "severity": "P3",
+    "category": "storage",
+    "root_cause": "NFS server kernel panic during scheduled patching; clients got stale handles",
+    "resolution": "Lazy-unmounted stale mounts; remounted after NFS server recovery",
+    "duration_minutes": 50,
+    "affected_services": [
+      "kubernetes",
+      "application"
+    ]
+  },
+  {
+    "id": "INC-009",
+    "timestamp": "2026-03-31T14:46:43.393183+00:00",
+    "title": "Network Partition Between AZs",
+    "severity": "P1",
+    "category": "network",
+    "root_cause": "Misconfigured security group rule blocked inter-AZ traffic on port range 30000-32767",
+    "resolution": "Reverted security group change; verified all NodePort services accessible",
+    "duration_minutes": 40,
+    "affected_services": [
+      "kubernetes",
+      "application",
+      "nginx"
+    ]
+  },
+  {
+    "id": "INC-005",
+    "timestamp": "2026-04-02T18:54:43.393183+00:00",
+    "title": "Kubernetes Node NotReady",
+    "severity": "P1",
+    "category": "infrastructure",
+    "root_cause": "Kubelet crashed due to disk pressure; docker overlay2 consumed all inode space",
+    "resolution": "Cleaned dangling images and containers; increased inode monitoring threshold",
+    "duration_minutes": 55,
+    "affected_services": [
+      "kubernetes",
+      "docker",
+      "application"
+    ]
+  },
+  {
+    "id": "INC-008",
+    "timestamp": "2026-04-07T02:30:43.393183+00:00",
+    "title": "Docker Storage Driver Failure",
+    "severity": "P2",
+    "category": "storage",
+    "root_cause": "Overlay2 filesystem corruption after unclean node shutdown during kernel update",
+    "resolution": "Rebuilt overlay2 storage; re-pulled affected container images",
+    "duration_minutes": 120,
+    "affected_services": [
+      "docker",
+      "kubernetes"
+    ]
+  },
+  {
+    "id": "INC-014",
+    "timestamp": "2026-04-17T11:14:43.393183+00:00",
+    "title": "Cache Thundering Herd After Redis Restart",
+    "severity": "P2",
+    "category": "application",
+    "root_cause": "All cache keys expired simultaneously after Redis restart; database overwhelmed",
+    "resolution": "Pre-warmed cache with critical keys; implemented jittered TTL",
+    "duration_minutes": 30,
+    "affected_services": [
+      "redis",
+      "postgresql",
+      "application"
+    ]
+  },
+  {
+    "id": "INC-006",
+    "timestamp": "2026-04-17T20:30:43.393183+00:00",
+    "title": "Slow Query Cascade in Order Service",
+    "severity": "P3",
+    "category": "database",
+    "root_cause": "Missing index on orders.customer_id after schema migration",
+    "resolution": "Created btree index; ran ANALYZE on orders table",
+    "duration_minutes": 90,
+    "affected_services": [
+      "postgresql",
+      "application"
+    ]
+  },
+  {
+    "id": "INC-011",
+    "timestamp": "2026-04-18T14:03:43.393183+00:00",
+    "title": "DDoS on Public API Endpoint",
+    "severity": "P1",
+    "category": "security",
+    "root_cause": "HTTP flood from botnet targeting /api/v1/search endpoint (200k req/s)",
+    "resolution": "Enabled Cloudflare Under Attack mode; blocked offending ASN; added rate-limit rule",
+    "duration_minutes": 35,
+    "affected_services": [
+      "nginx",
+      "application"
+    ]
+  },
+  {
+    "id": "INC-002",
+    "timestamp": "2026-05-06T14:17:43.393183+00:00",
+    "title": "Database Primary OOM Kill",
+    "severity": "P1",
+    "category": "database",
+    "root_cause": "Unbounded query result set from missing LIMIT clause in analytics job",
+    "resolution": "Killed offending query, added LIMIT clause, increased shared_buffers",
+    "duration_minutes": 30,
+    "affected_services": [
+      "postgresql",
+      "application"
+    ]
+  },
+  {
+    "id": "INC-015",
+    "timestamp": "2026-05-22T14:43:43.393183+00:00",
+    "title": "Container CrashLoopBackOff on New Deployment",
+    "severity": "P2",
+    "category": "infrastructure",
+    "root_cause": "New image referenced non-existent secret for DB_PASSWORD env var",
+    "resolution": "Created missing Kubernetes secret; pod started successfully on next retry",
+    "duration_minutes": 15,
+    "affected_services": [
+      "kubernetes",
+      "application"
+    ]
+  },
+  {
+    "id": "INC-003",
+    "timestamp": "2026-05-23T22:25:43.393183+00:00",
+    "title": "Redis Cache Failure \u2014 Session Loss",
+    "severity": "P2",
+    "category": "database",
+    "root_cause": "Redis exceeded maxmemory with noeviction policy; all SET commands rejected",
+    "resolution": "Changed eviction policy to allkeys-lru; flushed stale session keys",
+    "duration_minutes": 20,
+    "affected_services": [
+      "redis",
+      "auth",
+      "application"
+    ]
+  },
+  {
+    "id": "INC-007",
+    "timestamp": "2026-05-30T15:17:43.393183+00:00",
+    "title": "Auth Service Unreachable",
+    "severity": "P1",
+    "category": "security",
+    "root_cause": "LDAP server ran out of file descriptors; all bind requests rejected",
+    "resolution": "Increased ulimit on LDAP server; restarted slapd daemon",
+    "duration_minutes": 25,
+    "affected_services": [
+      "auth",
+      "application"
+    ]
+  },
+  {
+    "id": "INC-013",
+    "timestamp": "2026-06-10T15:47:43.393183+00:00",
+    "title": "Deployment Rollback After Error Spike",
+    "severity": "P2",
+    "category": "application",
+    "root_cause": "Breaking database migration in v2.1.0 dropped a NOT NULL constraint needed by API",
+    "resolution": "Rolled back to v2.0.9; applied corrective migration in v2.1.1",
+    "duration_minutes": 25,
+    "affected_services": [
+      "application",
+      "postgresql"
+    ]
+  }
+]
