@@ -24,50 +24,15 @@ from config import AVAILABLE_TOOLS
 
 logger = logging.getLogger(__name__)
 
-REMEDIATION_SYSTEM_PROMPT = """You are the **Remediation Agent** in the InfraHeal AI incident management system.
+REMEDIATION_SYSTEM_PROMPT = """You are a remediation planner. Given root cause + triage, generate ordered actions using ONLY tools listed below. Each action needs justification, risk level, and rollback strategy. Tools:
 
-## Your Mission
-Given a root cause analysis and triage classification, generate a safe, ordered remediation plan using ONLY the available tools listed below. Every action must be justified, risk-assessed, and reversible where possible.
-
-## Available Tools
 {tools_section}
 
-## Safety Rules (CRITICAL)
-1. **Least-privilege**: Always prefer the smallest, most targeted action.
-2. **Risk assessment**: Tag every action as low / medium / high risk.
-3. **Approval gates**: Actions with risk_level "high" MUST set requires_approval = true.
-4. **Rollback plan**: Every plan MUST include a rollback strategy.
-5. **Order matters**: Actions MUST be sequenced logically (e.g. scale before restart, not after).
-6. **No unknown tools**: ONLY use tools from the Available Tools list above.
+Safety: high-risk actions must set requires_approval=true. Always prefer least-privilege. Output ONLY this JSON:
 
-## Risk Classification
-- **low**: Read-only, cache flush, log rotation, config reads — safe to auto-execute.
-- **medium**: Service restart, scaling, config changes — may cause brief disruption.
-- **high**: Rollback deployment, block IP, destructive operations — requires human approval.
+{"recommended_actions":[{"step":1,"tool_name":"tool","parameters":{"k":"v"},"rationale":"why","risk_level":"low|medium|high","requires_approval":bool,"expected_outcome":"result"}],"execution_order":"sequential|parallel","rollback_plan":"steps","estimated_resolution_time":"duration","warnings":["caveat"],"confidence":0-1}
 
-## Output Schema (strict)
-```json
-{
-  "recommended_actions": [
-    {
-      "step": 1,
-      "tool_name": "<tool name from available tools>",
-      "parameters": {"<param>": "<value>"},
-      "rationale": "<why this action addresses the root cause>",
-      "risk_level": "low|medium|high",
-      "requires_approval": true|false,
-      "expected_outcome": "<what should happen after execution>"
-    }
-  ],
-  "execution_order": "sequential|parallel",
-  "rollback_plan": "<step-by-step rollback instructions>",
-  "estimated_resolution_time": "<e.g. 5-10 minutes>",
-  "warnings": ["<any important caveats>"],
-  "confidence": 0.0-1.0
-}
-```
-
-Respond ONLY with the JSON object. No markdown, no explanation outside the JSON."""
+No prose, no markdown, only JSON."""
 
 
 class RemediationAgent(BaseAgent):
@@ -274,42 +239,20 @@ class RemediationAgent(BaseAgent):
         return "\n".join(lines)
 
     def _format_remediation_prompt(self, rca_result: dict, triage_result: dict) -> str:
-        """Build the user prompt for remediation planning."""
-        sections: List[str] = [
-            "## Incident Summary\n"
-            f"- **Severity**: {triage_result.get('severity', 'N/A')} ({triage_result.get('severity_label', '')})\n"
-            f"- **Category**: {triage_result.get('category', 'N/A')}\n"
-            f"- **SLA**: {triage_result.get('sla_minutes', 'N/A')} minutes\n"
-            f"- **Impact**: {triage_result.get('impact_assessment', 'N/A')}\n"
-            f"- **Affected Services**: {', '.join(triage_result.get('affected_services', []))}\n",
-            "## Root Cause Analysis\n"
-            f"- **Root Cause**: {rca_result.get('root_cause', 'Unknown')}\n"
-            f"- **Category**: {rca_result.get('root_cause_category', 'Unknown')}\n"
-            f"- **Confidence**: {rca_result.get('confidence_score', 0)}\n"
-            f"- **Blast Radius**: {rca_result.get('blast_radius', 'Unknown')}\n",
+        tri = triage_result
+        rca = rca_result
+        parts = [
+            f"incident sev={tri.get('severity','?')} cat={tri.get('category','?')} slamin={tri.get('sla_minutes','?')} impact={tri.get('impact_assessment','?')[:80]} svc={','.join(tri.get('affected_services',[]))}",
+            f"rca root={rca.get('root_cause','?')} cat={rca.get('root_cause_category','?')} conf={rca.get('confidence_score',0)} blast={rca.get('blast_radius','?')}",
         ]
-
-        evidence = rca_result.get("evidence_chain", [])
+        evidence = rca.get("evidence_chain", [])
         if evidence:
-            sections.append(
-                "## Evidence Chain\n"
-                + "\n".join(f"- {e}" for e in evidence)
-                + "\n"
-            )
-
-        factors = rca_result.get("contributing_factors", [])
+            parts.append("evidence: " + " | ".join(e[:80] for e in evidence[:3]))
+        factors = rca.get("contributing_factors", [])
         if factors:
-            sections.append(
-                "## Contributing Factors\n"
-                + "\n".join(f"- {f}" for f in factors)
-                + "\n"
-            )
-
-        sections.append(
-            "Generate a remediation plan using ONLY the available tools. "
-            "Return ONLY the JSON object matching the schema in your instructions."
-        )
-        return "\n".join(sections)
+            parts.append("factors: " + " | ".join(f[:80] for f in factors[:3]))
+        parts.append("Generate remediation plan. Return ONLY the JSON.")
+        return "\n".join(parts)
 
     def _validate_result(self, result: dict) -> dict:
         """Ensure all fields are present and actions reference valid tools."""

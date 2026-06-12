@@ -16,51 +16,11 @@ from .base_agent import BaseAgent
 
 logger = logging.getLogger(__name__)
 
-RCA_SYSTEM_PROMPT = """You are the **Root Cause Analysis (RCA) Agent** in the InfraHeal AI incident management system.
+RCA_SYSTEM_PROMPT = """You are an RCA agent. Given anomalies, triage data, and optional runbook context, identify root cause. Output ONLY this JSON:
 
-## Your Mission
-Given anomaly data, a triage classification, and relevant runbook excerpts, perform deep root-cause analysis. Correlate all evidence, build a causal chain, and identify the single most likely root cause with supporting evidence.
+{"root_cause":"specific root cause","root_cause_category":"infrastructure|application|network|security|database|storage","evidence_chain":["evidence1"],"confidence_score":0-1,"related_runbook_id":"id or null","contributing_factors":["factor"],"timeline_of_events":[{"timestamp":"t","event":"e"}],"affected_components":["comp"],"blast_radius":"scope","reasoning_summary":"logic summary"}
 
-## Analysis Methodology
-1. **Evidence Correlation**: Cross-reference anomaly timestamps, affected services, and metric patterns.
-2. **Causal Chain Construction**: Build a logical sequence from initial trigger → propagation → observed symptoms.
-3. **Runbook Matching**: Compare symptoms against known runbook patterns to identify matching root causes.
-4. **Confidence Assessment**: Rate your confidence based on evidence strength and pattern match quality.
-
-## Reasoning Guidelines
-- Distinguish between **symptoms** (what we observe) and **causes** (what triggered them).
-- A CPU spike is a symptom; a memory leak in the Java heap causing excessive GC is a cause.
-- Network latency spikes can be symptoms of upstream service failures.
-- Always consider cascading failure chains: A → B → C.
-- If runbook context is available and matches, boost confidence; if no match, note it but still reason from first principles.
-
-## Output Schema (strict)
-```json
-{
-  "root_cause": "<clear, specific root cause statement>",
-  "root_cause_category": "<infrastructure|application|network|security|database|storage>",
-  "evidence_chain": [
-    "<evidence item 1 supporting the root cause>",
-    "<evidence item 2>",
-    "..."
-  ],
-  "confidence_score": 0.0-1.0,
-  "related_runbook_id": "<runbook ID if matched, else null>",
-  "contributing_factors": [
-    "<factor 1 that worsened or enabled the incident>",
-    "..."
-  ],
-  "timeline_of_events": [
-    {"timestamp": "<ISO timestamp or relative>", "event": "<what happened>"},
-    {"timestamp": "...", "event": "..."}
-  ],
-  "affected_components": ["<component1>", "<component2>"],
-  "blast_radius": "<description of total impact scope>",
-  "reasoning_summary": "<paragraph explaining the RCA logic>"
-}
-```
-
-Respond ONLY with the JSON object. No markdown, no explanation outside the JSON."""
+Distinguish symptoms from causes. Consider cascading failures. If runbooks match, boost confidence. No prose, no markdown, only JSON."""
 
 
 class RCAAgent(BaseAgent):
@@ -140,34 +100,19 @@ class RCAAgent(BaseAgent):
         triage_result: dict,
         runbook_context: str,
     ) -> str:
-        sections: List[str] = []
-
+        from config import MAX_RAG_CHARS
         tri = triage_result
-        sections.append(
-            "## Triage\n"
-            f"Sev:{tri.get('severity','?')} Cat:{tri.get('category','?')} "
-            f"Impact:{tri.get('impact_assessment','?')[:100]} "
-            f"Services:{','.join(tri.get('affected_services',[]))}\n"
-        )
-        sections.append("## Anomalies\n")
+        parts = [
+            f"triage sev={tri.get('severity','?')} cat={tri.get('category','?')} impact={tri.get('impact_assessment','?')[:80]} svc={','.join(tri.get('affected_services',[]))}",
+            "anomalies:"
+        ]
         for a in anomalies:
-            sections.append(
-                f"- [{a.get('severity','?')}] {a.get('type','?')} "
-                f"{a.get('source','?')}: {a.get('description','')[:100]} "
-                f"conf={a.get('confidence',0)}\n"
-            )
-
+            desc = a.get('description','')[:60].replace(',',' ')
+            parts.append(f"  {a.get('severity','?')} {a.get('type','?')} {a.get('source','?')} \"{desc}\" conf={a.get('confidence',0)}")
         if runbook_context:
-            sections.append(f"## Runbooks\n{runbook_context[:500]}\n")
-        else:
-            sections.append("No matching runbooks found. Reason from first principles.\n")
-
-        sections.append(
-            "Analyse all evidence above. Identify the root cause, build "
-            "the evidence chain, and return ONLY the JSON object matching "
-            "the schema in your instructions."
-        )
-        return "\n".join(sections)
+            parts.append(f"runbooks: {runbook_context[:MAX_RAG_CHARS]}")
+        parts.append("Identify root cause. Return ONLY the JSON.")
+        return "\n".join(parts)
 
     def _validate_result(self, result: dict) -> dict:
         """Ensure all required fields are present with sensible defaults."""

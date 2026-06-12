@@ -22,6 +22,7 @@ from config import (
     VLLM_API_KEY,
     MODEL_NAME,
     MAX_TOKENS,
+    AGENT_MAX_TOKENS,
     TEMPERATURE,
     TOP_P,
     AGENT_MAX_RETRIES,
@@ -47,26 +48,15 @@ class BaseAgent:
         client: Optional[OpenAI] = None,
         model_name: Optional[str] = None,
         tools: Optional[List[Dict[str, Any]]] = None,
+        max_tokens: Optional[int] = None,
     ) -> None:
-        """Initialise the agent.
-
-        Args:
-            name: Human-readable agent name (used in logs & metrics).
-            role: Short role description (e.g. "Triage", "RCA").
-            system_prompt: Full system prompt sent as the first message.
-            client: Pre-configured ``OpenAI`` client.  A default one
-                pointing at the local vLLM server is created when *None*.
-            model_name: Model identifier.  Falls back to ``MODEL_NAME``
-                from *config.py*.
-            tools: Optional list of tool definitions (for future tool-use
-                extensions).
-        """
         self.name = name
         self.role = role
         self.system_prompt = system_prompt
         self.client = client or OpenAI(base_url=VLLM_BASE_URL, api_key=VLLM_API_KEY)
         self.model_name = model_name or MODEL_NAME
         self.tools = tools or []
+        self.max_tokens = max_tokens or AGENT_MAX_TOKENS.get(name, MAX_TOKENS)
         self.logger = logging.getLogger(f"infraheal.{name}")
         self.execution_log: List[Dict[str, Any]] = []
 
@@ -113,7 +103,7 @@ class BaseAgent:
                 kwargs: Dict[str, Any] = dict(
                     model=self.model_name,
                     messages=messages,
-                    max_tokens=MAX_TOKENS,
+                    max_tokens=self.max_tokens,
                     temperature=TEMPERATURE,
                     top_p=TOP_P,
                 )

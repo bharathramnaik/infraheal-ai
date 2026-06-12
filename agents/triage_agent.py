@@ -21,45 +21,11 @@ from config import SEVERITY_LEVELS, INCIDENT_CATEGORIES
 
 logger = logging.getLogger(__name__)
 
-TRIAGE_SYSTEM_PROMPT = """You are the **Triage Agent** in the InfraHeal AI incident management system.
+TRIAGE_SYSTEM_PROMPT = """You triage incidents by severity (P1-P4) and category. Read anomalies, assign severity and category, output ONLY this JSON:
 
-## Your Mission
-Analyse the provided anomaly data and classify the incident accurately. You MUST return a well-structured JSON response — no prose, no markdown, just raw JSON.
+{"severity":"P1-P4","severity_label":"Critical/High/Medium/Low","category":"infrastructure|application|network|security|database|storage","impact_assessment":"2-3 sentence impact","affected_services":["svc1"],"urgency_reasoning":"why this severity","confidence":0-1,"escalation_needed":bool,"sla_minutes":int}
 
-## Classification Rules
-
-### Severity Levels
-- **P1 (Critical)**: Production down, data loss risk, security breach, >50% users affected, SLA ≤15 min.
-- **P2 (High)**: Major degradation, single critical service down, >25% users affected, SLA ≤60 min.
-- **P3 (Medium)**: Partial degradation, non-critical service issues, <25% users affected, SLA ≤4 hrs.
-- **P4 (Low)**: Minor issue, cosmetic, no user impact, SLA ≤24 hrs.
-
-### Categories
-Choose exactly one: infrastructure, application, network, security, database, storage.
-
-### Decision Factors
-1. **Breadth**: How many services/hosts are affected?
-2. **Depth**: How severe are the anomalies (confidence, z-scores)?
-3. **Duration**: How long has the anomaly been active?
-4. **Cascading risk**: Could this trigger downstream failures?
-5. **Data integrity**: Is data loss possible?
-
-## Output Schema (strict)
-```json
-{
-  "severity": "P1|P2|P3|P4",
-  "severity_label": "Critical|High|Medium|Low",
-  "category": "<one of: infrastructure, application, network, security, database, storage>",
-  "impact_assessment": "<2-3 sentence impact summary>",
-  "affected_services": ["<service1>", "<service2>"],
-  "urgency_reasoning": "<detailed paragraph explaining why you chose this severity>",
-  "confidence": 0.0-1.0,
-  "escalation_needed": true|false,
-  "sla_minutes": <number>
-}
-```
-
-Respond ONLY with the JSON object. No explanation outside the JSON."""
+P1=production down/data loss, P2=major degradation, P3=partial, P4=minor. Category must be one of the six listed. No prose, no markdown, only JSON."""
 
 
 class TriageAgent(BaseAgent):
@@ -129,39 +95,29 @@ class TriageAgent(BaseAgent):
     # ── Internal Helpers ─────────────────────────────────────────
 
     def _format_anomalies_for_prompt(self, anomalies: List[dict], context: dict) -> str:
-        sections: List[str] = ["## Anomalies\n"]
+        lines = ["sev type src desc conf"]
         for a in anomalies:
-            sections.append(
-                f"- [{a.get('severity','?')}] {a.get('type','?')} | "
-                f"{a.get('source','?')} | {a.get('description','')[:80]} "
-                f"(conf={a.get('confidence',0)})\n"
-            )
+            desc = a.get('description','')[:60].replace(',',' ')
+            lines.append(f"{a.get('severity','?')} {a.get('type','?')} {a.get('source','?')} \"{desc}\" {a.get('confidence',0)}")
         logs = context.get("logs", [])
         if logs:
-            from config import MAX_CONTEXT_LOGS
-            ls = "\n".join(
-                f"  [{lg.get('level','?')}] {lg.get('message','')[:100]}"
-                for lg in logs[:MAX_CONTEXT_LOGS]
-            )
-            sections.append(f"## Recent Logs\n{ls}\n")
-
+            from config import MAX_CONTEXT_LOGS, MAX_CONTEXT_LOGS_CHARS
+            log_lines = []
+            char_count = 0
+            for lg in logs[:MAX_CONTEXT_LOGS]:
+                entry = f"{lg.get('level','?')} {lg.get('message','')[:80]}"
+                char_count += len(entry)
+                if char_count > MAX_CONTEXT_LOGS_CHARS:
+                    break
+                log_lines.append(entry)
+            if log_lines:
+                lines.append("logs: " + " | ".join(log_lines))
         metrics = context.get("metrics", [])
         if metrics:
-            latest = metrics[-1] if metrics else {}
-            sections.append(
-                f"## Latest Metrics Snapshot\n"
-                f"- CPU: {latest.get('cpu_percent', 'N/A')}%\n"
-                f"- Memory: {latest.get('memory_percent', 'N/A')}%\n"
-                f"- Disk: {latest.get('disk_percent', 'N/A')}%\n"
-                f"- Latency: {latest.get('request_latency_ms', 'N/A')} ms\n"
-                f"- Error Rate: {latest.get('error_rate', 'N/A')}\n"
-            )
-
-        sections.append(
-            "Classify this incident. Return ONLY the JSON object "
-            "matching the schema in your instructions."
-        )
-        return "\n".join(sections)
+            m = metrics[-1] if metrics else {}
+            lines.append(f"metrics cpu={m.get('cpu_percent','?')} mem={m.get('memory_percent','?')} disk={m.get('disk_percent','?')} lat={m.get('request_latency_ms','?')} err={m.get('error_rate','?')}")
+        lines.append("Classify incident severity P1-P4 and category. Return ONLY the JSON.")
+        return "\n".join(lines)
 
     def _validate_result(self, result: dict) -> dict:
         """Ensure all required fields exist with valid values."""

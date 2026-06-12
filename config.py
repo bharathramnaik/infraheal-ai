@@ -28,7 +28,13 @@ MODEL_CANDIDATES = [
 MODEL_NAME = os.getenv("MODEL_NAME", MODEL_CANDIDATES[0])
 
 # Inference settings
-MAX_TOKENS = 256
+MAX_TOKENS = 256                # Fallback; agents use their own value below
+AGENT_MAX_TOKENS = {            # Per-agent — small outputs = cheap inference
+    "triage": 128,
+    "rca": 192,
+    "remediation": 256,
+    "reporting": 256,
+}
 TEMPERATURE = 0.3         # Low for consistent agent outputs
 TOP_P = 0.9
 FREQUENCY_PENALTY = 0.1   # Reduce repetition
@@ -44,8 +50,9 @@ LATENCY_CRITICAL_MS = 5000             # ms
 # ─── Agent Settings ──────────────────────────────────────────────
 AGENT_MAX_RETRIES = 2
 AGENT_TIMEOUT_SECONDS = 60
-MAX_CONTEXT_LOGS = 8        # Max log lines sent to agents
-MAX_RAG_RESULTS = 5          # Top-K runbook results
+MAX_CONTEXT_LOGS = 5        # Max log lines sent to agents
+MAX_CONTEXT_LOGS_CHARS = 300  # Max total chars from logs in prompt
+MAX_RAG_CHARS = 200          # Max chars of runbook context in prompt
 
 # ─── Dashboard Settings ─────────────────────────────────────────
 DASHBOARD_HOST = "0.0.0.0"
