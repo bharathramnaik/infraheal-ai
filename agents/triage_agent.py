@@ -129,33 +129,21 @@ class TriageAgent(BaseAgent):
     # ── Internal Helpers ─────────────────────────────────────────
 
     def _format_anomalies_for_prompt(self, anomalies: List[dict], context: dict) -> str:
-        """Build a concise prompt summarising the anomalies."""
-        sections: List[str] = ["## Anomalies Detected\n"]
-
-        for idx, anomaly in enumerate(anomalies, 1):
+        sections: List[str] = ["## Anomalies\n"]
+        for a in anomalies:
             sections.append(
-                f"### Anomaly {idx}\n"
-                f"- **ID**: {anomaly.get('id', 'N/A')}\n"
-                f"- **Type**: {anomaly.get('type', 'unknown')}\n"
-                f"- **Severity**: {anomaly.get('severity', 'unknown')}\n"
-                f"- **Source**: {anomaly.get('source', 'unknown')}\n"
-                f"- **Timestamp**: {anomaly.get('timestamp', 'N/A')}\n"
-                f"- **Description**: {anomaly.get('description', 'No description')}\n"
-                f"- **Confidence**: {anomaly.get('confidence', 'N/A')}\n"
+                f"- [{a.get('severity','?')}] {a.get('type','?')} | "
+                f"{a.get('source','?')} | {a.get('description','')[:80]} "
+                f"(conf={a.get('confidence',0)})\n"
             )
-            evidence = anomaly.get("evidence", [])
-            if evidence:
-                sections.append("- **Evidence**:\n" + "\n".join(f"  - {e}" for e in evidence))
-            sections.append("")
-
-        # Append optional context summaries
         logs = context.get("logs", [])
         if logs:
-            log_summary = "\n".join(
-                f"  [{lg.get('level', '?')}] {lg.get('service', '?')}: {lg.get('message', '')[:120]}"
-                for lg in logs[:15]
+            from config import MAX_CONTEXT_LOGS
+            ls = "\n".join(
+                f"  [{lg.get('level','?')}] {lg.get('message','')[:100]}"
+                for lg in logs[:MAX_CONTEXT_LOGS]
             )
-            sections.append(f"## Recent Logs (sample)\n{log_summary}\n")
+            sections.append(f"## Recent Logs\n{ls}\n")
 
         metrics = context.get("metrics", [])
         if metrics:

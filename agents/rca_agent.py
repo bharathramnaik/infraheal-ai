@@ -140,55 +140,27 @@ class RCAAgent(BaseAgent):
         triage_result: dict,
         runbook_context: str,
     ) -> str:
-        """Assemble the user prompt for root cause analysis."""
         sections: List[str] = []
 
-        # Triage summary
+        tri = triage_result
         sections.append(
-            "## Triage Classification\n"
-            f"- **Severity**: {triage_result.get('severity', 'N/A')} ({triage_result.get('severity_label', '')})\n"
-            f"- **Category**: {triage_result.get('category', 'N/A')}\n"
-            f"- **Impact**: {triage_result.get('impact_assessment', 'N/A')}\n"
-            f"- **Affected Services**: {', '.join(triage_result.get('affected_services', []))}\n"
-            f"- **Urgency Reasoning**: {triage_result.get('urgency_reasoning', 'N/A')}\n"
+            "## Triage\n"
+            f"Sev:{tri.get('severity','?')} Cat:{tri.get('category','?')} "
+            f"Impact:{tri.get('impact_assessment','?')[:100]} "
+            f"Services:{','.join(tri.get('affected_services',[]))}\n"
         )
-
-        # Anomaly details
-        sections.append("## Anomaly Evidence\n")
-        for idx, anomaly in enumerate(anomalies, 1):
+        sections.append("## Anomalies\n")
+        for a in anomalies:
             sections.append(
-                f"### Anomaly {idx}\n"
-                f"- **ID**: {anomaly.get('id', 'N/A')}\n"
-                f"- **Type**: {anomaly.get('type', 'unknown')}\n"
-                f"- **Severity**: {anomaly.get('severity', 'unknown')}\n"
-                f"- **Source**: {anomaly.get('source', 'unknown')}\n"
-                f"- **Timestamp**: {anomaly.get('timestamp', 'N/A')}\n"
-                f"- **Description**: {anomaly.get('description', '')}\n"
-                f"- **Confidence**: {anomaly.get('confidence', 'N/A')}\n"
+                f"- [{a.get('severity','?')}] {a.get('type','?')} "
+                f"{a.get('source','?')}: {a.get('description','')[:100]} "
+                f"conf={a.get('confidence',0)}\n"
             )
-            evidence = anomaly.get("evidence", [])
-            if evidence:
-                sections.append("- **Evidence**:\n" + "\n".join(f"  - {e}" for e in evidence))
 
-            related_logs = anomaly.get("related_logs", [])
-            if related_logs:
-                log_lines = "\n".join(f"  - {lg}" for lg in related_logs[:10])
-                sections.append(f"- **Related Logs**:\n{log_lines}")
-
-            related_metrics = anomaly.get("related_metrics", [])
-            if related_metrics:
-                metric_lines = "\n".join(f"  - {m}" for m in related_metrics[:10])
-                sections.append(f"- **Related Metrics**:\n{metric_lines}")
-            sections.append("")
-
-        # Runbook context from RAG
         if runbook_context:
-            sections.append(f"## Relevant Runbook Knowledge\n{runbook_context}\n")
+            sections.append(f"## Runbooks\n{runbook_context[:500]}\n")
         else:
-            sections.append(
-                "## Relevant Runbook Knowledge\n"
-                "No matching runbooks found. Reason from first principles.\n"
-            )
+            sections.append("No matching runbooks found. Reason from first principles.\n")
 
         sections.append(
             "Analyse all evidence above. Identify the root cause, build "

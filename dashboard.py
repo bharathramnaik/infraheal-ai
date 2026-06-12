@@ -1338,7 +1338,7 @@ def create_dashboard(
                 level_result = orchestrator.process_by_error_level(
                     logs=scenario_logs,
                     metrics=scenario_metrics,
-                    use_llm=False,
+                    use_llm=True,
                 )
                 per_level = level_result.get("per_level", {})
             except Exception as exc:
