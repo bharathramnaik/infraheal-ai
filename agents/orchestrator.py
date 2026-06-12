@@ -18,6 +18,7 @@ from .triage_agent import TriageAgent
 from .rca_agent import RCAAgent
 from .remediation_agent import RemediationAgent
 from .reporting_agent import ReportingAgent
+from .safety_guard import SafetyGuard
 
 import sys
 import os
@@ -77,6 +78,7 @@ class InfraHealOrchestrator:
         self.rca_agent = RCAAgent(client=self.client, model_name=self.model_name)
         self.remediation_agent = RemediationAgent(client=self.client, model_name=self.model_name)
         self.reporting_agent = ReportingAgent(client=self.client, model_name=self.model_name)
+        self.safety_guard = SafetyGuard()
 
         self._gpu_monitor = GPUMonitor()
         self._pipeline_log: List[Dict[str, Any]] = []
@@ -232,20 +234,47 @@ class InfraHealOrchestrator:
             result["remediation_latency"],
         )
 
-        # ── Step 4b: Execute Remediation (Simulated) ────────────
+        # ── Step 4b: Execute Remediation (Simulated, Safety-Guarded) ──
         execution_results: List[dict] = []
         actions = remediation_result.get("recommended_actions", [])
+        safety_results: List[dict] = []
         if actions:
-            logger.info("Executing %d remediation actions (simulated)…", len(actions))
+            sev = triage_result.get("severity", "P3")
+            logger.info("Validating %d actions with SafetyGuard (severity=%s)…", len(actions), sev)
+            validated = self.safety_guard.validate_plan(actions, severity=sev)
+            safety_results = [a.pop("_safety", {}) for a in validated]
+            blocked = [s for s in safety_results if s.get("verdict") == "block"]
+            flagged = [s for s in safety_results if s.get("verdict") == "flag"]
+            allowed = [i for i, s in enumerate(safety_results) if s.get("verdict") == "allow"]
+
+            if blocked:
+                logger.warning("SafetyGuard blocked %d action(s): %s", len(blocked),
+                               [b.get("reason","") for b in blocked])
+
+            allowed_actions = [validated[i] for i in allowed]
+            logger.info("Executing %d/%d actions (safety-passed)…", len(allowed_actions), len(actions))
             try:
                 execution_results = self.remediation_agent.execute_plan(
-                    actions, auto_approve_low_risk=True,
+                    allowed_actions, auto_approve_low_risk=True,
                 )
             except Exception as exc:
                 logger.error("Execution failed: %s", exc)
                 execution_results = [{"error": str(exc), "status": "failed"}]
 
+            # Append blocked/flagged as skipped entries with safety reason
+            for i, s in enumerate(safety_results):
+                if s.get("verdict") in ("block", "flag"):
+                    execution_results.insert(i, {
+                        "step": i + 1,
+                        "tool_name": actions[i].get("tool_name", "?"),
+                        "status": s["verdict"] + "ed_by_safety",
+                        "message": s.get("reason", ""),
+                        "risk_level": s.get("risk", "unknown"),
+                    })
+
         result["execution_results"] = execution_results
+        result["safety_results"] = safety_results
+        result["safety_audit_summary"] = self.safety_guard.get_audit_summary()
 
         # ── Step 5: Incident Report ─────────────────────────────
         logger.info("Step 5/5: Running Reporting Agent…")

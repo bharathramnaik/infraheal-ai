@@ -1198,6 +1198,33 @@ def create_dashboard(
                 triage_html = format_agent_output("Triage", triage_out)
                 rca_html = format_agent_output("Root Cause Analysis", rca_out)
                 remed_html = format_agent_output("Remediation", remed_out)
+
+                # Append safety audit info to remediation panel
+                safety_results = result.get("safety_results", [])
+                if safety_results:
+                    safety_lines = []
+                    for s in safety_results:
+                        v = s.get("verdict", "unknown")
+                        r = s.get("reason", "")
+                        if v == "block":
+                            safety_lines.append(f'<div style="padding:6px 10px;margin:4px 0;border-left:3px solid {_C["red"]};font-size:0.82rem;background:rgba(255,59,59,0.06);border-radius:0 6px 6px 0;"><b style="color:{_C["red"]};">🛑 Blocked</b> {r}</div>')
+                        elif v == "flag":
+                            safety_lines.append(f'<div style="padding:6px 10px;margin:4px 0;border-left:3px solid {_C["amber"]};font-size:0.82rem;background:rgba(255,184,0,0.06);border-radius:0 6px 6px 0;"><b style="color:{_C["amber"]};">⚠️ Flagged</b> {r}</div>')
+                    if safety_lines:
+                        audit_summary = result.get("safety_audit_summary", {})
+                        total = audit_summary.get("total_checks", 0)
+                        blocked = audit_summary.get("blocked", 0)
+                        flagged = audit_summary.get("flagged", 0)
+                        remed_html = remed_html.replace(
+                            '</div></div>',
+                            f'<div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);">'
+                            f'<span style="color:#94a3b8;font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;">🛡️ SafetyGuard Audit</span>'
+                            f'<div style="margin-top:6px;display:flex;gap:12px;font-size:0.78rem;">'
+                            f'<span>✅ {total - blocked - flagged}/{total} passed</span>'
+                            f'<span style="color:{_C["red"]};">🛑 {blocked} blocked</span>'
+                            f'<span style="color:{_C["amber"]};">⚠️ {flagged} flagged</span>'
+                            f'</div>{"".join(safety_lines)}</div></div>', 1
+                        )
                 report_html = format_agent_output("Incident Report", report_out)
 
                 # Build reasoning chain
@@ -1265,6 +1292,9 @@ def create_dashboard(
                     "critique": result.get("critique", {}),
                     "anomalies": sc.get("anomalies", []),
                     "pipeline_metrics": result.get("pipeline_metrics", {}),
+                    "safety_results": result.get("safety_results", []),
+                    "safety_audit_summary": result.get("safety_audit_summary", {}),
+                    "execution_results": result.get("execution_results", []),
                 })
 
                 return triage_html, rca_html, remed_html, report_html, reasoning_html, _refresh_risk()
@@ -2354,6 +2384,27 @@ def create_dashboard(
                     sev = ra["severity"]
                     sev_color = SEVERITY_LEVELS.get(sev, {}).get("color", "#94a3b8")
                     sev_label = SEVERITY_LEVELS.get(sev, {}).get("label", sev)
+
+                    safety_summary = _last_pipeline_state.get("safety_audit_summary", {})
+                    safety_html = ""
+                    if safety_summary:
+                        blocked = safety_summary.get("blocked", 0)
+                        flagged = safety_summary.get("flagged", 0)
+                        total = safety_summary.get("total_checks", 0)
+                        if blocked or flagged:
+                            safety_html = (
+                                f'<div style="display:flex;gap:12px;margin-top:6px;padding-top:6px;border-top:1px solid #30363d;font-size:0.76rem;">'
+                                f'<span>🛑 Blocked: <b style="color:#FF3B3B;">{blocked}</b></span>'
+                                f'<span>⚠️ Flagged: <b style="color:#FFB800;">{flagged}</b></span>'
+                                f'<span>✅ Passed: {total - blocked - flagged}/{total}</span>'
+                                f'</div>'
+                            )
+                        else:
+                            safety_html = (
+                                f'<div style="color:#00FF88;font-size:0.76rem;padding-top:4px;">'
+                                f'✅ SafetyGuard: {total}/{total} actions passed validation</div>'
+                            )
+
                     return f'''
                     <div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:12px 16px;margin-top:10px;">
                       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
@@ -2370,6 +2421,7 @@ def create_dashboard(
                       <div style="font-size:0.76rem;color:#8b949e;padding:6px 0 0 0;border-top:1px solid #21262d;">
                         {ra["recommendation"]}
                       </div>
+                      {safety_html}
                     </div>'''
 
                 model_selector.change(
