@@ -2281,84 +2281,18 @@ def create_dashboard(
             #  TAB 6 — AGENT CHAT (CLI-style, multi-turn, multi-model)
             # ──────────────────────────────────────────────────────
             with gr.Tab("💬 Agent Chat"):
-                gr.HTML(
-                    '<div style="padding:8px 0 4px 0;">'
-                    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:2px;">'
-                    '<span style="font-size:1.2rem;font-weight:700;color:#e2e8f0;font-family:Inter,sans-serif;">'
-                    '🐚 InfraHeal AI Terminal</span>'
-                    '</div>'
-                    '<div style="font-size:0.78rem;color:#8b949e;font-family:JetBrains Mono,monospace;">'
-                    'Ask questions about the analysis. Switch models to compare responses.</div>'
-                    '</div>'
-                )
-
-                with gr.Row(elem_classes="chat-status-bar"):
-                    status_dot = gr.HTML(
-                        '<span class="status-dot gray"></span>'
-                    )
-                    status_text = gr.HTML(
-                        '<span style="color:#8b949e;font-family:JetBrains Mono,monospace;font-size:0.78rem;">'
-                        '⏳ Awaiting incident…</span>'
-                    )
-
+                # ── Helper definitions (before components that use them) ──
                 model_choices = {
                     info["label"]: model_id
                     for model_id, info in MODEL_REGISTRY.items()
                 }
-                with gr.Row():
-                    model_selector = gr.Dropdown(
-                        choices=list(model_choices.keys()),
-                        value=list(model_choices.keys())[0],
-                        label="Model",
-                        scale=3,
-                        container=True,
-                        interactive=True,
-                    )
-                    model_info_html = gr.HTML(
-                        f'<span style="color:#8b949e;font-size:0.75rem;">{MODEL_REGISTRY[MODEL_NAME]["description"]}</span>'
-                    )
+                default_model_label = MODEL_NAME
+                for label, mid in model_choices.items():
+                    if mid == MODEL_NAME:
+                        default_model_label = label
+                        break
 
-                chatbot = gr.Chatbot(
-                    value=[{
-                        "role": "assistant",
-                        "content": "```\nInfraHeal AI v1.0 — Autonomous Incident Diagnosis\nAMD ROCm + vLLM\n----------------------------------------\nSystem ready. Run an analysis first, then ask me anything.\n```"
-                    }],
-                    height=360,
-                    label="Terminal Chat",
-                    elem_classes="chat-terminal",
-                )
-
-                with gr.Row():
-                    chat_msg = gr.Textbox(
-                        placeholder="Ask a question about the analysis...",
-                        label="Your Question",
-                        scale=5,
-                        container=False,
-                    )
-                    chat_send = gr.Button("⏎ Send", variant="primary", scale=1, elem_classes="chat-quick-btn")
-                    chat_clear = gr.Button("✕ Clear", variant="secondary", scale=1, elem_classes="chat-quick-btn")
-
-                gr.HTML(
-                    '<div style="font-size:0.72rem;color:#8b949e;font-family:JetBrains Mono,monospace;padding:4px 0 8px 0;">'
-                    'Quick questions:</div>'
-                )
-                with gr.Row():
-                    q1 = gr.Button("Why P1?", elem_classes="chat-quick-btn", scale=1)
-                    q2 = gr.Button("What's the root cause?", elem_classes="chat-quick-btn", scale=1)
-                    q3 = gr.Button("What should I do?", elem_classes="chat-quick-btn", scale=1)
-                    q4 = gr.Button("Explain evidence", elem_classes="chat-quick-btn", scale=1)
-                    q5 = gr.Button("Re-analyze", elem_classes="chat-quick-btn", scale=1)
-
-                def _update_model_info(model_label: str):
-                    model_id = model_choices.get(model_label, MODEL_NAME)
-                    info = MODEL_REGISTRY.get(model_id, {})
-                    tags = []
-                    if info.get("has_thinking"):
-                        tags.append("🧠 thinking")
-                    tags.append(f"max {info.get('max_tokens', 512)} tok")
-                    return f'<span style="color:#8b949e;font-size:0.75rem;">{" · ".join(tags)}</span>'
-
-                def _update_status():
+                def _chat_update_status():
                     if _last_pipeline_state.get("triage"):
                         tri = _last_pipeline_state["triage"]
                         return (
@@ -2373,7 +2307,7 @@ def create_dashboard(
                         '⏳ Awaiting incident…</span>'
                     )
 
-                def _refresh_risk():
+                def _chat_refresh_risk():
                     if not _last_pipeline_state.get("triage"):
                         return '<div style="color:#8b949e;font-size:0.78rem;">Run an analysis to see risk assessment.</div>'
                     ra = _run_risk_assessment()
@@ -2381,7 +2315,6 @@ def create_dashboard(
                     sev = ra["severity"]
                     sev_color = SEVERITY_LEVELS.get(sev, {}).get("color", "#94a3b8")
                     sev_label = SEVERITY_LEVELS.get(sev, {}).get("label", sev)
-
                     safety_summary = _last_pipeline_state.get("safety_audit_summary", {})
                     safety_html = ""
                     if safety_summary:
@@ -2401,7 +2334,6 @@ def create_dashboard(
                                 f'<div style="color:#00FF88;font-size:0.76rem;padding-top:4px;">'
                                 f'✅ SafetyGuard: {total}/{total} actions passed validation</div>'
                             )
-
                     return f'''
                     <div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:12px 16px;margin-top:10px;">
                       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
@@ -2421,10 +2353,87 @@ def create_dashboard(
                       {safety_html}
                     </div>'''
 
-                risk_panel = gr.HTML(value=_refresh_risk())
+                def _chat_update_model_info(model_label: str):
+                    model_id = model_choices.get(model_label, MODEL_NAME)
+                    info = MODEL_REGISTRY.get(model_id, {})
+                    tags = []
+                    if info.get("has_thinking"):
+                        tags.append("🧠 thinking")
+                    tags.append(f"max {info.get('max_tokens', 512)} tok")
+                    return f'<span style="color:#8b949e;font-size:0.75rem;">{" · ".join(tags)}</span>'
 
+                # ── Header ──
+                gr.HTML(
+                    '<div style="padding:8px 0 4px 0;">'
+                    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:2px;">'
+                    '<span style="font-size:1.2rem;font-weight:700;color:#e2e8f0;font-family:Inter,sans-serif;">'
+                    '🐚 InfraHeal AI Terminal</span>'
+                    '</div>'
+                    '<div style="font-size:0.78rem;color:#8b949e;font-family:JetBrains Mono,monospace;">'
+                    'Ask questions about the analysis. Switch models to compare responses.</div>'
+                    '</div>'
+                )
+
+                # ── Status Bar (initialised from state) ──
+                _init_status = _chat_update_status()
+                with gr.Row(elem_classes="chat-status-bar"):
+                    status_dot = gr.HTML(value=_init_status[0])
+                    status_text = gr.HTML(value=_init_status[1])
+
+                # ── Model Selector ──
+                with gr.Row():
+                    model_selector = gr.Dropdown(
+                        choices=list(model_choices.keys()),
+                        value=default_model_label,
+                        label="Model",
+                        scale=3,
+                        container=True,
+                        interactive=True,
+                    )
+                    model_info_html = gr.HTML(
+                        value=_chat_update_model_info(default_model_label)
+                    )
+
+                # ── Chatbot ──
+                chatbot = gr.Chatbot(
+                    value=[{
+                        "role": "assistant",
+                        "content": "```\nInfraHeal AI v1.0 — Autonomous Incident Diagnosis\nAMD ROCm + vLLM\n----------------------------------------\nSystem ready. Run an analysis first, then ask me anything.\n```"
+                    }],
+                    height=360,
+                    label="Terminal Chat",
+                    elem_classes="chat-terminal",
+                )
+
+                # ── Input Row ──
+                with gr.Row():
+                    chat_msg = gr.Textbox(
+                        placeholder="Ask a question about the analysis...",
+                        label="Your Question",
+                        scale=5,
+                        container=False,
+                    )
+                    chat_send = gr.Button("⏎ Send", variant="primary", scale=1, elem_classes="chat-quick-btn")
+                    chat_clear = gr.Button("✕ Clear", variant="secondary", scale=1, elem_classes="chat-quick-btn")
+
+                # ── Quick Questions ──
+                gr.HTML(
+                    '<div style="font-size:0.72rem;color:#8b949e;font-family:JetBrains Mono,monospace;padding:4px 0 8px 0;">'
+                    'Quick questions:</div>'
+                )
+                with gr.Row():
+                    q1 = gr.Button("Why P1?", elem_classes="chat-quick-btn", scale=1)
+                    q2 = gr.Button("What's the root cause?", elem_classes="chat-quick-btn", scale=1)
+                    q3 = gr.Button("What should I do?", elem_classes="chat-quick-btn", scale=1)
+                    q4 = gr.Button("Explain evidence", elem_classes="chat-quick-btn", scale=1)
+                    q5 = gr.Button("Re-analyze", elem_classes="chat-quick-btn", scale=1)
+
+                # ── Risk Panel (initialised from state) ──
+                risk_panel = gr.HTML(value=_chat_refresh_risk())
+
+                # ── Event Wiring ──
                 model_selector.change(
-                    fn=_update_model_info,
+                    fn=_chat_update_model_info,
                     inputs=[model_selector],
                     outputs=[model_info_html],
                 )

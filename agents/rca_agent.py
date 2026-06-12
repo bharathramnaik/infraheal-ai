@@ -126,7 +126,7 @@ class RCAAgent(BaseAgent):
     def _validate_result(self, result: dict) -> dict:
         """Ensure all required fields are present with sensible defaults."""
         # If parsing failed, preserve the error and provide defaults
-        if "error" in result:
+        if "error" in result and "_partial" not in result:
             defaults = RCAAgent._default_result()
             defaults["error"] = result["error"]
             defaults["raw"] = result.get("raw", "")

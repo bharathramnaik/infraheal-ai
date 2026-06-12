@@ -256,7 +256,7 @@ class RemediationAgent(BaseAgent):
 
     def _validate_result(self, result: dict) -> dict:
         """Ensure all fields are present and actions reference valid tools."""
-        if "error" in result:
+        if "error" in result and "_partial" not in result:
             defaults = RemediationAgent._default_result()
             defaults["error"] = result["error"]
             defaults["raw"] = result.get("raw", "")

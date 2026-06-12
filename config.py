@@ -69,9 +69,9 @@ THINKING_TAGS = [
 # Inference settings
 MAX_TOKENS = 256                # Fallback; agents use their own value below
 AGENT_MAX_TOKENS = {
-    "triage": 256,
-    "rca": 512,
-    "remediation": 512,
+    "triage": 512,
+    "rca": 1024,
+    "remediation": 1024,
     "reporting": 256,
 }
 TEMPERATURE = 0.3         # Low for consistent agent outputs

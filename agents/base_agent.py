@@ -216,6 +216,21 @@ class BaseAgent:
             truncated = True
 
         if truncated:
+            # Attempt to salvage partial JSON by closing unclosed brackets/braces
+            try:
+                fixed = cleaned.rstrip().rstrip(",")
+                ob = fixed.count("{") - fixed.count("}")
+                oarr = fixed.count("[") - fixed.count("]")
+                if ob > 0:
+                    fixed += "}" * ob
+                if oarr > 0:
+                    fixed += "]" * oarr
+                partial = json.loads(fixed)
+                partial["_partial"] = True
+                self.logger.warning("Salvaged partial JSON from %s (recovered %d fields)", self.name, len(partial))
+                return partial
+            except (json.JSONDecodeError, Exception) as salvage_err:
+                self.logger.warning("Could not salvage truncated JSON from %s: %s", self.name, salvage_err)
             return {"error": "LLM response truncated (max_tokens too low). JSON incomplete.", "raw": text, "_truncated": True}
         return {"error": "Failed to parse response", "raw": text}
 
