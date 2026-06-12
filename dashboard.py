@@ -2174,8 +2174,6 @@ def create_dashboard(
                 chatbot = gr.Chatbot(
                     value=[],
                     height=400,
-                    bubble_full_width=False,
-                    avatar_images=(None, "🛡️"),
                     label="Conversation",
                 )
                 with gr.Row():
