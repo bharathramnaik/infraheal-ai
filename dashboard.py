@@ -626,7 +626,24 @@ button.secondary:active {
   background: rgba(255,255,255,0.08) !important;
 }
 
-/* ── Misc ──────────────────────────────────────────────────────── */
+/* ── Approval command input ───────────────────────────────────── */
+#approval-cmd-input { margin-top: 8px; }
+#approval-cmd-input input,
+#approval-cmd-input textarea {
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 0.75rem !important;
+  background: #0d1117 !important;
+  border: 1px solid #30363d !important;
+  border-radius: 6px !important;
+  color: #8b949e !important;
+  padding: 6px 10px !important;
+}
+#approval-cmd-input input:focus,
+#approval-cmd-input textarea:focus {
+  border-color: #60A5FA !important;
+  color: #e2e8f0 !important;
+}
+/* ── Misc ─────────────────────────────────────────────────────── */
 .gr-group { border: none !important; }
 .gr-padded { padding: 0 !important; }
 .gr-form { background: transparent !important; border: none !important; }
@@ -2819,7 +2836,6 @@ def create_dashboard(
 .agent-modal-btn-danger:hover { background:#FF3B3B33; }
 .agent-modal-btn-cancel { border-color:#30363d; color:#8b949e; }
 .agent-modal-btn-cancel:hover { background:rgba(255,255,255,0.05); }
-.approval-cmd-hidden { position:absolute !important; left:-9999px !important; opacity:0 !important; height:1px !important; width:1px !important; overflow:hidden !important; }
 </style>
 <script>
 function showModal(title, bodyHtml, confirmCb) {
@@ -2856,10 +2872,14 @@ function denyAction(aid) {
   };
 }
 function trigger_approval(val) {
-  // Store command via sessionStorage — _js callback on the hidden button reads it
-  sessionStorage.setItem("approval_cmd", val);
-  var btn = document.getElementById("approval-trigger-btn");
-  if (btn) { btn.click(); }
+  // Set the visible command input and trigger Gradio's change/submit event
+  var ta = document.querySelector("#approval-cmd-input input, #approval-cmd-input textarea");
+  if (ta) {
+    ta.value = val;
+    ta.dispatchEvent(new Event("input", { bubbles: true }));
+    ta.dispatchEvent(new Event("change", { bubbles: true }));
+    ta.dispatchEvent(new Event("submit", { bubbles: true }));
+  }
   console.log("trigger_approval: " + val);
 }
 function copyChatMsg(btn) {
@@ -2934,8 +2954,13 @@ function copyChatMsg(btn) {
                 btn_optimize.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
 
                 # ── Approval panel (refreshed after pipeline runs) ──
-                approval_cmd = gr.Textbox(visible=True, elem_id="approval-cmd-input", elem_classes="approval-cmd-hidden")
-                approval_trigger = gr.Button("Trigger", elem_id="approval-trigger-btn", visible=True, elem_classes="approval-cmd-hidden")
+                approval_cmd = gr.Textbox(
+                    visible=True,
+                    elem_id="approval-cmd-input",
+                    placeholder="approve APP-0001 or deny APP-0001 because ...",
+                    container=False,
+                    scale=1,
+                )
                 approval_status = gr.HTML(value="")
 
                 def _on_approval_cmd(cmd: str):
@@ -2962,12 +2987,7 @@ function copyChatMsg(btn) {
                         return _render_approval_panel(), _render_approval_history(), f'<div style="color:red;font-size:0.8rem;">Error: {exc}</div>', _render_audit_log()
 
                 approval_cmd.change(fn=_on_approval_cmd, inputs=[approval_cmd], outputs=[approval_panel, approval_history_panel, approval_status, audit_log_panel])
-                approval_trigger.click(
-                    fn=_on_approval_cmd,
-                    inputs=[approval_cmd],
-                    outputs=[approval_panel, approval_history_panel, approval_status, audit_log_panel],
-                    _js="(x) => { var cmd = sessionStorage.getItem('approval_cmd'); sessionStorage.removeItem('approval_cmd'); return cmd || x; }"
-                )
+                approval_cmd.submit(fn=_on_approval_cmd, inputs=[approval_cmd], outputs=[approval_panel, approval_history_panel, approval_status, audit_log_panel])
                 btn_process.click(fn=_render_approval_panel, inputs=[], outputs=[approval_panel])
                 btn_process.click(fn=_render_approval_history, inputs=[], outputs=[approval_history_panel])
                 btn_process.click(fn=_render_audit_log, inputs=[], outputs=[audit_log_panel])
