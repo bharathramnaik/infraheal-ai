@@ -2639,7 +2639,7 @@ def create_dashboard(
                     '<div style="padding:8px 0 4px 0;">'
                     '<div style="display:flex;align-items:center;gap:10px;margin-bottom:2px;">'
                     '<span style="font-size:1.2rem;font-weight:700;color:#e2e8f0;font-family:Inter,sans-serif;">'
-                    '🐚 InfraHeal AI Terminal</span>'
+                    'InfraHeal AI Terminal</span>'
                     '</div>'
                     '<div style="font-size:0.78rem;color:#8b949e;font-family:JetBrains Mono,monospace;">'
                     'Ask questions about the analysis. Switch models to compare responses.</div>'
