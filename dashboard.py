@@ -2792,25 +2792,10 @@ function denyAction(aid) {
   };
 }
 function trigger_approval(val) {
-  // Set the hidden command input value natively (for Svelte binding)
-  var ta = document.querySelector("#approval-cmd-input input, #approval-cmd-input textarea");
-  if (ta) {
-    var nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value") ||
-                       Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value");
-    if (nativeSetter && nativeSetter.set) {
-      nativeSetter.set.call(ta, val);
-    } else {
-      ta.value = val;
-    }
-    ta.dispatchEvent(new Event("input", { bubbles: true }));
-    ta.dispatchEvent(new Event("change", { bubbles: true }));
-    ta.dispatchEvent(new Event("blur", { bubbles: true }));
-  }
-  // Also click the hidden trigger button as a reliable backup
+  // Store command via sessionStorage — _js callback on the hidden button reads it
+  sessionStorage.setItem("approval_cmd", val);
   var btn = document.getElementById("approval-trigger-btn");
-  if (btn) {
-    setTimeout(function() { btn.click(); }, 50);
-  }
+  if (btn) { btn.click(); }
   console.log("trigger_approval: " + val);
 }
 </script>''') as demo:
@@ -2879,7 +2864,6 @@ function trigger_approval(val) {
 
                 # ── Approval panel (refreshed after pipeline runs) ──
                 approval_cmd = gr.Textbox(visible=True, elem_id="approval-cmd-input", elem_classes="approval-cmd-hidden")
-                approval_cmd_state = gr.State("")
                 approval_trigger = gr.Button("Trigger", elem_id="approval-trigger-btn", visible=True, elem_classes="approval-cmd-hidden")
                 approval_status = gr.HTML(value="")
 
@@ -2907,7 +2891,12 @@ function trigger_approval(val) {
                         return _render_approval_panel(), _render_approval_history(), f'<div style="color:red;font-size:0.8rem;">Error: {exc}</div>', _render_audit_log()
 
                 approval_cmd.change(fn=_on_approval_cmd, inputs=[approval_cmd], outputs=[approval_panel, approval_history_panel, approval_status, audit_log_panel])
-                approval_trigger.click(fn=_on_approval_cmd, inputs=[approval_cmd], outputs=[approval_panel, approval_history_panel, approval_status, audit_log_panel])
+                approval_trigger.click(
+                    fn=_on_approval_cmd,
+                    inputs=[approval_cmd],
+                    outputs=[approval_panel, approval_history_panel, approval_status, audit_log_panel],
+                    _js="(x) => { var cmd = sessionStorage.getItem('approval_cmd'); sessionStorage.removeItem('approval_cmd'); return cmd || x; }"
+                )
                 btn_process.click(fn=_render_approval_panel, inputs=[], outputs=[approval_panel])
                 btn_process.click(fn=_render_approval_history, inputs=[], outputs=[approval_history_panel])
                 btn_process.click(fn=_render_audit_log, inputs=[], outputs=[audit_log_panel])
