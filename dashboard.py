@@ -2412,8 +2412,13 @@ def create_dashboard(
         """Queue remediation actions that require human approval. Returns count."""
         global _pending_approvals, _approval_id_counter
         count = 0
+        existing = {(a.get("scenario",""), a.get("title","")) for a in _pending_approvals if a.get("status") == "pending"}
         for step_idx, action in enumerate(actions):
             if action.get("requires_approval", False):
+                key = (scenario_name, action.get("tool_name", "Unknown action"))
+                if key in existing:
+                    logger.info("Skipping duplicate approval: %s", key)
+                    continue
                 _approval_id_counter += 1
                 _pending_approvals.append({
                     "id": f"APP-{_approval_id_counter:04d}",
@@ -2427,6 +2432,7 @@ def create_dashboard(
                     "step": step_idx + 1,
                     "action_payload": action,
                 })
+                existing.add(key)
                 count += 1
         return count
 
@@ -2748,6 +2754,7 @@ def create_dashboard(
 .agent-modal-btn-danger:hover { background:#FF3B3B33; }
 .agent-modal-btn-cancel { border-color:#30363d; color:#8b949e; }
 .agent-modal-btn-cancel:hover { background:rgba(255,255,255,0.05); }
+.approval-cmd-hidden { position:absolute !important; left:-9999px !important; opacity:0 !important; height:1px !important; width:1px !important; overflow:hidden !important; }
 </style>
 <script>
 function showModal(title, bodyHtml, confirmCb) {
@@ -2785,10 +2792,24 @@ function denyAction(aid) {
 }
 function trigger_approval(val) {
   var ta = document.querySelector("#approval-cmd-input textarea");
-  if (!ta) { console.error("approval-cmd-input textarea not found"); return; }
-  ta.value = val;
+  if (!ta) {
+    ta = document.querySelector("#approval-cmd-input input");
+    if (!ta) {
+      console.error("approval-cmd-input textarea/input not found");
+      return;
+    }
+  }
+  var nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value") ||
+                     Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value");
+  if (nativeSetter && nativeSetter.set) {
+    nativeSetter.set.call(ta, val);
+  } else {
+    ta.value = val;
+  }
   ta.dispatchEvent(new Event("input", { bubbles: true }));
   ta.dispatchEvent(new Event("change", { bubbles: true }));
+  ta.dispatchEvent(new Event("blur", { bubbles: true }));
+  console.log("trigger_approval: " + val);
 }
 </script>''') as demo:
 
@@ -2855,26 +2876,31 @@ function trigger_approval(val) {
                 btn_optimize.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
 
                 # ── Approval panel (refreshed after pipeline runs) ──
-                approval_cmd = gr.Textbox(visible=False, elem_id="approval-cmd-input")
+                approval_cmd = gr.Textbox(visible=True, elem_id="approval-cmd-input", elem_classes="approval-cmd-hidden")
                 approval_status = gr.HTML(value="")
 
                 def _on_approval_cmd(cmd: str):
-                    if not cmd:
-                        return _render_approval_panel(), _render_approval_history(), "", _render_audit_log()
-                    parts = cmd.strip().split("|", 2)
-                    action = parts[0].strip().lower()
-                    aid = parts[1].strip() if len(parts) > 1 else ""
-                    reason = html.escape(parts[2].strip()) if len(parts) > 2 else ""
-                    ts = datetime.now().strftime("%H:%M:%S")
-                    if action == "approve":
-                        _approve_action(aid)
-                        status = f'<div style="padding:8px 12px;margin:4px 0;background:rgba(0,255,136,0.06);border-left:3px solid #00FF88;border-radius:0 6px 6px 0;font-size:0.8rem;"><span style="color:#00FF88;">Approved</span> <span style="color:#8b949e;">{aid} at {ts}</span></div>'
-                    elif action == "deny":
-                        _deny_action(aid, reason)
-                        status = f'<div style="padding:8px 12px;margin:4px 0;background:rgba(255,59,59,0.06);border-left:3px solid #FF3B3B;border-radius:0 6px 6px 0;font-size:0.8rem;"><span style="color:#FF3B3B;">Denied</span> <span style="color:#8b949e;">{aid} at {ts} — {reason[:80]}</span></div>'
-                    else:
-                        status = ""
-                    return _render_approval_panel(), _render_approval_history(), status, _render_audit_log()
+                    try:
+                        if not cmd:
+                            return _render_approval_panel(), _render_approval_history(), "", _render_audit_log()
+                        parts = cmd.strip().split("|", 2)
+                        action = parts[0].strip().lower()
+                        aid = parts[1].strip() if len(parts) > 1 else ""
+                        reason = html.escape(parts[2].strip()) if len(parts) > 2 else ""
+                        ts = datetime.now().strftime("%H:%M:%S")
+                        logger.info("Approval cmd received: %s | %s", action, aid)
+                        if action == "approve":
+                            _approve_action(aid)
+                            status = f'<div style="padding:8px 12px;margin:4px 0;background:rgba(0,255,136,0.06);border-left:3px solid #00FF88;border-radius:0 6px 6px 0;font-size:0.8rem;"><span style="color:#00FF88;">Approved</span> <span style="color:#8b949e;">{aid} at {ts}</span></div>'
+                        elif action == "deny":
+                            _deny_action(aid, reason)
+                            status = f'<div style="padding:8px 12px;margin:4px 0;background:rgba(255,59,59,0.06);border-left:3px solid #FF3B3B;border-radius:0 6px 6px 0;font-size:0.8rem;"><span style="color:#FF3B3B;">Denied</span> <span style="color:#8b949e;">{aid} at {ts} — {reason[:80]}</span></div>'
+                        else:
+                            status = ""
+                        return _render_approval_panel(), _render_approval_history(), status, _render_audit_log()
+                    except Exception as exc:
+                        logger.error("Approval cmd error: %s", exc, exc_info=True)
+                        return _render_approval_panel(), _render_approval_history(), f'<div style="color:red;font-size:0.8rem;">Error: {exc}</div>', _render_audit_log()
 
                 approval_cmd.change(fn=_on_approval_cmd, inputs=[approval_cmd], outputs=[approval_panel, approval_history_panel, approval_status, audit_log_panel])
                 btn_process.click(fn=_render_approval_panel, inputs=[], outputs=[approval_panel])
