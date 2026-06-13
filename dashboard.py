@@ -2223,12 +2223,10 @@ def create_dashboard(
     # ═══════════════════════════════════════════════════════════════
 
     def _render_approval_panel() -> str:
-        """Render pending approvals as HTML panel."""
         global _pending_approvals
-        if not _pending_approvals:
-            pending = [a for a in _pending_approvals if a.get("status") == "pending"]
-            if not pending:
-                return _empty_state("No pending approvals", "All actions have been reviewed.")
+        pending = [a for a in _pending_approvals if a.get("status") == "pending"]
+        if not pending:
+            return ""
         items = "".join(
             f'<div style="padding:12px;margin:8px 0;border:1px solid rgba(255,255,255,0.08);border-radius:8px;'
             f'background:rgba(255,184,0,0.04);border-left:3px solid {_C["amber"]};">'
@@ -2247,11 +2245,11 @@ def create_dashboard(
             f'style="background:#FF3B3B22!important;border-color:#FF3B3B!important;color:#FF3B3B!important;">'
             f'Deny</button>'
             f'</div></div>'
-            for a in _pending_approvals if a.get("status") == "pending"
+            for a in pending
         )
         if not items:
-            return _empty_state("No pending approvals", "All actions have been reviewed.")
-        return f'<div style="margin-top:12px;"><div style="font-size:0.8rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Pending Approvals ({len([a for a in _pending_approvals if a.get("status")=="pending"])})</div>{items}</div>'
+            return ""
+        return f'<div style="margin-top:12px;"><div style="font-size:0.8rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Pending Approvals ({len(pending)})</div>{items}</div>'
 
     def _approve_action(action_id: str) -> str:
         """Approve a pending action and execute it."""
@@ -2427,7 +2425,7 @@ def create_dashboard(
         """Render approval history as HTML."""
         global _approval_history
         if not _approval_history:
-            return _empty_state("No approval history", "Actions approved or denied will appear here.")
+            return ""
         rows = "".join(
             f'<tr>'
             f'<td style="white-space:nowrap;font-size:0.78rem;color:#8b949e;">{h.get("id","")}</td>'
@@ -2663,22 +2661,21 @@ def create_dashboard(
     with gr.Blocks(title="InfraHeal AI — Autonomous Incident Resolution", css=CUSTOM_CSS, theme=_theme,
                     head='''<script>
 function approveAction(aid) {
-  var el = document.getElementById("approval-cmd-input");
-  if (!el) return;
-  var ta = el.querySelector("textarea");
-  if (!ta) return;
+  if (!confirm("Approve action " + aid + "? This will execute the remediation step.")) return;
+  var ta = document.querySelector("#approval-cmd-input textarea");
+  if (!ta) { console.warn("approval-cmd-input not found"); return; }
   var nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
   nativeInputValueSetter.call(ta, "approve|" + aid);
   ta.dispatchEvent(new Event("input", { bubbles: true }));
   ta.dispatchEvent(new Event("change", { bubbles: true }));
 }
 function denyAction(aid) {
-  var el = document.getElementById("approval-cmd-input");
-  if (!el) return;
-  var ta = el.querySelector("textarea");
-  if (!ta) return;
+  var reason = prompt("Reason for denying " + aid + ":");
+  if (reason === null) return;
+  var ta = document.querySelector("#approval-cmd-input textarea");
+  if (!ta) { console.warn("approval-cmd-input not found"); return; }
   var nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
-  nativeInputValueSetter.call(ta, "deny|" + aid);
+  nativeInputValueSetter.call(ta, "deny|" + aid + "|" + (reason || "No reason provided"));
   ta.dispatchEvent(new Event("input", { bubbles: true }));
   ta.dispatchEvent(new Event("change", { bubbles: true }));
 }
@@ -2718,17 +2715,25 @@ function denyAction(aid) {
                     btn_monitor = gr.Button("Start Continuous Monitoring", variant="secondary", scale=1)
                     btn_optimize = gr.Button("Optimize Agent (LoRA)", variant="secondary", scale=1)
 
-                with gr.Accordion("Scan & Pipeline Output", open=False):
+                scan_accordion = gr.Accordion("Scan & Pipeline Output", open=False)
+                with scan_accordion:
                     scan_output = gr.HTML(
                         value=_empty_state("Anomaly scan results will appear here",
                                            "Click 'Run Anomaly Scan' to start.")
                     )
 
                 btn_scan.click(fn=_run_anomaly_scan, inputs=[], outputs=[scan_output])
+                btn_scan.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
                 btn_report.click(fn=_generate_report, inputs=[], outputs=[scan_output])
+                btn_report.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
                 btn_process.click(fn=_process_all_incidents, inputs=[], outputs=[scan_output])
+                btn_process.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
                 btn_monitor.click(fn=_continuous_monitor, inputs=[], outputs=[scan_output])
+                btn_monitor.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
+                btn_monitor.click(fn=_render_approval_panel, inputs=[], outputs=[approval_panel])
+                btn_monitor.click(fn=_render_approval_history, inputs=[], outputs=[approval_history_panel])
                 btn_optimize.click(fn=_run_optimize, inputs=[], outputs=[scan_output])
+                btn_optimize.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
 
                 # ── Approval panel (refreshed after pipeline runs) ──
                 approval_cmd = gr.Textbox(visible=False, elem_id="approval-cmd-input")
@@ -2736,13 +2741,14 @@ function denyAction(aid) {
                 def _on_approval_cmd(cmd: str):
                     if not cmd:
                         return _render_approval_panel(), _render_approval_history()
-                    parts = cmd.strip().split("|", 1)
+                    parts = cmd.strip().split("|", 2)
                     action = parts[0].strip().lower()
                     aid = parts[1].strip() if len(parts) > 1 else ""
+                    reason = parts[2].strip() if len(parts) > 2 else ""
                     if action == "approve":
                         _approve_action(aid)
                     elif action == "deny":
-                        _deny_action(aid)
+                        _deny_action(aid, reason)
                     return _render_approval_panel(), _render_approval_history()
 
                 approval_cmd.change(fn=_on_approval_cmd, inputs=[approval_cmd], outputs=[approval_panel, approval_history_panel])
