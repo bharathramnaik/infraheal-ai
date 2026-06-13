@@ -538,28 +538,31 @@ button.secondary:active {
 }
 .chat-msg {
   display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 8px 0;
+  padding: 6px 4px;
   border-bottom: 1px solid #21262d;
   position: relative;
 }
 .chat-msg:last-child { border-bottom: none; }
-.chat-msg .chat-label {
-  color: #8b949e;
-  font-weight: 700;
-  min-width: 14px;
-  font-size: 0.82rem;
-  line-height: 1.5;
-}
-.chat-msg.user .chat-label { color: #8b949e; }
-.chat-msg.assistant .chat-label { color: #60A5FA; }
+.chat-msg.user { justify-content: flex-end; }
+.chat-msg.assistant { justify-content: flex-start; }
 .chat-msg .chat-bubble {
-  flex: 1;
+  max-width: 80%;
   line-height: 1.5;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+}
+.chat-msg.user .chat-bubble {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #c9d1d9;
+}
+.chat-msg.assistant .chat-bubble {
+  background: transparent;
   color: #e2e8f0;
 }
 .chat-msg .chat-bubble strong { color: #ffffff; font-weight: 700; }
+.chat-msg .chat-bubble em { color: #8b949e; font-style: italic; }
 .chat-msg .chat-bubble code {
   background: #161b22;
   border: 1px solid #30363d;
@@ -625,6 +628,31 @@ button.secondary:active {
   color: #ffffff !important;
   background: rgba(255,255,255,0.08) !important;
 }
+.chat-send-btn {
+  min-width: 40px !important;
+  font-size: 1.1rem !important;
+  background: #1a6cff22 !important;
+  border-color: #1a6cff !important;
+  color: #1a6cff !important;
+  padding: 4px 12px !important;
+}
+.chat-send-btn:hover {
+  background: #1a6cff44 !important;
+  color: #58a6ff !important;
+}
+.chat-send-btn:disabled,
+.chat-send-btn button:disabled {
+  opacity: 0.3 !important;
+  cursor: not-allowed !important;
+  background: #21262d !important;
+  border-color: #30363d !important;
+  color: #484f58 !important;
+}
+.chat-clear-btn {
+  min-width: 40px !important;
+  font-size: 1rem !important;
+  padding: 4px 12px !important;
+}
 
 /* ── Approval command input ───────────────────────────────────── */
 #approval-cmd-input { margin-top: 8px; }
@@ -642,6 +670,15 @@ button.secondary:active {
 #approval-cmd-input textarea:focus {
   border-color: #60A5FA !important;
   color: #e2e8f0 !important;
+}
+/* Chat input and model selector: black & white */
+#agent-chat-tab .gr-box,
+#agent-chat-tab .gr-form,
+#agent-chat-tab select,
+#agent-chat-tab input[type="text"] {
+  background: #0d1117 !important;
+  border-color: #30363d !important;
+  color: #c9d1d9 !important;
 }
 /* ── Misc ─────────────────────────────────────────────────────── */
 .gr-group { border: none !important; }
@@ -2733,7 +2770,7 @@ def create_dashboard(
                         history_msgs.append({"role": "assistant", "content": str(h[1])})
                 history_msgs.append({"role": "user", "content": f"Current incident: {ctx}\n\nQuestion: {message}\n\nAnswer concisely with markdown formatting (tables, code, bold where helpful)."})
 
-                system = "You are InfraHeal AI, an autonomous incident diagnosis agent running on AMD ROCm + vLLM. Answer concisely and technically. Use **bold** for key terms, `code` for commands/metrics. Do not use tables — use inline **bold:** labels instead. Keep responses under 300 words."
+                system = "You are InfraHeal AI, an autonomous incident diagnosis agent running on AMD ROCm + vLLM. Answer concisely and technically. Use **bold** for key terms, `code` for commands/metrics. Do not use tables \u2014 use inline **bold:** labels instead. Never repeat or restate the user\u2019s question in your response. Keep responses under 250 words."
                 past = _past_incidents_summary()
                 if past:
                     system += (
@@ -2775,10 +2812,11 @@ def create_dashboard(
         )
 
     def _fm(text: str) -> str:
-        """Convert _mhl-style markers to HTML (bold, code, newlines)."""
+        """Convert _mhl-style markers to HTML (bold, italic, code, newlines)."""
         import re as _re
         t = _mhl(text)
         t = _re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', t)
+        t = _re.sub(r'\*(.+?)\*', r'<em>\1</em>', t)
         t = _re.sub(r'`(.+?)`', r'<code>\1</code>', t)
         t = t.replace('\n', '<br>')
         return t
@@ -2791,9 +2829,9 @@ def create_dashboard(
             role = msg.get("role", "user")
             content = msg.get("content", "")
             formatted = _fm(content)
+            is_user = role == "user"
             items.append(
                 f'<div class="chat-msg {role}" data-idx="{i}">'
-                f'<div class="chat-label">{">" if role == "user" else ""}</div>'
                 f'<div class="chat-bubble">{formatted}</div>'
                 f'<button class="chat-copy-btn" onclick="copyChatMsg(this)">Copy</button>'
                 f'</div>'
@@ -3472,7 +3510,7 @@ function copyChatMsg(btn) {
             # ──────────────────────────────────────────────────────
             #  TAB 7 — AGENT CHAT (CLI-style, multi-turn, multi-model)
             # ──────────────────────────────────────────────────────
-            with gr.Tab("Agent Chat"):
+            with gr.Tab("Agent Chat", elem_id="agent-chat-tab"):
                 # ── Helper definitions (before components that use them) ──
                 model_choices = {
                     info["label"]: model_id
@@ -3586,7 +3624,7 @@ function copyChatMsg(btn) {
                         value=_chat_update_model_info(default_model_label)
                     )
 
-                # ── Custom Chat (fully custom HTML, no Gradio Chatbot) ──
+                # ── Custom Chat ──
                 chat_state = gr.State([{
                     "role": "assistant",
                     "content": "**System Ready**\n\nInfraHeal AI v1.0 \u2014 Autonomous Incident Diagnosis\nAMD ROCm + vLLM\n\nRun an analysis first, then ask me anything."
@@ -3601,8 +3639,8 @@ function copyChatMsg(btn) {
                         scale=5,
                         container=False,
                     )
-                    chat_send = gr.Button("Send", variant="primary", scale=1, elem_classes="chat-quick-btn")
-                    chat_clear = gr.Button("Clear", variant="secondary", scale=1, elem_classes="chat-quick-btn")
+                    chat_send = gr.Button("\u2191", variant="primary", scale=1, elem_classes="chat-send-btn", interactive=False)
+                    chat_clear = gr.Button("\u2715", variant="secondary", scale=1, elem_classes="chat-clear-btn")
 
                 # ── Quick Questions ──
                 gr.HTML(
@@ -3626,14 +3664,21 @@ function copyChatMsg(btn) {
                     outputs=[model_info_html],
                 )
 
-                def _chat_handler(message: str, history: list, model_label: str) -> tuple:
+                def _chat_handler(message: str, history: list, model_label: str):
                     if not message or not message.strip():
-                        return history, _render_chat_html(history), ""
-                    model_id = model_choices.get(model_label, MODEL_NAME)
-                    response = _chat_respond(message, history, model_id=model_id)
+                        yield history, _render_chat_html(history), ""
+                        return
                     history.append({"role": "user", "content": message})
-                    history.append({"role": "assistant", "content": response})
-                    return history, _render_chat_html(history), ""
+                    yield history, _render_chat_html(history), ""
+                    # Show thinking indicator
+                    history.append({"role": "assistant", "content": "*Thinking...*"})
+                    yield history, _render_chat_html(history), ""
+                    model_id = model_choices.get(model_label, MODEL_NAME)
+                    # Exclude the temporary "Thinking..." message from LLM context
+                    ctx = [h for h in history if h.get("content") != "*Thinking...*"]
+                    response = _chat_respond(message, ctx, model_id=model_id)
+                    history[-1] = {"role": "assistant", "content": response}
+                    yield history, _render_chat_html(history), ""
 
                 chat_send.click(
                     fn=_chat_handler,
@@ -3644,6 +3689,11 @@ function copyChatMsg(btn) {
                     fn=_chat_handler,
                     inputs=[chat_msg, chat_state, model_selector],
                     outputs=[chat_state, chat_display, chat_msg],
+                )
+                chat_msg.change(
+                    fn=lambda v: gr.update(interactive=bool(v.strip())),
+                    inputs=[chat_msg],
+                    outputs=[chat_send],
                 )
                 chat_clear.click(
                     fn=lambda: ([{
