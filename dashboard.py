@@ -2150,7 +2150,7 @@ def create_dashboard(
 
     def _chat_respond(message: str, history: list, model_id: str = "") -> str:
         if not _last_pipeline_state.get("triage"):
-            return "⚠️ **No analysis data yet.**\n\nRun an incident analysis first from the **Incident Analysis** tab, then I can answer questions about it."
+            return "**No analysis data yet.**\n\nRun an incident analysis first from the **Incident Analysis** tab, then I can answer questions about it."
 
         tri = _last_pipeline_state.get("triage", {})
         rca = _last_pipeline_state.get("rca", {})
@@ -2185,7 +2185,7 @@ def create_dashboard(
                         history_msgs.append({"role": "assistant", "content": str(h[1])})
                 history_msgs.append({"role": "user", "content": f"Current incident: {ctx}\n\nQuestion: {message}\n\nAnswer concisely with markdown formatting (tables, code, bold where helpful)."})
 
-                system = "You are InfraHeal AI, an autonomous incident diagnosis agent running on AMD ROCm + vLLM. Answer concisely and technically. Use markdown: **bold** for key terms, `code` for commands/metrics, tables for structured data."
+                system = "You are InfraHeal AI, an autonomous incident diagnosis agent running on AMD ROCm + vLLM. Answer concisely and technically. Use markdown: **bold** for key terms (outside tables only), `code` for commands/metrics. For tables use plain headers and values — never put **bold** inside table cells as it breaks rendering. Keep tables simple with 2-3 columns."
                 past = _past_incidents_summary()
                 if past:
                     system += (
