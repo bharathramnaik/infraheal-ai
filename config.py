@@ -69,7 +69,7 @@ THINKING_TAGS = [
 # Inference settings
 MAX_TOKENS = 256                # Fallback; agents use their own value below
 AGENT_MAX_TOKENS = {
-    "triage_agent": 512,
+    "triage_agent": 1024,
     "rca_agent": 1024,
     "remediation_agent": 1024,
     "reporting_agent": 1024,

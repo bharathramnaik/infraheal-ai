@@ -196,7 +196,10 @@ class BaseAgent:
         try:
             result = json.loads(cleaned)
             if isinstance(result, list):
-                return result[0] if len(result) == 1 and isinstance(result[0], dict) else {"error": "Expected JSON object, got array", "raw": text, "_array": result}
+                if len(result) >= 1 and isinstance(result[0], dict):
+                    self.logger.warning("LLM returned array with %d items — using first item", len(result))
+                    return result[0]
+                return {"error": "Expected JSON object, got array", "raw": text, "_array": result}
             return result
         except json.JSONDecodeError:
             pass
@@ -207,7 +210,10 @@ class BaseAgent:
             try:
                 result = json.loads(match.group())
                 if isinstance(result, list):
-                    return result[0] if len(result) == 1 and isinstance(result[0], dict) else {"error": "Expected JSON object, got array", "raw": text, "_array": result}
+                    if len(result) >= 1 and isinstance(result[0], dict):
+                        self.logger.warning("LLM returned array (greedy) — using first item")
+                        return result[0]
+                    return {"error": "Expected JSON object, got array", "raw": text, "_array": result}
                 return result
             except json.JSONDecodeError:
                 pass

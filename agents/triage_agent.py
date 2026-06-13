@@ -21,11 +21,11 @@ from config import SEVERITY_LEVELS, INCIDENT_CATEGORIES
 
 logger = logging.getLogger(__name__)
 
-TRIAGE_SYSTEM_PROMPT = """You triage incidents by severity (P1-P4) and category. Read anomalies, assign severity and category, output ONLY this JSON:
+TRIAGE_SYSTEM_PROMPT = """You triage incidents by severity (P1-P4) and category. Read anomalies, assign severity and category, output ONLY a SINGLE JSON object (NOT an array):
 
 {"severity":"P1-P4","severity_label":"Critical/High/Medium/Low","category":"infrastructure|application|network|security|database|storage","impact_assessment":"2-3 sentence impact","affected_services":["svc1"],"urgency_reasoning":"why this severity","confidence":0-1,"escalation_needed":bool,"sla_minutes":int}
 
-P1=production down/data loss, P2=major degradation, P3=partial, P4=minor. Category must be one of the six listed. No prose, no markdown, only JSON."""
+P1=production down/data loss, P2=major degradation, P3=partial, P4=minor. Category must be one of the six listed. No prose, no markdown, no arrays. ONLY a single JSON object with the keys above."""
 
 
 class TriageAgent(BaseAgent):
