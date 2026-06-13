@@ -3058,7 +3058,109 @@ def create_dashboard(
                 kb_search.submit(fn=_search_runbooks, inputs=[kb_search], outputs=[kb_results])
 
             # ──────────────────────────────────────────────────────
-            #  TAB 6 — AGENT CHAT (CLI-style, multi-turn, multi-model)
+            #  TAB 6 — HELP & FAQ
+            # ──────────────────────────────────────────────────────
+            with gr.Tab("Help & FAQ"):
+                gr.HTML(
+                    '<div class="section-title">Help & Frequently Asked Questions</div>'
+                    '<div class="section-subtitle">Quick answers to common questions about InfraHeal AI.</div>'
+                )
+
+                def _render_faq() -> str:
+                    faqs = [
+                        ("What is InfraHeal AI?",
+                         "Autonomous incident diagnosis & resolution agent. Uses a 4-agent pipeline "
+                         "(Triage → RCA → Remediation → Report) powered by Qwen2.5-7B on AMD ROCm + vLLM."),
+                        ("How do I run an analysis?",
+                         "Go to <b>Incident Analysis</b> tab, select a scenario from the dropdown, "
+                         "click <b>Analyze Incident</b>. Results appear in the agent output panels."),
+                        ("How do I process all incidents at once?",
+                         "Go to <b>Command Center</b> and click <b>Process All Incidents</b>. "
+                         "This runs the pipeline on every scenario and produces a summary report."),
+                        ("What is the approval queue for?",
+                         "High-risk remediation actions (requires_approval=true) are held for human review. "
+                         "Approve or deny them in the <b>Command Center</b> panel or via Agent Chat "
+                         "(type APPROVE APP-0001 or DENY APP-0002 because ...)."),
+                        ("How do I use the Agent Chat?",
+                         "Go to <b>Agent Chat</b>, type a question about the current analysis. "
+                         "The bot has context from the last pipeline run. Quick questions are pre-loaded. "
+                         "You can also approve/deny actions directly in chat."),
+                        ("What models are available?",
+                         "Qwen/Qwen2.5-7B-Instruct is the default. Switch models from the dropdown "
+                         "in Agent Chat. Some models support chain-of-thought thinking traces."),
+                        ("How does the agent learn over time?",
+                         "Three layers: <b>1)</b> Approved actions are stored in the experience store "
+                         "and injected as few-shot examples in future prompts. <b>2)</b> Action preference "
+                         "rankings bias the agent toward historically approved tools. "
+                         "<b>3)</b> Click <b>Optimize Agent (LoRA)</b> in Command Center to fine-tune "
+                         "Qwen2.5-7B on approved actions using LoRA."),
+                        ("What is the SafetyGuard?",
+                         "Every remediation action passes through SafetyGuard before execution. "
+                         "It validates against security rules, blocks dangerous actions, flags risky ones. "
+                         "Results are shown in the Remediation output panel."),
+                        ("What does the critique agent do?",
+                         "After RCA, the critique agent reviews the root cause analysis for gaps in evidence. "
+                         "It either confirms the RCA or flags weaknesses and suggests refinements. "
+                         "Gaps are informational — they indicate low-confidence evidence, not errors."),
+                        ("How do I search the knowledge base?",
+                         "Go to <b>Knowledge Base</b>, type a query (e.g. 'database', 'memory', 'security'), "
+                         "click Search. Results show relevant runbooks used by the RAG pipeline."),
+                        ("How do I view performance metrics?",
+                         "Go to <b>Performance Metrics</b>, click <b>Refresh Metrics</b>. Shows timing, "
+                         "token usage, and latency breakdown per agent. The GPU Benchmark panel profiles "
+                         "throughput for different batch sizes and prompt lengths."),
+                        ("What does Continuous Monitoring do?",
+                         "Click <b>Start Continuous Monitoring</b> in Command Center to run the pipeline "
+                         "on all scenarios in batch. Queues any high-risk actions for your approval."),
+                        ("How do I fine-tune the model?",
+                         "Approve several actions first (at least 3). Then click "
+                         "<b>Optimize Agent (LoRA)</b> in Command Center. This runs LoRA fine-tuning "
+                         "on Qwen2.5-7B using approved actions as training data. The adapter is saved "
+                         "to adapters/remediation/ and can be loaded with "
+                         "<code>--lora-modules remediation=adapters/remediation</code>."),
+                        ("How is the dashboard deployed?",
+                         "Pull from GitHub: <code>git fetch origin && git reset --hard origin/master</code>. "
+                         "Start vLLM: <code>vllm serve Qwen/Qwen2.5-7B-Instruct --host 0.0.0.0 --port 8000</code>. "
+                         "Run dashboard: <code>python dashboard.py</code>."),
+                        ("What hardware is required?",
+                         "AMD ROCm GPU (MI250/MI300) recommended. Runs on vLLM for inference. "
+                         "CPU-only demo mode works with pre-generated demo data (no GPU required)."),
+                        ("How are incidents scored?",
+                         "Severity P1 (Critical) → P4 (Low). SLA minutes and escalation rules "
+                         "are configured per severity level. SafetyGuard applies stricter rules "
+                         "for high-severity incidents."),
+                        ("Can I customize the available tools?",
+                         "Yes — tools are defined in <code>config.py</code> under AVAILABLE_TOOLS. "
+                         "Add or modify tool definitions there. The remediation agent dynamically "
+                         "picks up the tool registry."),
+                    ]
+                    items = "".join(
+                        f'<div class="faq-item">'
+                        f'<div class="faq-q" onclick="this.nextElementSibling.classList.toggle(\'open\');'
+                        f'this.querySelector(\'.faq-toggle\').textContent = '
+                        f'this.nextElementSibling.classList.contains(\'open\') ? \'−\' : \'+\';">'
+                        f'<span class="faq-toggle">+</span> {q}</div>'
+                        f'<div class="faq-a">{a}</div>'
+                        f'</div>'
+                        for q, a in faqs
+                    )
+                    return f'''
+                    <style>
+                    .faq-item {{ margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.06); }}
+                    .faq-q {{ padding: 14px 16px; cursor: pointer; font-size: 0.88rem; font-weight: 600; color: #e2e8f0; display: flex; align-items: center; gap: 10px; user-select: none; }}
+                    .faq-q:hover {{ background: rgba(255,255,255,0.02); border-radius: 8px; }}
+                    .faq-toggle {{ display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 4px; background: rgba(255,255,255,0.06); color: #64748b; font-size: 1rem; flex-shrink: 0; }}
+                    .faq-a {{ padding: 0 16px 14px 50px; font-size: 0.82rem; color: #8b949e; line-height: 1.6; display: none; }}
+                    .faq-a.open {{ display: block; }}
+                    .faq-a code {{ background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 4px; font-size: 0.78rem; color: #c9d1d9; }}
+                    .faq-a b {{ color: #c9d1d9; }}
+                    </style>
+                    <div class="glass-card">{items}</div>'''
+
+                gr.HTML(value=_render_faq)
+
+            # ──────────────────────────────────────────────────────
+            #  TAB 7 — AGENT CHAT (CLI-style, multi-turn, multi-model)
             # ──────────────────────────────────────────────────────
             with gr.Tab("Agent Chat"):
                 # ── Helper definitions (before components that use them) ──
