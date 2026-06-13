@@ -2660,7 +2660,29 @@ def create_dashboard(
         font=gr.themes.GoogleFont("Inter"),
         font_mono=gr.themes.GoogleFont("JetBrains Mono"),
     )
-    with gr.Blocks(title="InfraHeal AI — Autonomous Incident Resolution", css=CUSTOM_CSS, theme=_theme) as demo:
+    with gr.Blocks(title="InfraHeal AI — Autonomous Incident Resolution", css=CUSTOM_CSS, theme=_theme,
+                    head='''<script>
+function approveAction(aid) {
+  var el = document.getElementById("approval-cmd-input");
+  if (!el) return;
+  var ta = el.querySelector("textarea");
+  if (!ta) return;
+  var nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
+  nativeInputValueSetter.call(ta, "approve|" + aid);
+  ta.dispatchEvent(new Event("input", { bubbles: true }));
+  ta.dispatchEvent(new Event("change", { bubbles: true }));
+}
+function denyAction(aid) {
+  var el = document.getElementById("approval-cmd-input");
+  if (!el) return;
+  var ta = el.querySelector("textarea");
+  if (!ta) return;
+  var nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
+  nativeInputValueSetter.call(ta, "deny|" + aid);
+  ta.dispatchEvent(new Event("input", { bubbles: true }));
+  ta.dispatchEvent(new Event("change", { bubbles: true }));
+}
+</script>''') as demo:
 
         # ──────────────────────────────────────────────────────────
         #  TAB 1 — COMMAND CENTER
@@ -2670,15 +2692,18 @@ def create_dashboard(
                 header = gr.HTML(value=_branding_header)
                 metrics_row = gr.HTML(value=_get_command_center_metrics)
 
-                # Human approval panel
-                gr.HTML(
-                    '<div class="section-label" style="margin-top:16px;">Approvals Required</div>'
-                )
-                approval_panel = gr.HTML(value=_render_approval_panel)
+                # Human approval panel (collapsible)
+                with gr.Accordion("Approvals Required", open=False):
+                    approval_panel = gr.HTML(value=_render_approval_panel)
+
+                # Approval history display
+                approval_history_panel = gr.HTML(value=_render_approval_history)
 
                 gr.HTML(
                     '<div class="section-label" style="margin-top:16px;">Live Log Stream</div>'
                 )
+
+                # Hidden JS bridge textbox
                 log_stream = gr.HTML(value=_get_command_center_logs)
                 live_timer = gr.Timer(value=3.0, active=True)
                 live_timer.tick(fn=_render_live_logs, inputs=[], outputs=[log_stream])
@@ -2693,10 +2718,11 @@ def create_dashboard(
                     btn_monitor = gr.Button("Start Continuous Monitoring", variant="secondary", scale=1)
                     btn_optimize = gr.Button("Optimize Agent (LoRA)", variant="secondary", scale=1)
 
-                scan_output = gr.HTML(
-                    value=_empty_state("Anomaly scan results will appear here",
-                                       "Click 'Run Anomaly Scan' to start.")
-                )
+                with gr.Accordion("Scan & Pipeline Output", open=False):
+                    scan_output = gr.HTML(
+                        value=_empty_state("Anomaly scan results will appear here",
+                                           "Click 'Run Anomaly Scan' to start.")
+                    )
 
                 btn_scan.click(fn=_run_anomaly_scan, inputs=[], outputs=[scan_output])
                 btn_report.click(fn=_generate_report, inputs=[], outputs=[scan_output])
@@ -2706,8 +2732,6 @@ def create_dashboard(
 
                 # ── Approval panel (refreshed after pipeline runs) ──
                 approval_cmd = gr.Textbox(visible=False, elem_id="approval-cmd-input")
-                approval_panel_out = gr.HTML(value=_render_approval_panel)
-                approval_history_out = gr.HTML(value=_render_approval_history)
 
                 def _on_approval_cmd(cmd: str):
                     if not cmd:
@@ -2721,35 +2745,9 @@ def create_dashboard(
                         _deny_action(aid)
                     return _render_approval_panel(), _render_approval_history()
 
-                approval_cmd.change(fn=_on_approval_cmd, inputs=[approval_cmd], outputs=[approval_panel_out, approval_history_out])
-                # Refresh panels when pipeline runs
-                btn_process.click(fn=_render_approval_panel, inputs=[], outputs=[approval_panel_out])
-                btn_process.click(fn=_render_approval_history, inputs=[], outputs=[approval_history_out])
-
-                gr.HTML(
-                    '<script>'
-                    'function approveAction(aid) {'
-                    '  var el = document.getElementById("approval-cmd-input");'
-                    '  if (!el) return;'
-                    '  var ta = el.querySelector("textarea");'
-                    '  if (!ta) return;'
-                    '  var nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;'
-                    '  nativeInputValueSetter.call(ta, "approve|" + aid);'
-                    '  ta.dispatchEvent(new Event("input", { bubbles: true }));'
-                    '  ta.dispatchEvent(new Event("change", { bubbles: true }));'
-                    '}'
-                    'function denyAction(aid) {'
-                    '  var el = document.getElementById("approval-cmd-input");'
-                    '  if (!el) return;'
-                    '  var ta = el.querySelector("textarea");'
-                    '  if (!ta) return;'
-                    '  var nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;'
-                    '  nativeInputValueSetter.call(ta, "deny|" + aid);'
-                    '  ta.dispatchEvent(new Event("input", { bubbles: true }));'
-                    '  ta.dispatchEvent(new Event("change", { bubbles: true }));'
-                    '}'
-                    '</script>'
-                )
+                approval_cmd.change(fn=_on_approval_cmd, inputs=[approval_cmd], outputs=[approval_panel, approval_history_panel])
+                btn_process.click(fn=_render_approval_panel, inputs=[], outputs=[approval_panel])
+                btn_process.click(fn=_render_approval_history, inputs=[], outputs=[approval_history_panel])
 
                 # Approval history
                 gr.HTML('<div style="margin-top:12px;"></div>')
@@ -3069,70 +3067,138 @@ def create_dashboard(
                 def _render_faq() -> str:
                     faqs = [
                         ("What is InfraHeal AI?",
-                         "Autonomous incident diagnosis & resolution agent. Uses a 4-agent pipeline "
-                         "(Triage → RCA → Remediation → Report) powered by Qwen2.5-7B on AMD ROCm + vLLM."),
+                         "Autonomous incident diagnosis & resolution system built for the TCS & AMD Build AI 2026 hackathon. "
+                         "Uses a <b>4-agent LLM pipeline</b> (Triage &rarr; RCA &rarr; Remediation &rarr; Report) powered by "
+                         "<b>Qwen/Qwen2.5-7B-Instruct</b> on <b>AMD ROCm + vLLM</b>. Features real-time log streaming, "
+                         "RAG-based knowledge retrieval, human-in-the-loop approvals, and continuous learning via LoRA fine-tuning."),
                         ("How do I run an analysis?",
-                         "Go to <b>Incident Analysis</b> tab, select a scenario from the dropdown, "
-                         "click <b>Analyze Incident</b>. Results appear in the agent output panels."),
+                         "Go to <b>Incident Analysis</b> tab &rarr; select a scenario from the dropdown &rarr; "
+                         "click <b>Analyze Incident</b>. The pipeline runs sequentially: "
+                         "Triage classifies severity/category, RCA identifies root cause, Remediation generates actions, "
+                         "Reporting produces a summary. Results appear in the four agent output panels below. "
+                         "The <b>Agent Reasoning Chain</b> accordion shows step-by-step reasoning from each agent."),
                         ("How do I process all incidents at once?",
-                         "Go to <b>Command Center</b> and click <b>Process All Incidents</b>. "
-                         "This runs the pipeline on every scenario and produces a summary report."),
+                         "Go to <b>Command Center</b> &rarr; click <b>Process All Incidents</b>. "
+                         "This iterates over every scenario, runs the full pipeline on each, and produces "
+                         "a comprehensive summary table with severity, category, root cause, and action counts. "
+                         "Performance metrics are aggregated across all scenarios."),
                         ("What is the approval queue for?",
-                         "High-risk remediation actions (requires_approval=true) are held for human review. "
-                         "Approve or deny them in the <b>Command Center</b> panel or via Agent Chat "
-                         "(type APPROVE APP-0001 or DENY APP-0002 because ...)."),
+                         "High-risk remediation actions (<code>requires_approval=true</code>) are held for human review. "
+                         "The <b>Approvals Required</b> accordion in Command Center lists pending actions with Approve/Deny buttons. "
+                         "You can also type <b>APPROVE APP-0001</b> or <b>DENY APP-0002 because already resolved</b> "
+                         "in Agent Chat. Approved actions are executed; denied ones are logged with the reason. "
+                         "All decisions feed into the experience store for continuous learning."),
                         ("How do I use the Agent Chat?",
-                         "Go to <b>Agent Chat</b>, type a question about the current analysis. "
-                         "The bot has context from the last pipeline run. Quick questions are pre-loaded. "
-                         "You can also approve/deny actions directly in chat."),
+                         "Go to <b>Agent Chat</b> &rarr; type any question about the current analysis. "
+                         "The bot has full context from the last pipeline run (severity, category, root cause, actions, critique). "
+                         "Pre-loaded quick questions are available: <b>Why P1?</b>, <b>What is the root cause?</b>, "
+                         "<b>What should I do?</b>, <b>Explain evidence</b>, <b>Re-analyze</b>. "
+                         "You can also switch models from the dropdown to compare responses. "
+                         "Some models support <b>thinking traces</b> shown in expandable details."),
                         ("What models are available?",
-                         "Qwen/Qwen2.5-7B-Instruct is the default. Switch models from the dropdown "
-                         "in Agent Chat. Some models support chain-of-thought thinking traces."),
+                         "Default: <b>Qwen/Qwen2.5-7B-Instruct</b> (highly optimized on AMD ROCm). "
+                         "Switch models from the dropdown in Agent Chat — other models registered in "
+                         "<code>MODEL_REGISTRY</code> are available if loaded on your vLLM instance. "
+                         "Models with <code>has_thinking: true</code> show step-by-step reasoning traces "
+                         "in expandable details before their final answer."),
                         ("How does the agent learn over time?",
-                         "Three layers: <b>1)</b> Approved actions are stored in the experience store "
-                         "and injected as few-shot examples in future prompts. <b>2)</b> Action preference "
-                         "rankings bias the agent toward historically approved tools. "
-                         "<b>3)</b> Click <b>Optimize Agent (LoRA)</b> in Command Center to fine-tune "
-                         "Qwen2.5-7B on approved actions using LoRA."),
+                         "Three continuous learning layers:"
+                         "<br><b>Layer 1 &mdash; Experience Store:</b> Every approved/denied action is logged. "
+                         "Before each analysis, the top-3 most similar past successful remediations are injected "
+                         "as few-shot examples in the remediation prompt."
+                         "<br><b>Layer 2 &mdash; Action Preference Ranking:</b> Approval rates per tool are tracked. "
+                         "The remediation agent sees historical success rates (e.g. 'restart_service: 100% approval') "
+                         "biasing recommendations toward trusted actions."
+                         "<br><b>Layer 3 &mdash; LoRA Fine-Tuning:</b> Click <b>Optimize Agent (LoRA)</b> in Command Center "
+                         "to fine-tune Qwen2.5-7B on approved actions. Requires 3+ approved experiences. "
+                         "Adapter is saved to <code>adapters/remediation/</code>."),
                         ("What is the SafetyGuard?",
-                         "Every remediation action passes through SafetyGuard before execution. "
-                         "It validates against security rules, blocks dangerous actions, flags risky ones. "
-                         "Results are shown in the Remediation output panel."),
+                         "Every remediation action passes through <b>SafetyGuard</b> before execution — "
+                         "a rule-based validator that checks security policies, tool permissions, and severity overrides. "
+                         "Each action receives a verdict: <span style='color:#00FF88;'><b>allow</b></span> (safe to execute), "
+                         "<span style='color:#FFB800;'><b>flag</b></span> (risky but permitted), or "
+                         "<span style='color:#FF3B3B;'><b>block</b></span> (dangerous, prevented). "
+                         "Results are shown in the Remediation output panel with detailed reasoning."),
                         ("What does the critique agent do?",
-                         "After RCA, the critique agent reviews the root cause analysis for gaps in evidence. "
-                         "It either confirms the RCA or flags weaknesses and suggests refinements. "
-                         "Gaps are informational — they indicate low-confidence evidence, not errors."),
+                         "After RCA, the critique agent reviews the root cause analysis for evidence quality. "
+                         "It either <b>confirms</b> the RCA or identifies <b>gaps</b> (e.g. 'Insufficient evidence for memory critical conditions'). "
+                         "When gaps are found, it refines confidence scores and suggests improvements. "
+                         "Gaps are <b>informational</b> — they indicate low-confidence or sparse evidence, not system errors. "
+                         "In a production deployment, these would trigger additional data collection."),
                         ("How do I search the knowledge base?",
-                         "Go to <b>Knowledge Base</b>, type a query (e.g. 'database', 'memory', 'security'), "
-                         "click Search. Results show relevant runbooks used by the RAG pipeline."),
+                         "Go to <b>Knowledge Base</b> tab &rarr; type a query (e.g. 'database', 'memory', 'security') "
+                         "&rarr; click <b>Search</b> or press Enter. Results show relevant operational runbooks "
+                         "used by the RAG pipeline during RCA. The search uses BM25 ranking "
+                         "(via <code>rank_bm25</code>) to find the most relevant entries."),
                         ("How do I view performance metrics?",
-                         "Go to <b>Performance Metrics</b>, click <b>Refresh Metrics</b>. Shows timing, "
-                         "token usage, and latency breakdown per agent. The GPU Benchmark panel profiles "
-                         "throughput for different batch sizes and prompt lengths."),
+                         "Go to <b>Performance Metrics</b> tab &rarr; click <b>Refresh Metrics</b>. "
+                         "Shows: total time, tokens used, LLM calls, average latency, GPU memory, "
+                         "and per-agent latency/token breakdowns. "
+                         "The <b>GPU Benchmark</b> panel profiles throughput (tokens/sec) across batch sizes "
+                         "and prompt lengths — useful for tuning vLLM parameters. "
+                         "Run benchmark to get recommended <code>--max-model-len</code> and batch concurrency settings."),
+                        ("Why is token usage high in Process All Incidents?",
+                         "The pipeline calls 4 agents per scenario, each sending a prompt and receiving a response. "
+                         "For 8 scenarios with ~500-1000 tokens per call, 160K+ total tokens is expected. "
+                         "Each scenario generates: triage (~200 tokens), RCA (~400 tokens), remediation (~300 tokens), "
+                         "report (~400 tokens), plus critique and safety checks. "
+                         "To reduce usage, you can lower <code>max_tokens</code> per agent in <code>config.py</code> "
+                         "or reduce the number of scenarios."),
                         ("What does Continuous Monitoring do?",
-                         "Click <b>Start Continuous Monitoring</b> in Command Center to run the pipeline "
-                         "on all scenarios in batch. Queues any high-risk actions for your approval."),
+                         "Click <b>Start Continuous Monitoring</b> in Command Center to run the full pipeline "
+                         "across all scenarios in a single batch. High-risk actions are automatically queued "
+                         "for human approval in the Approvals panel. "
+                         "Can be extended to a periodic loop with <code>gr.Timer</code> for autonomous operation."),
                         ("How do I fine-tune the model?",
-                         "Approve several actions first (at least 3). Then click "
-                         "<b>Optimize Agent (LoRA)</b> in Command Center. This runs LoRA fine-tuning "
-                         "on Qwen2.5-7B using approved actions as training data. The adapter is saved "
-                         "to adapters/remediation/ and can be loaded with "
-                         "<code>--lora-modules remediation=adapters/remediation</code>."),
+                         "1. Approve several actions first (at least 3) so the experience store has training data."
+                         "<br>2. Click <b>Optimize Agent (LoRA)</b> in Command Center."
+                         "<br>3. The script runs LoRA fine-tuning via <code>optimize.py</code> using "
+                         "<code>peft</code> + <code>bitsandbytes</code> 4-bit quantization."
+                         "<br>4. Adapter weights are saved to <code>adapters/remediation/</code>."
+                         "<br>5. Restart vLLM with the adapter: <code>vllm serve Qwen/Qwen2.5-7B-Instruct "
+                         "--enable-lora --lora-modules remediation=adapters/remediation</code>. "
+                         "Subsequent analyses will use the fine-tuned adapter."),
                         ("How is the dashboard deployed?",
-                         "Pull from GitHub: <code>git fetch origin && git reset --hard origin/master</code>. "
-                         "Start vLLM: <code>vllm serve Qwen/Qwen2.5-7B-Instruct --host 0.0.0.0 --port 8000</code>. "
-                         "Run dashboard: <code>python dashboard.py</code>."),
+                         "<b>On AMD ROCm cloud (JupyterLab):</b>"
+                         "<br><code>cd infraheal-ai && git fetch origin && git reset --hard origin/master</code>"
+                         "<br><code>vllm serve Qwen/Qwen2.5-7B-Instruct --host 0.0.0.0 --port 8000 "
+                         "--gpu-memory-utilization 0.9 --max-model-len 8192</code>"
+                         "<br><code>python dashboard.py</code>"
+                         "<br><b>Local (CPU demo mode):</b> python dashboard.py runs with pre-generated demo data."),
                         ("What hardware is required?",
-                         "AMD ROCm GPU (MI250/MI300) recommended. Runs on vLLM for inference. "
-                         "CPU-only demo mode works with pre-generated demo data (no GPU required)."),
+                         "<b>Production:</b> AMD ROCm GPU (MI250/MI300 recommended) with vLLM for inference. "
+                         "Requires ROCm 6.x + PyTorch with ROCm support."
+                         "<br><b>CPU demo mode:</b> Works on any machine without a GPU — uses pre-generated "
+                         "sample data and simulated agent responses. Run <code>python dashboard.py</code> directly."),
                         ("How are incidents scored?",
-                         "Severity P1 (Critical) → P4 (Low). SLA minutes and escalation rules "
-                         "are configured per severity level. SafetyGuard applies stricter rules "
-                         "for high-severity incidents."),
+                         "Four severity levels: <b>P1 (Critical)</b> &rarr; immediate SLA (~15min), "
+                         "<b>P2 (High)</b> &rarr; urgent (~60min), <b>P3 (Medium)</b> &rarr; standard (~240min), "
+                         "<b>P4 (Low)</b> &rarr; best-effort. Severity determines escalation rules, "
+                         "SafetyGuard strictness, and SLA targets. Color-coded badges: "
+                         "<span style='color:#FF3B3B;'>red</span> (P1), "
+                         "<span style='color:#FF8C00;'>orange</span> (P2), "
+                         "<span style='color:#FFD700;'>yellow</span> (P3), "
+                         "<span style='color:#4CAF50;'>green</span> (P4)."),
                         ("Can I customize the available tools?",
-                         "Yes — tools are defined in <code>config.py</code> under AVAILABLE_TOOLS. "
-                         "Add or modify tool definitions there. The remediation agent dynamically "
-                         "picks up the tool registry."),
+                         "Yes — tools are registered in <code>config.py</code> under <code>AVAILABLE_TOOLS</code>. "
+                         "Each tool has: <code>name</code>, <code>description</code>, and <code>parameters</code> "
+                         "(name, type, description, required). The remediation agent dynamically reads this registry "
+                         "and includes available tools in its system prompt. "
+                         "Add, modify, or remove tools — the agent adapts automatically."),
+                        ("What is the difference between Analyze and Process All?",
+                         "<b>Analyze Incident</b> runs the pipeline on a single selected scenario with detailed "
+                         "per-agent output panels. Best for debugging and understanding a specific incident."
+                         "<br><b>Process All Incidents</b> runs on every scenario and produces a summary table. "
+                         "Performance metrics are aggregated across all runs. Best for batch analysis and benchmarking."),
+                        ("Why is GPU KV cache 0%?",
+                         "The KV cache fills as tokens are generated during inference. "
+                         "Early in a session or after idle periods, the cache is naturally empty. "
+                         "It populates after a few requests. 0% is normal behavior and not a concern."),
+                        ("Can this integrate with real infrastructure?",
+                         "Currently uses simulated execution — actions print success messages but don't "
+                         "connect to actual servers. For production: replace <code>execute_action()</code> "
+                         "in <code>remediation_agent.py</code> with real API calls (Kubernetes, AWS, Ansible, etc.). "
+                         "The SafetyGuard, approval queue, and logging infrastructure are production-ready."),
                     ]
                     items = "".join(
                         f'<div class="faq-item">'
@@ -3146,11 +3212,11 @@ def create_dashboard(
                     )
                     return f'''
                     <style>
-                    .faq-item {{ margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.06); }}
+                    .faq-item {{ margin-bottom: 2px; border-bottom: 1px solid rgba(255,255,255,0.06); }}
                     .faq-q {{ padding: 14px 16px; cursor: pointer; font-size: 0.88rem; font-weight: 600; color: #e2e8f0; display: flex; align-items: center; gap: 10px; user-select: none; }}
                     .faq-q:hover {{ background: rgba(255,255,255,0.02); border-radius: 8px; }}
-                    .faq-toggle {{ display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 4px; background: rgba(255,255,255,0.06); color: #64748b; font-size: 1rem; flex-shrink: 0; }}
-                    .faq-a {{ padding: 0 16px 14px 50px; font-size: 0.82rem; color: #8b949e; line-height: 1.6; display: none; }}
+                    .faq-toggle {{ display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px; border-radius: 4px; background: rgba(255,255,255,0.06); color: #64748b; font-size: 1rem; flex-shrink: 0; }}
+                    .faq-a {{ padding: 0 16px 14px 50px; font-size: 0.82rem; color: #8b949e; line-height: 1.65; display: none; }}
                     .faq-a.open {{ display: block; }}
                     .faq-a code {{ background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 4px; font-size: 0.78rem; color: #c9d1d9; }}
                     .faq-a b {{ color: #c9d1d9; }}

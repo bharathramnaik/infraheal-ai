@@ -221,10 +221,9 @@ class InfraHealOrchestrator:
                 "rca_result": rca_result,
                 "triage_result": triage_result,
             }
-            # Inject continuous learning context if provided
-            for key in ("few_shot_examples", "action_preferences"):
-                if key in scenario:
-                    remediation_context[key] = scenario[key]
+            # Inject continuous learning context if available
+            extra_ctx = getattr(self, '_remediation_extra', {})
+            remediation_context.update(extra_ctx)
             remediation_result = self.remediation_agent.run(remediation_context)
         except Exception as exc:
             logger.error("Remediation failed: %s", exc)
@@ -573,6 +572,11 @@ class InfraHealOrchestrator:
         logger.info(
             "Processing scenario: %s", scenario.get("name", "unnamed"),
         )
+        # Pass continuous learning context to process_incident
+        self._remediation_extra = {
+            "few_shot_examples": scenario.get("few_shot_examples", ""),
+            "action_preferences": scenario.get("action_preferences", ""),
+        }
         result = self.process_incident(
             anomalies=scenario.get("anomalies", []),
             logs=scenario.get("logs", []),
