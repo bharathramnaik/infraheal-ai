@@ -386,10 +386,21 @@ button.secondary:active {
   border-bottom: 1px solid #21262d !important;
 }
 .chat-terminal .chat-message.user {
-  border-left: 3px solid var(--accent) !important;
+  border-left: 3px solid #8b949e !important;
 }
 .chat-terminal .chat-message.assistant {
-  border-left: 3px solid rgba(255,255,255,0.3) !important;
+  border-left: 3px solid #60A5FA !important;
+}
+/* Copy button: hidden by default, show on hover */
+.chat-terminal .chat-message .copy-icon-wrapper,
+.chat-terminal .chat-message button[aria-label="Copy"],
+.chat-terminal .chat-message .copy-button {
+  opacity: 0 !important; transition: opacity 0.15s ease !important; pointer-events: none !important;
+}
+.chat-terminal .chat-message:hover .copy-icon-wrapper,
+.chat-terminal .chat-message:hover button[aria-label="Copy"],
+.chat-terminal .chat-message:hover .copy-button {
+  opacity: 1 !important; pointer-events: auto !important;
 }
 .chat-status-bar {
   background: #161b22;
@@ -536,6 +547,18 @@ def _hl(text: str) -> str:
     # Percentages and time values
     t = _re.sub(r'\b(\d+(?:\.\d+)?%)\b', r'<span style="color:#60A5FA;font-weight:600;">\1</span>', t)
     t = _re.sub(r'\b(\d+ms|\d+s|\d+ minutes?)\b', r'<span style="color:#60A5FA;font-weight:600;">\1</span>', t)
+    return t
+
+
+def _mhl(text: str) -> str:
+    """Markdown-compatible highlighting — wraps key terms in **bold** for chat."""
+    import re as _re
+    t = str(text)
+    t = _re.sub(r'\b(P[1-4])\b', r'**\1**', t)
+    t = _re.sub(r'\b(CRITICAL|ERROR|FATAL|WARNING)\b', r'**\1**', t)
+    t = _re.sub(r'\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b', r'`\1`', t)
+    t = _re.sub(r'\b(\d+(?:\.\d+)?%)\b', r'**\1**', t)
+    t = _re.sub(r'\b(\d+ms|\d+s)\b', r'**\1**', t)
     return t
 
 
@@ -2216,7 +2239,7 @@ def create_dashboard(
             except Exception as exc:
                 logger.warning("Chat LLM failed: %s", exc)
 
-        return (
+        return _mhl(
             f"**Incident Summary**\n\n"
             f"| Severity | Category | Confidence | Actions |\n"
             f"|----------|----------|-----------|--------|\n"
@@ -2747,7 +2770,7 @@ def create_dashboard(
                         return history, ""
                     model_id = model_choices.get(model_label, MODEL_NAME)
                     response = _chat_respond(message, history, model_id=model_id)
-                    history.append({"role": "user", "content": message})
+                    history.append({"role": "user", "content": _mhl(message)})
                     history.append({"role": "assistant", "content": response})
                     return history, ""
 
