@@ -91,6 +91,8 @@ class RCAAgent(BaseAgent):
 
         raw = self._call_llm(messages)
         result = self._parse_json_response(raw)
+        result["kb_consulted"] = bool(runbook_context and len(runbook_context) > 10)
+        result["kb_findings"] = (runbook_context[:300] if runbook_context else "") if result.get("kb_consulted") else ""
         result = self._validate_result(result)
 
         self.logger.info(
@@ -154,6 +156,8 @@ class RCAAgent(BaseAgent):
             "affected_components": result.get("affected_components", []),
             "blast_radius": result.get("blast_radius", "Unknown"),
             "reasoning_summary": result.get("reasoning_summary", "No reasoning summary available."),
+            "kb_consulted": result.get("kb_consulted", False),
+            "kb_findings": result.get("kb_findings", ""),
         }
 
     @staticmethod
@@ -170,4 +174,6 @@ class RCAAgent(BaseAgent):
             "affected_components": [],
             "blast_radius": "None — no anomalies detected.",
             "reasoning_summary": "RCA was invoked without anomaly data.",
+            "kb_consulted": False,
+            "kb_findings": "",
         }

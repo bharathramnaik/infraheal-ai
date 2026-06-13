@@ -30,6 +30,10 @@ from visualizer_2d import (
 )
 from log_streamer import LogStreamer, LiveAnalyzer
 
+# Live log stream state
+_live_log_cache: List[Dict[str, Any]] = []
+_live_log_lock = threading.Lock()
+
 # Use DATA_DIR from config for reliable path resolution
 try:
     from config import DATA_DIR as _CFG_DATA_DIR
@@ -269,9 +273,13 @@ button.secondary:active {
 }
 .styled-table thead th {
   background: rgba(255,255,255,0.06); color: var(--text);
-  padding: 12px 14px; text-align: left; font-weight: 600;
+  padding: 10px 12px; text-align: left; font-weight: 600;
   border-bottom: 1px solid var(--border); letter-spacing: 0.5px;
-  font-size: 0.72rem;
+  font-size: 0.72rem; white-space: nowrap;
+}
+.styled-table tbody td {
+  padding: 10px 12px; vertical-align: middle;
+  font-size: 0.82rem;
 }
 .styled-table tbody tr { transition: background 0.2s ease; }
 .styled-table tbody tr:nth-child(even) { background: rgba(255,255,255,0.015); }
@@ -510,12 +518,23 @@ def format_severity_badge(severity: str) -> str:
 
 
 def _hl(text: str) -> str:
-    """Wrap key terms (P-levels, severities, numbers, URLs) in light-blue spans."""
+    """Wrap key technical terms in light-blue spans."""
     import re as _re
-    t = _re.sub(r'\b(P[1-4])\b', r'<span style="color:#60A5FA;font-weight:600;">\1</span>', str(text))
-    t = _re.sub(r'\b(CRITICAL|ERROR|FATAL|WARNING|DEBUG)\b', r'<span style="color:#60A5FA;font-weight:600;">\1</span>', t)
-    t = _re.sub(r'\b(\d{2,}(?:\.\d+)?%?)\b', r'<span style="color:#60A5FA;font-weight:600;">\1</span>', t)
+    t = str(text)
+    # Severity/criticality labels
+    t = _re.sub(r'\b(P[1-4])\b', r'<span style="color:#60A5FA;font-weight:600;">\1</span>', t)
+    t = _re.sub(r'\b(CRITICAL|ERROR|FATAL|WARNING)\b', r'<span style="color:#60A5FA;font-weight:600;">\1</span>', t)
+    # Service/host names (alphanumeric with hyphens/underscores, 5+ chars)
+    t = _re.sub(r'\b([a-z][a-z0-9_-]{5,30})\b', lambda m: f'<span style="color:#60A5FA;">{m.group(1)}</span>' if any(c in m.group(1) for c in '-_') else m.group(1), t)
+    # HTTP status codes
+    t = _re.sub(r'\b([45]\d{2})\b', r'<span style="color:#60A5FA;font-weight:600;">\1</span>', t)
+    # URLs
     t = _re.sub(r'(https?://[^\s<]+)', r'<span style="color:#60A5FA;">\1</span>', t)
+    # IP addresses
+    t = _re.sub(r'\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b', r'<span style="color:#60A5FA;">\1</span>', t)
+    # Percentages and time values
+    t = _re.sub(r'\b(\d+(?:\.\d+)?%)\b', r'<span style="color:#60A5FA;font-weight:600;">\1</span>', t)
+    t = _re.sub(r'\b(\d+ms|\d+s|\d+ minutes?)\b', r'<span style="color:#60A5FA;font-weight:600;">\1</span>', t)
     return t
 
 
@@ -636,6 +655,30 @@ def format_agent_output(agent_name: str, result: Dict[str, Any]) -> str:
     }
     for k, v in result.items():
         if k not in rendered_keys and not k.startswith("_"):
+            if k == "kb_consulted" and v:
+                body_parts.append(
+                    f'<div style="margin-bottom:8px;padding:6px 10px;background:rgba(96,165,250,0.08);'
+                    f'border-left:2px solid #60A5FA;border-radius:0 6px 6px 0;font-size:0.8rem;">'
+                    f'<span style="color:#60A5FA;font-weight:600;">📚 Knowledge Base consulted</span>'
+                    f'<span style="color:#64748b;margin-left:6px;">— relevant context retrieved from past incidents &amp; runbooks</span></div>'
+                )
+                continue
+            if k == "kb_findings" and v:
+                body_parts.append(
+                    f'<details style="margin-bottom:8px;font-size:0.78rem;">'
+                    f'<summary style="color:#64748b;cursor:pointer;font-weight:500;">📖 Retrieved KB Context</summary>'
+                    f'<div style="margin-top:4px;padding:8px;background:rgba(255,255,255,0.02);border-radius:6px;'
+                    f'color:#64748b;line-height:1.6;white-space:pre-wrap;">{_hl(v)}</div></details>'
+                )
+                continue
+            if k == "llm_generated":
+                label = "LLM Generated" if v else "Template-based"
+                body_parts.append(
+                    f'<div style="margin-bottom:8px;font-size:0.75rem;">'
+                    f'<span style="padding:2px 8px;border-radius:4px;font-weight:600;'
+                    f'background:{_C["green"]}22;color:{_C["green"]};">{label}</span></div>'
+                )
+                continue
             val = v if isinstance(v, str) else json.dumps(v, indent=2, default=str)
             body_parts.append(
                 f'<div style="margin-bottom:8px;">'
@@ -1823,7 +1866,34 @@ def create_dashboard(
         for sc in scenarios.values():
             all_logs.extend(sc.get("logs", []))
         all_logs.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
-        return format_log_table(all_logs)
+        return format_log_table(all_logs[:50])
+
+    def _generate_live_logs() -> List[Dict[str, Any]]:
+        """Generate synthetic live logs using the LogStreamer."""
+        global _live_log_cache, _live_log_lock
+        try:
+            if not _live_log_cache:
+                for sc in scenarios.values():
+                    _live_log_cache.extend(sc.get("logs", []))
+            streamer = LogStreamer(logs=_live_log_cache, replay_speed=2.0)
+            batch = []
+            for logs_batch in streamer.stream(batch_size=3, delay_per_log=0.3):
+                batch.extend(logs_batch)
+                if len(batch) >= 10:
+                    break
+            with _live_log_lock:
+                _live_log_cache[:] = _live_log_cache[len(batch):] + batch
+            return batch
+        except Exception as exc:
+            logger.warning("Live stream error: %s", exc)
+            return []
+
+    def _render_live_logs() -> str:
+        """Render the current live log stream as HTML."""
+        logs = _generate_live_logs()
+        if not logs:
+            return _get_command_center_logs()
+        return format_log_table(logs)
 
     def _get_perf_metrics_html() -> str:
         """Build the performance metrics tab."""
@@ -2109,13 +2179,13 @@ def create_dashboard(
                     thinking, clean = _extract_think(content)
                     if thinking:
                         return (
-                            f"<details><summary>🧠 Thinking Trace</summary>\n\n```\n{thinking}\n```\n\n</details>\n\n---\n\n{clean}"
+                            f"<details><summary>🧠 Thinking Trace</summary>\n\n```\n{thinking}\n```\n\n</details>\n\n---\n\n{_hl(clean)}"
                         )
-                return content
+                return _hl(content)
             except Exception as exc:
                 logger.warning("Chat LLM failed: %s", exc)
 
-        return (
+        return _hl(
             f"**Incident Summary**\n\n"
             f"| Severity | Category | Confidence | Actions |\n"
             f"|----------|----------|-----------|--------|\n"
@@ -2159,6 +2229,8 @@ def create_dashboard(
                     '<div class="section-label">Live Log Stream</div>'
                 )
                 log_stream = gr.HTML(value=_get_command_center_logs)
+                live_timer = gr.Timer(value=3.0, active=True)
+                live_timer.tick(fn=_render_live_logs, inputs=[], outputs=[log_stream])
 
                 gr.HTML('<div style="height:12px;"></div>')
                 with gr.Row():
