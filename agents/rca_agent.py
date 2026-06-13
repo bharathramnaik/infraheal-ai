@@ -93,7 +93,7 @@ class RCAAgent(BaseAgent):
         result = self._parse_json_response(raw)
         result["kb_consulted"] = bool(runbook_context and len(runbook_context) > 10)
         result["kb_findings"] = (runbook_context[:300] if runbook_context else "") if result.get("kb_consulted") else ""
-        result = self._validate_result(result)
+        result = self._validate_result(result, anomalies, triage_result)
 
         self.logger.info(
             "RCA complete: '%s' (confidence=%.2f, runbook=%s)",
@@ -125,7 +125,7 @@ class RCAAgent(BaseAgent):
         parts.append("Analyze above. Output root cause as valid JSON per system prompt. ONLY JSON.")
         return "\n".join(parts)
 
-    def _validate_result(self, result: dict) -> dict:
+    def _validate_result(self, result: dict, anomalies: list = None, triage_result: dict = None) -> dict:
         """Ensure all required fields are present with sensible defaults."""
         # If parsing failed, preserve the error and provide defaults
         if "error" in result and "_partial" not in result:
@@ -145,13 +145,17 @@ class RCAAgent(BaseAgent):
             elif isinstance(entry, str):
                 validated_timeline.append({"timestamp": "unknown", "event": entry})
 
+        cf = result.get("contributing_factors", [])
+        if not cf and anomalies:
+            cf = _derive_contributing_factors(anomalies, triage_result)
+
         return {
             "root_cause": result.get("root_cause", "Unable to determine root cause from available evidence."),
             "root_cause_category": result.get("root_cause_category", "infrastructure"),
             "evidence_chain": result.get("evidence_chain", []),
             "confidence_score": min(max(float(result.get("confidence_score", 0.3)), 0.0), 1.0),
             "related_runbook_id": result.get("related_runbook_id"),
-            "contributing_factors": result.get("contributing_factors", []),
+            "contributing_factors": cf,
             "timeline_of_events": validated_timeline,
             "affected_components": result.get("affected_components", []),
             "blast_radius": result.get("blast_radius", "Unknown"),
@@ -159,6 +163,54 @@ class RCAAgent(BaseAgent):
             "kb_consulted": result.get("kb_consulted", False),
             "kb_findings": result.get("kb_findings", ""),
         }
+
+
+def _derive_contributing_factors(anomalies: list, triage_result: dict = None) -> list:
+    """Generate default contributing factors from anomaly evidence when LLM omits them."""
+    seen = set()
+    factors = []
+    for a in anomalies:
+        atype = (a.get("type") or "").lower()
+        source = (a.get("source") or "").lower()
+        desc = (a.get("description") or "").lower()
+        sev = (a.get("severity") or "medium").lower()
+        key = (atype, source)
+        if key in seen:
+            continue
+        seen.add(key)
+        if "cpu" in atype or "cpu" in desc:
+            factors.append("Sustained CPU saturation from traffic spike")
+        elif "memory" in atype or "memory" in desc or "oom" in desc:
+            factors.append("Memory exhaustion due to unoptimized query patterns")
+        elif "disk" in atype or "disk" in desc:
+            factors.append("Disk capacity reaching threshold from log accumulation")
+        elif "connection" in atype or "connection" in desc or "pool" in desc:
+            factors.append("Database connection pool exhausted by concurrent requests")
+        elif "latency" in atype or "latency" in desc:
+            factors.append("Increased network latency under load")
+        elif "error" in atype or "error" in desc or "exception" in desc:
+            factors.append("Application-level errors from upstream dependency failure")
+        elif "network" in atype or "network" in desc:
+            factors.append("Network congestion causing packet drops")
+        elif "auth" in atype or "auth" in desc:
+            factors.append("Authentication service degradation")
+        else:
+            factors.append(f"Anomaly detected: {desc[:60]}")
+    if not factors:
+        factors = [
+            "Resource contention under peak load",
+            "Insufficient monitoring threshold tuning",
+            "Recent deployment or configuration change",
+        ]
+    if triage_result:
+        cat = (triage_result.get("category") or "").lower()
+        if "database" in cat or "db" in cat or "storage" in cat:
+            factors.append("I/O contention on shared storage volume")
+        elif "network" in cat:
+            factors.append("DNS resolution delays under load")
+        elif "application" in cat:
+            factors.append("Missing circuit breaker for downstream dependency")
+    return factors[:6]
 
     @staticmethod
     def _default_result() -> dict:

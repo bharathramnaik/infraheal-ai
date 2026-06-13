@@ -853,7 +853,7 @@ def format_agent_output(agent_name: str, result: Dict[str, Any]) -> str:
                     f'background:{_C["green"]}22;color:{_C["green"]};">{label}</span></div>'
                 )
                 continue
-            val = v if isinstance(v, str) else json.dumps(v, indent=2, default=str)
+            val = v if isinstance(v, str) else json.dumps(v, indent=2, default=str) if v else "None"
             body_parts.append(
                 f'<div style="margin-bottom:8px;">'
                 f'<span style="color:#64748b;font-size:0.72rem;text-transform:uppercase;letter-spacing:1px;">{k.replace("_"," ").title()}</span>'
@@ -2791,24 +2791,25 @@ function denyAction(aid) {
   };
 }
 function trigger_approval(val) {
-  var ta = document.querySelector("#approval-cmd-input textarea");
-  if (!ta) {
-    ta = document.querySelector("#approval-cmd-input input");
-    if (!ta) {
-      console.error("approval-cmd-input textarea/input not found");
-      return;
+  // Set the hidden command input value natively (for Svelte binding)
+  var ta = document.querySelector("#approval-cmd-input input, #approval-cmd-input textarea");
+  if (ta) {
+    var nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value") ||
+                       Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value");
+    if (nativeSetter && nativeSetter.set) {
+      nativeSetter.set.call(ta, val);
+    } else {
+      ta.value = val;
     }
+    ta.dispatchEvent(new Event("input", { bubbles: true }));
+    ta.dispatchEvent(new Event("change", { bubbles: true }));
+    ta.dispatchEvent(new Event("blur", { bubbles: true }));
   }
-  var nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value") ||
-                     Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value");
-  if (nativeSetter && nativeSetter.set) {
-    nativeSetter.set.call(ta, val);
-  } else {
-    ta.value = val;
+  // Also click the hidden trigger button as a reliable backup
+  var btn = document.getElementById("approval-trigger-btn");
+  if (btn) {
+    setTimeout(function() { btn.click(); }, 50);
   }
-  ta.dispatchEvent(new Event("input", { bubbles: true }));
-  ta.dispatchEvent(new Event("change", { bubbles: true }));
-  ta.dispatchEvent(new Event("blur", { bubbles: true }));
   console.log("trigger_approval: " + val);
 }
 </script>''') as demo:
@@ -2877,6 +2878,8 @@ function trigger_approval(val) {
 
                 # ── Approval panel (refreshed after pipeline runs) ──
                 approval_cmd = gr.Textbox(visible=True, elem_id="approval-cmd-input", elem_classes="approval-cmd-hidden")
+                approval_cmd_state = gr.State("")
+                approval_trigger = gr.Button("Trigger", elem_id="approval-trigger-btn", visible=True, elem_classes="approval-cmd-hidden")
                 approval_status = gr.HTML(value="")
 
                 def _on_approval_cmd(cmd: str):
@@ -2903,6 +2906,7 @@ function trigger_approval(val) {
                         return _render_approval_panel(), _render_approval_history(), f'<div style="color:red;font-size:0.8rem;">Error: {exc}</div>', _render_audit_log()
 
                 approval_cmd.change(fn=_on_approval_cmd, inputs=[approval_cmd], outputs=[approval_panel, approval_history_panel, approval_status, audit_log_panel])
+                approval_trigger.click(fn=_on_approval_cmd, inputs=[approval_cmd], outputs=[approval_panel, approval_history_panel, approval_status, audit_log_panel])
                 btn_process.click(fn=_render_approval_panel, inputs=[], outputs=[approval_panel])
                 btn_process.click(fn=_render_approval_history, inputs=[], outputs=[approval_history_panel])
                 btn_process.click(fn=_render_audit_log, inputs=[], outputs=[audit_log_panel])
