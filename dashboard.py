@@ -10,6 +10,7 @@ import logging
 import os
 import time
 import json
+import math
 import warnings
 import threading
 from datetime import datetime, timedelta
@@ -81,22 +82,19 @@ except ImportError:
 logger = logging.getLogger("infraheal.dashboard")
 
 # ═══════════════════════════════════════════════════════════════════
-#  COLOR PALETTE
+#  COLOR PALETTE  (B&W + severity-only)
 # ═══════════════════════════════════════════════════════════════════
 _C = {
     "bg_primary":   "#0a0a1a",
     "bg_secondary": "#111128",
     "bg_card":      "rgba(17, 17, 40, 0.65)",
     "border":       "rgba(255, 255, 255, 0.08)",
-    "border_hover": "rgba(0, 212, 255, 0.35)",
+    "border_hover": "rgba(255, 255, 255, 0.25)",
     "text":         "#e2e8f0",
-    "text_muted":   "#94a3b8",
-    "cyan":         "#00D4FF",
-    "magenta":      "#FF006E",
+    "text_muted":   "#64748b",
+    "red":          "#FF3B3B",
     "amber":        "#FFB800",
     "green":        "#00FF88",
-    "red":          "#FF3B3B",
-    "purple":       "#A855F7",
 }
 
 # ═══════════════════════════════════════════════════════════════════
@@ -111,15 +109,13 @@ CUSTOM_CSS = """
   --bg-secondary: #111128;
   --bg-card:      rgba(17,17,40,0.65);
   --border:       rgba(255,255,255,0.08);
-  --border-hover: rgba(0,212,255,0.35);
+  --border-hover: rgba(255,255,255,0.25);
   --text:         #e2e8f0;
-  --text-muted:   #94a3b8;
-  --cyan:         #00D4FF;
-  --green:        #00FF88;
+  --text-muted:   #64748b;
+  --accent:       #e2e8f0;
   --red:          #FF3B3B;
   --amber:        #FFB800;
-  --magenta:      #FF006E;
-  --purple:       #A855F7;
+  --green:        #00FF88;
 }
 
 .gradio-container {
@@ -133,8 +129,8 @@ CUSTOM_CSS = """
 .glass-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 20px;
+  border-radius: 10px;
+  padding: 16px;
   transition: border-color 0.25s ease;
 }
 .glass-card:hover {
@@ -157,30 +153,35 @@ CUSTOM_CSS = """
   font-weight: 500 !important;
   font-size: 0.88rem !important;
   padding: 8px 16px !important;
-  transition: background 0.2s ease !important;
+  transition: background 0.2s ease, color 0.2s ease !important;
 }
 .tabs > .tab-nav > button:hover {
   color: var(--text) !important;
-  background: rgba(255,255,255,0.04) !important;
+  background: rgba(255,255,255,0.06) !important;
 }
 .tabs > .tab-nav > button.selected {
-  background: rgba(0,212,255,0.1) !important;
-  color: var(--cyan) !important;
+  background: rgba(255,255,255,0.1) !important;
+  color: #ffffff !important;
 }
 
 /* ── Buttons ───────────────────────────────────────────────────── */
 .gr-button-primary, button.primary {
-  background: #00D4FF !important;
+  background: #e2e8f0 !important;
   border: none !important;
   color: #0a0a1a !important;
   font-weight: 600 !important;
   border-radius: 8px !important;
   padding: 10px 24px !important;
   font-size: 0.9rem !important;
-  transition: opacity 0.2s ease !important;
+  transition: opacity 0.2s ease, transform 0.15s ease !important;
 }
 .gr-button-primary:hover, button.primary:hover {
-  opacity: 0.85 !important;
+  opacity: 0.8 !important;
+  transform: translateY(-1px) !important;
+}
+.gr-button-primary:active, button.primary:active {
+  transform: translateY(0px) !important;
+  opacity: 0.9 !important;
 }
 button.secondary {
   background: rgba(255,255,255,0.04) !important;
@@ -190,11 +191,15 @@ button.secondary {
   font-weight: 500 !important;
   padding: 10px 24px !important;
   font-size: 0.9rem !important;
-  transition: border-color 0.2s ease !important;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease !important;
 }
 button.secondary:hover {
-  border-color: var(--cyan) !important;
-  background: rgba(0,212,255,0.06) !important;
+  border-color: var(--text-muted) !important;
+  background: rgba(255,255,255,0.08) !important;
+  transform: translateY(-1px) !important;
+}
+button.secondary:active {
+  transform: translateY(0px) !important;
 }
 
 /* ── Inputs / Textboxes / Dropdowns ────────────────────────────── */
@@ -208,8 +213,8 @@ button.secondary:hover {
   transition: border-color 0.3s ease !important;
 }
 .gr-input:focus, textarea:focus, select:focus {
-  border-color: var(--cyan) !important;
-  box-shadow: 0 0 0 3px rgba(0,212,255,0.12) !important;
+  border-color: rgba(255,255,255,0.3) !important;
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.08) !important;
 }
 
 /* ── Accordion ─────────────────────────────────────────────────── */
@@ -255,7 +260,7 @@ button.secondary:hover {
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg-primary); }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--cyan); }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
 
 /* ── Table ─────────────────────────────────────────────────────── */
 .styled-table {
@@ -263,14 +268,14 @@ button.secondary:hover {
   font-size: 0.82rem; font-family: 'JetBrains Mono', monospace;
 }
 .styled-table thead th {
-  background: rgba(0,212,255,0.08); color: var(--cyan);
+  background: rgba(255,255,255,0.06); color: var(--text);
   padding: 12px 14px; text-align: left; font-weight: 600;
-  border-bottom: 1px solid var(--border); text-transform: uppercase;
-  font-size: 0.72rem; letter-spacing: 1px;
+  border-bottom: 1px solid var(--border); letter-spacing: 0.5px;
+  font-size: 0.72rem;
 }
 .styled-table tbody tr { transition: background 0.2s ease; }
 .styled-table tbody tr:nth-child(even) { background: rgba(255,255,255,0.015); }
-.styled-table tbody tr:hover { background: rgba(0,212,255,0.05); }
+.styled-table tbody tr:hover { background: rgba(255,255,255,0.04); }
 .styled-table tbody td {
   padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.04);
   color: var(--text);
@@ -280,12 +285,12 @@ button.secondary:hover {
 .metric-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 12px; padding: 16px 20px;
+  border-radius: 10px; padding: 12px 14px;
   text-align: center; position: relative; overflow: hidden;
 }
 .metric-value {
   font-size: 2rem; font-weight: 700; line-height: 1.1;
-  color: var(--cyan);
+  color: var(--accent);
 }
 .metric-label {
   font-size: 0.7rem; color: var(--text-muted);
@@ -295,18 +300,19 @@ button.secondary:hover {
 /* ── Agent Output Panels ───────────────────────────────────────── */
 .agent-panel {
   background: var(--bg-card); border: 1px solid var(--border);
-  border-radius: 12px; padding: 0; overflow: hidden;
+  border-radius: 8px; padding: 0; overflow: hidden;
 }
 .agent-panel-header {
-  padding: 12px 16px;
-  font-weight: 600; font-size: 0.82rem;
-  letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px;
+  font-weight: 600; font-size: 0.8rem;
+  letter-spacing: 0.5px;
   border-bottom: 1px solid var(--border);
+  color: var(--text);
 }
-.agent-panel-body { padding: 16px; }
+.agent-panel-body { padding: 12px; }
 
 .evidence-item {
-  background: rgba(255,255,255,0.015); border-left: 2px solid var(--cyan);
+  background: rgba(255,255,255,0.015); border-left: 2px solid var(--text-muted);
   padding: 8px 12px; margin-bottom: 6px; border-radius: 0 6px 6px 0;
   font-size: 0.82rem;
 }
@@ -321,7 +327,7 @@ button.secondary:hover {
   border-radius: 4px;
   display: inline-flex; align-items: center; justify-content: center;
   font-size: 0.65rem; font-weight: 600; color: #fff;
-  background: rgba(0,212,255,0.12);
+  background: rgba(255,255,255,0.12);
 }
 
 /* ── Utility Classes ────────────────────────────────────────────── */
@@ -338,8 +344,7 @@ button.secondary:hover {
 }
 .flex-row { display: flex; align-items: center; gap: 8px; }
 .flex-gap { gap: 12px; }
-.text-cyan { color: var(--cyan); }
-.text-green { color: var(--green); }
+.text-accent { color: var(--accent); }
 .text-muted { color: var(--text-muted); }
 .text-sm { font-size: 0.82rem; }
 .mt-4 { margin-top: 4px; }
@@ -373,10 +378,10 @@ button.secondary:hover {
   border-bottom: 1px solid #21262d !important;
 }
 .chat-terminal .chat-message.user {
-  border-left: 3px solid var(--cyan) !important;
+  border-left: 3px solid var(--accent) !important;
 }
 .chat-terminal .chat-message.assistant {
-  border-left: 3px solid var(--green) !important;
+  border-left: 3px solid rgba(255,255,255,0.3) !important;
 }
 .chat-status-bar {
   background: #161b22;
@@ -408,9 +413,9 @@ button.secondary:hover {
   transition: all 0.2s ease !important;
 }
 .chat-quick-btn:hover {
-  border-color: var(--cyan) !important;
-  color: var(--cyan) !important;
-  background: rgba(0,212,255,0.08) !important;
+  border-color: rgba(255,255,255,0.4) !important;
+  color: #ffffff !important;
+  background: rgba(255,255,255,0.08) !important;
 }
 
 /* ── Misc ──────────────────────────────────────────────────────── */
@@ -435,43 +440,40 @@ def _branding_header() -> str:
     return f"""
     <div style="display:flex;align-items:center;justify-content:space-between;
                 padding:28px 36px;
-                background:linear-gradient(135deg,rgba(0,212,255,0.06),rgba(168,85,247,0.06));
+                background:rgba(255,255,255,0.02);
                 border:1px solid rgba(255,255,255,0.06);border-radius:18px;
                 margin-bottom:24px;">
       <div style="display:flex;align-items:center;gap:18px;">
         <div style="width:54px;height:54px;border-radius:14px;
-                    background:linear-gradient(135deg,#00D4FF,#A855F7);
+                    background:rgba(255,255,255,0.1);
                     display:flex;align-items:center;justify-content:center;
-                    font-size:1.6rem;box-shadow:0 0 25px rgba(0,212,255,0.3);">
+                    font-size:1.6rem;">
           🛡️
         </div>
         <div>
-          <div style="font-size:1.6rem;font-weight:800;
-                      background:linear-gradient(135deg,#00D4FF,#A855F7);
-                      -webkit-background-clip:text;-webkit-text-fill-color:transparent;
-                      background-clip:text;letter-spacing:-0.5px;">
+          <div style="font-size:1.6rem;font-weight:800;color:{_C["text"]};letter-spacing:-0.5px;">
             InfraHeal AI
           </div>
-          <div style="font-size:0.78rem;color:#94a3b8;letter-spacing:0.6px;">
+          <div style="font-size:0.78rem;color:#64748b;letter-spacing:0.6px;">
             Autonomous Incident Diagnosis &amp; Resolution Agent
           </div>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:20px;">
         <div style="text-align:right;">
-          <div style="font-size:0.7rem;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;">Status</div>
+          <div style="font-size:0.7rem;color:#64748b;text-transform:uppercase;letter-spacing:1px;">Status</div>
           <div style="display:flex;align-items:center;gap:6px;margin-top:2px;">
             <span class="pulse-dot"></span>
             <span style="font-size:0.82rem;color:#00FF88;font-weight:600;">Operational</span>
           </div>
         </div>
         <div style="text-align:right;">
-          <div style="font-size:0.7rem;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;">Last Refresh</div>
+          <div style="font-size:0.7rem;color:#64748b;text-transform:uppercase;letter-spacing:1px;">Last Refresh</div>
           <div style="font-size:0.82rem;color:#e2e8f0;font-weight:500;margin-top:2px;">{now}</div>
         </div>
         <div style="text-align:right;">
-          <div style="font-size:0.7rem;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;">Model</div>
-          <div style="font-size:0.82rem;color:#00D4FF;font-weight:500;margin-top:2px;">
+          <div style="font-size:0.7rem;color:#64748b;text-transform:uppercase;letter-spacing:1px;">Model</div>
+          <div style="font-size:0.82rem;color:{_C["text"]};font-weight:500;margin-top:2px;">
             {MODEL_NAME.split("/")[-1]}
           </div>
         </div>
@@ -491,7 +493,7 @@ def format_severity_badge(severity: str) -> str:
     """
     info = SEVERITY_LEVELS.get(severity.upper(), SEVERITY_LEVELS["P3"])
     bg_map = {
-        "P1": "linear-gradient(135deg,#FF3B3B,#FF006E)",
+        "P1": "linear-gradient(135deg,#FF3B3B,#FF3B3B)",
         "P2": "linear-gradient(135deg,#FF8C00,#FFB800)",
         "P3": "linear-gradient(135deg,#FFD700,#FFA500)",
         "P4": "linear-gradient(135deg,#4CAF50,#00FF88)",
@@ -507,6 +509,16 @@ def format_severity_badge(severity: str) -> str:
     )
 
 
+def _hl(text: str) -> str:
+    """Wrap key terms (P-levels, severities, numbers, URLs) in light-blue spans."""
+    import re as _re
+    t = _re.sub(r'\b(P[1-4])\b', r'<span style="color:#60A5FA;font-weight:600;">\1</span>', str(text))
+    t = _re.sub(r'\b(CRITICAL|ERROR|FATAL|WARNING|DEBUG)\b', r'<span style="color:#60A5FA;font-weight:600;">\1</span>', t)
+    t = _re.sub(r'\b(\d{2,}(?:\.\d+)?%?)\b', r'<span style="color:#60A5FA;font-weight:600;">\1</span>', t)
+    t = _re.sub(r'(https?://[^\s<]+)', r'<span style="color:#60A5FA;">\1</span>', t)
+    return t
+
+
 def format_agent_output(agent_name: str, result: Dict[str, Any]) -> str:
     """Format one agent's output as a rich HTML panel.
 
@@ -517,24 +529,14 @@ def format_agent_output(agent_name: str, result: Dict[str, Any]) -> str:
     Returns:
         Full HTML string ready for ``gr.HTML``.
     """
-    icon_map = {
-        "triage": ("🔍", _C["cyan"]),
-        "rca": ("🧬", _C["magenta"]),
-        "root cause": ("🧬", _C["magenta"]),
-        "remediation": ("🔧", _C["green"]),
-        "reporting": ("📋", _C["amber"]),
-        "report": ("📋", _C["amber"]),
-    }
-    icon, accent = icon_map.get(agent_name.lower().split()[0], ("⚙️", _C["cyan"]))
-
     # Build body content based on what keys the result dict contains
     body_parts: List[str] = []
 
     # Severity
     if "severity" in result:
         body_parts.append(
-            f'<div style="margin-bottom:12px;">'
-            f'<span style="color:#94a3b8;font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;">Severity</span><br>'
+            f'<div style="margin-bottom:8px;">'
+            f'<span style="color:#64748b;font-size:0.72rem;text-transform:uppercase;letter-spacing:1px;">Severity</span><br>'
             f'{format_severity_badge(result["severity"])}'
             f'</div>'
         )
@@ -544,9 +546,9 @@ def format_agent_output(agent_name: str, result: Dict[str, Any]) -> str:
         if key in result:
             label = key.replace("_", " ").title()
             body_parts.append(
-                f'<div style="margin-bottom:10px;">'
-                f'<span style="color:#94a3b8;font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;">{label}</span>'
-                f'<div style="margin-top:4px;font-size:0.88rem;color:#e2e8f0;">{result[key]}</div>'
+                f'<div style="margin-bottom:8px;">'
+                f'<span style="color:#64748b;font-size:0.72rem;text-transform:uppercase;letter-spacing:1px;">{label}</span>'
+                f'<div style="margin-top:3px;font-size:0.85rem;color:#e2e8f0;">{_hl(result[key])}</div>'
                 f'</div>'
             )
 
@@ -556,36 +558,36 @@ def format_agent_output(agent_name: str, result: Dict[str, Any]) -> str:
         conf_pct = conf * 100 if isinstance(conf, float) and conf <= 1 else conf
         bar_color = _C["green"] if conf_pct >= 80 else (_C["amber"] if conf_pct >= 50 else _C["red"])
         body_parts.append(
-            f'<div style="margin-bottom:12px;">'
-            f'<span style="color:#94a3b8;font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;">Confidence</span>'
-            f'<div style="margin-top:6px;display:flex;align-items:center;gap:10px;">'
-            f'  <div style="flex:1;height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;">'
+            f'<div style="margin-bottom:8px;">'
+            f'<span style="color:#64748b;font-size:0.72rem;text-transform:uppercase;letter-spacing:1px;">Confidence</span>'
+            f'<div style="margin-top:4px;display:flex;align-items:center;gap:10px;">'
+            f'  <div style="flex:1;height:5px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;">'
             f'    <div style="width:{conf_pct}%;height:100%;background:{bar_color};border-radius:3px;"></div>'
             f'  </div>'
-            f'  <span style="font-size:0.82rem;font-weight:700;color:{bar_color};">{conf_pct:.0f}%</span>'
+            f'  <span style="font-size:0.8rem;font-weight:700;color:{bar_color};">{conf_pct:.0f}%</span>'
             f'</div></div>'
         )
 
     # Evidence
     if "evidence" in result and isinstance(result["evidence"], list):
         items = "".join(
-            f'<div class="evidence-item">{e}</div>' for e in result["evidence"]
+            f'<div class="evidence-item">{_hl(e)}</div>' for e in result["evidence"]
         )
         body_parts.append(
-            f'<div style="margin-bottom:12px;">'
-            f'<span style="color:#94a3b8;font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;">Evidence Chain</span>'
-            f'<div style="margin-top:8px;">{items}</div></div>'
+            f'<div style="margin-bottom:8px;">'
+            f'<span style="color:#64748b;font-size:0.72rem;text-transform:uppercase;letter-spacing:1px;">Evidence Chain</span>'
+            f'<div style="margin-top:6px;">{items}</div></div>'
         )
 
     # Root causes
     if "root_causes" in result and isinstance(result["root_causes"], list):
         items = "".join(
-            f'<div class="evidence-item">{rc}</div>' for rc in result["root_causes"]
+            f'<div class="evidence-item">{_hl(rc)}</div>' for rc in result["root_causes"]
         )
         body_parts.append(
-            f'<div style="margin-bottom:12px;">'
-            f'<span style="color:#94a3b8;font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;">Root Causes</span>'
-            f'<div style="margin-top:8px;">{items}</div></div>'
+            f'<div style="margin-bottom:8px;">'
+            f'<span style="color:#64748b;font-size:0.72rem;text-transform:uppercase;letter-spacing:1px;">Root Causes</span>'
+            f'<div style="margin-top:6px;">{items}</div></div>'
         )
 
     # Actions / Steps
@@ -599,31 +601,31 @@ def format_agent_output(agent_name: str, result: Dict[str, Any]) -> str:
                     action_html += (
                         f'<div class="action-card">'
                         f'<div class="action-icon">{idx}</div>'
-                        f'<div><div style="font-weight:600;font-size:0.88rem;color:#e2e8f0;">{name}</div>'
-                        f'<div style="font-size:0.78rem;color:#94a3b8;margin-top:2px;">{desc}</div></div>'
+                        f'<div><div style="font-weight:600;font-size:0.85rem;color:#e2e8f0;">{_hl(name)}</div>'
+                        f'<div style="font-size:0.76rem;color:#64748b;margin-top:1px;">{_hl(desc)}</div></div>'
                         f'</div>'
                     )
                 else:
                     action_html += (
                         f'<div class="action-card">'
                         f'<div class="action-icon">{idx}</div>'
-                        f'<div style="font-size:0.88rem;color:#e2e8f0;">{action}</div>'
+                        f'<div style="font-size:0.85rem;color:#e2e8f0;">{_hl(action)}</div>'
                         f'</div>'
                     )
             body_parts.append(
-                f'<div style="margin-bottom:12px;">'
-                f'<span style="color:#94a3b8;font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;">'
+                f'<div style="margin-bottom:8px;">'
+                f'<span style="color:#64748b;font-size:0.72rem;text-transform:uppercase;letter-spacing:1px;">'
                 f'{key.replace("_", " ").title()}</span>'
-                f'<div style="margin-top:8px;">{action_html}</div></div>'
+                f'<div style="margin-top:6px;">{action_html}</div></div>'
             )
 
     # Report (markdown)
     if "report" in result:
         body_parts.append(
-            f'<div style="margin-bottom:12px;">'
+            f'<div style="margin-bottom:8px;">'
             f'<div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);'
-            f'border-radius:10px;padding:16px;font-size:0.85rem;color:#e2e8f0;'
-            f'line-height:1.7;white-space:pre-wrap;">{result["report"]}</div></div>'
+            f'border-radius:8px;padding:12px;font-size:0.82rem;color:#e2e8f0;'
+            f'line-height:1.6;white-space:pre-wrap;">{_hl(result["report"])}</div></div>'
         )
 
     # Fallback: render remaining keys
@@ -636,22 +638,19 @@ def format_agent_output(agent_name: str, result: Dict[str, Any]) -> str:
         if k not in rendered_keys and not k.startswith("_"):
             val = v if isinstance(v, str) else json.dumps(v, indent=2, default=str)
             body_parts.append(
-                f'<div style="margin-bottom:10px;">'
-                f'<span style="color:#94a3b8;font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;">{k.replace("_"," ").title()}</span>'
-                f'<div style="margin-top:4px;font-size:0.85rem;color:#e2e8f0;white-space:pre-wrap;">{val}</div>'
+                f'<div style="margin-bottom:8px;">'
+                f'<span style="color:#64748b;font-size:0.72rem;text-transform:uppercase;letter-spacing:1px;">{k.replace("_"," ").title()}</span>'
+                f'<div style="margin-top:3px;font-size:0.82rem;color:#e2e8f0;white-space:pre-wrap;">{_hl(val)}</div>'
                 f'</div>'
             )
 
     body = "".join(body_parts) if body_parts else (
-        f'<div style="color:#94a3b8;font-style:italic;">No data returned by {agent_name} agent.</div>'
+        f'<div style="color:#64748b;font-style:italic;">No data returned by {agent_name} agent.</div>'
     )
 
     return (
         f'<div class="agent-panel">'
-        f'  <div class="agent-panel-header" style="background:linear-gradient(135deg,{accent}15,transparent);">'
-        f'    <span style="font-size:1.2rem;">{icon}</span>'
-        f'    <span style="color:{accent};">{agent_name}</span>'
-        f'  </div>'
+        f'  <div class="agent-panel-header">{agent_name}</div>'
         f'  <div class="agent-panel-body">{body}</div>'
         f'</div>'
     )
@@ -671,8 +670,8 @@ def format_log_table(logs: List[Dict[str, Any]]) -> str:
         return _empty_state("No logs available", "Run an anomaly scan to see live logs.")
 
     level_colors = {
-        "ERROR": _C["red"], "CRITICAL": _C["magenta"],
-        "WARNING": _C["amber"], "INFO": _C["cyan"],
+        "ERROR": _C["red"], "CRITICAL": _C["red"],
+        "WARNING": _C["amber"], "INFO": _C["text"],
         "DEBUG": _C["text_muted"],
     }
 
@@ -687,10 +686,10 @@ def format_log_table(logs: List[Dict[str, Any]]) -> str:
         title_attr = msg.replace('"', "&quot;").replace("'", "&#39;")
         rows += (
             f'<tr>'
-            f'<td style="white-space:nowrap;color:#94a3b8;" title="{ts}">{ts}</td>'
+            f'<td style="white-space:nowrap;color:#64748b;" title="{ts}">{ts}</td>'
             f'<td><span style="color:{color};font-weight:600;" title="{lvl}">{lvl}</span></td>'
             f'<td title="{svc}">{svc}</td>'
-            f'<td style="color:#94a3b8;" title="{src}">{src}</td>'
+            f'<td style="color:#64748b;" title="{src}">{src}</td>'
             f'<td style="max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" '
             f'title="{title_attr}">{msg}</td>'
             f'</tr>'
@@ -715,24 +714,23 @@ def format_metrics_panel(metrics: Dict[str, Any]) -> str:
         HTML string of metric cards.
     """
     cards_data = [
-        ("⏱️", "Total Time", f'{metrics.get("total_time_seconds", 0):.1f}s', _C["cyan"]),
-        ("🔤", "Tokens Used", f'{metrics.get("total_tokens", 0):,}', _C["magenta"]),
-        ("🧠", "LLM Calls", str(metrics.get("llm_calls", 0)), _C["purple"]),
-        ("⚡", "Avg Latency", f'{metrics.get("avg_latency_ms", 0):.0f}ms', _C["amber"]),
-        ("💾", "GPU Memory", f'{metrics.get("gpu_memory_mb", 0):.0f} MB', _C["green"]),
-        ("📊", "Model", metrics.get("model", MODEL_NAME.split("/")[-1]), _C["cyan"]),
+        ("Total Time", f'{metrics.get("total_time_seconds", 0):.1f}s', _C["text"]),
+        ("Tokens Used", f'{metrics.get("total_tokens", 0):,}', _C["text"]),
+        ("LLM Calls", str(metrics.get("llm_calls", 0)), _C["text"]),
+        ("Avg Latency", f'{metrics.get("avg_latency_ms", 0):.0f}ms', _C["text"]),
+        ("GPU Memory", f'{metrics.get("gpu_memory_mb", 0):.0f} MB', _C["text"]),
+        ("Model", metrics.get("model", MODEL_NAME.split("/")[-1]), _C["text"]),
     ]
 
     cards_html = ""
-    for icon, label, value, color in cards_data:
+    for label, value, color in cards_data:
         cards_html += (
-            f'<div style="background:rgba(17,17,40,0.65);backdrop-filter:blur(20px);'
-            f'border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:18px 22px;'
-            f'text-align:center;flex:1;min-width:140px;position:relative;overflow:hidden;">'
-            f'<div style="position:absolute;top:0;left:0;right:0;height:3px;background:{color};border-radius:14px 14px 0 0;"></div>'
-            f'<div style="font-size:1.3rem;margin-bottom:6px;">{icon}</div>'
-            f'<div style="font-size:1.5rem;font-weight:800;color:{color};">{value}</div>'
-            f'<div style="font-size:0.7rem;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">{label}</div>'
+            f'<div style="background:rgba(17,17,40,0.65);border:1px solid rgba(255,255,255,0.08);'
+            f'border-radius:10px;padding:12px 14px;'
+            f'text-align:center;flex:1;min-width:100px;position:relative;overflow:hidden;">'
+            f'<div style="position:absolute;top:0;left:0;right:0;height:2px;background:{_C["text"]};border-radius:10px 10px 0 0;"></div>'
+            f'<div style="font-size:1.2rem;font-weight:800;color:{_C["text"]};">{value}</div>'
+            f'<div style="font-size:0.65rem;color:{_C["text_muted"]};text-transform:uppercase;letter-spacing:0.8px;margin-top:2px;">{label}</div>'
             f'</div>'
         )
 
@@ -757,7 +755,7 @@ def _empty_state(title: str, subtitle: str = "") -> str:
     return (
         f'<div style="text-align:center;padding:48px 24px;">'
         f'<div style="font-size:2.5rem;margin-bottom:12px;opacity:0.3;">📭</div>'
-        f'<div style="font-size:1rem;color:#94a3b8;font-weight:600;">{title}</div>'
+        f'<div style="font-size:1rem;color:#64748b;font-weight:600;">{title}</div>'
         f'<div style="font-size:0.82rem;color:#64748b;margin-top:6px;">{subtitle}</div>'
         f'</div>'
     )
@@ -770,7 +768,7 @@ def _loading_html(message: str = "Analyzing...") -> str:
         f'<div class="loading-skeleton" style="margin-bottom:12px;height:28px;width:60%;"></div>'
         f'<div class="loading-skeleton" style="margin-bottom:12px;height:18px;width:90%;"></div>'
         f'<div class="loading-skeleton" style="margin-bottom:12px;height:18px;width:75%;"></div>'
-        f'<div style="text-align:center;margin-top:16px;color:#94a3b8;font-size:0.85rem;">'
+        f'<div style="text-align:center;margin-top:16px;color:#64748b;font-size:0.85rem;">'
         f'⏳ {message}</div></div>'
     )
 
@@ -799,11 +797,11 @@ def _format_anomalies_html(anomalies: List[Dict[str, Any]]) -> str:
             f'<div class="glass-card" style="margin-bottom:14px;">'
             f'  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
             f'    <div style="display:flex;align-items:center;gap:10px;">{badge}'
-            f'      <span style="color:#94a3b8;font-size:0.78rem;">{atype}</span></div>'
-            f'    <span style="color:#94a3b8;font-size:0.75rem;">{ts}</span>'
+            f'      <span style="color:#64748b;font-size:0.78rem;">{atype}</span></div>'
+            f'    <span style="color:#64748b;font-size:0.75rem;">{ts}</span>'
             f'  </div>'
             f'  <div style="font-size:0.92rem;color:#e2e8f0;margin-bottom:8px;">{desc}</div>'
-            f'  <div style="font-size:0.78rem;color:#94a3b8;">Source: {source} · Confidence: {conf_pct:.0f}%</div>'
+            f'  <div style="font-size:0.78rem;color:#64748b;">Source: {source} · Confidence: {conf_pct:.0f}%</div>'
             f'  {evidence_html}'
             f'</div>'
         )
@@ -830,7 +828,7 @@ def _format_runbook_html(runbook: Dict[str, Any]) -> str:
 
     tags_html = "".join(
         f'<span style="display:inline-block;padding:3px 10px;border-radius:12px;'
-        f'background:rgba(0,212,255,0.08);color:{_C["cyan"]};font-size:0.7rem;'
+        f'background:rgba(255,255,255,0.06);color:{_C["text"]};font-size:0.7rem;'
         f'font-weight:600;margin-right:6px;margin-bottom:4px;">{t}</span>'
         for t in tags
     )
@@ -840,26 +838,26 @@ def _format_runbook_html(runbook: Dict[str, Any]) -> str:
         f'  <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">'
         f'    <span style="font-size:1.4rem;">📘</span>'
         f'    <div>'
-        f'      <div style="font-size:1.05rem;font-weight:700;color:#e2e8f0;">{title}</div>'
-        f'      <div style="font-size:0.75rem;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;">{cat}</div>'
+        f'      <div style="font-size:1.05rem;font-weight:700;color:{_C["text"]};">{title}</div>'
+        f'      <div style="font-size:0.75rem;color:{_C["text_muted"]};">{cat}</div>'
         f'    </div>'
         f'  </div>'
         f'  <div style="margin-bottom:12px;">{tags_html}</div>'
         f'  <div style="margin-bottom:14px;">'
-        f'    <div style="color:{_C["amber"]};font-size:0.73rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Symptoms</div>'
-        f'    {_list_html(symptoms, _C["amber"])}'
+        f'    <div style="color:{_C["text"]};font-size:0.73rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Symptoms</div>'
+        f'    {_list_html(symptoms, _C["text"])}'
         f'  </div>'
         f'  <div style="margin-bottom:14px;">'
-        f'    <div style="color:{_C["magenta"]};font-size:0.73rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Root Causes</div>'
-        f'    {_list_html(root_causes, _C["magenta"])}'
+        f'    <div style="color:{_C["text"]};font-size:0.73rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Root Causes</div>'
+        f'    {_list_html(root_causes, _C["text"])}'
         f'  </div>'
         f'  <div style="margin-bottom:14px;">'
-        f'    <div style="color:{_C["green"]};font-size:0.73rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Resolution Steps</div>'
-        f'    {_list_html(steps, _C["green"])}'
+        f'    <div style="color:{_C["text"]};font-size:0.73rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Resolution Steps</div>'
+        f'    {_list_html(steps, _C["text"])}'
         f'  </div>'
         f'  <div>'
-        f'    <div style="color:{_C["cyan"]};font-size:0.73rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Prevention</div>'
-        f'    {_list_html(prevention, _C["cyan"])}'
+        f'    <div style="color:{_C["text"]};font-size:0.73rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Prevention</div>'
+        f'    {_list_html(prevention, _C["text"])}'
         f'  </div>'
         f'</div>'
     )
@@ -871,62 +869,70 @@ def _build_agent_latency_chart(agent_timings: Dict[str, float]) -> str:
         return _empty_state("No timing data", "Run an analysis to see latency breakdown.")
 
     max_val = max(agent_timings.values()) if agent_timings else 1
-    colors = [_C["cyan"], _C["magenta"], _C["green"], _C["amber"], _C["purple"]]
+    colors = ["rgba(255,255,255,0.7)", "rgba(255,255,255,0.55)", "rgba(255,255,255,0.4)", "rgba(255,255,255,0.3)", "rgba(255,255,255,0.2)"]
 
     bars = ""
     for idx, (agent, ms) in enumerate(agent_timings.items()):
         color = colors[idx % len(colors)]
         width_pct = max(5, (ms / max_val) * 100)
         bars += (
-            f'<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">'
-            f'  <div style="width:130px;font-size:0.82rem;color:#94a3b8;font-weight:500;text-align:right;">{agent}</div>'
-            f'  <div style="flex:1;height:24px;background:rgba(255,255,255,0.04);border-radius:6px;overflow:hidden;">'
-            f'    <div style="width:{width_pct}%;height:100%;background:linear-gradient(90deg,{color},{color}88);'
-            f'border-radius:6px;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;'
-            f'font-size:0.72rem;font-weight:700;color:#fff;">{ms:.0f}ms</div>'
+            f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'
+            f'  <div style="width:120px;font-size:0.8rem;color:#64748b;font-weight:500;text-align:right;">{agent}</div>'
+            f'  <div style="flex:1;height:6px;background:rgba(255,255,255,0.04);border-radius:3px;overflow:hidden;">'
+            f'    <div style="width:{width_pct}%;height:100%;background:{color};'
+            f'border-radius:3px;"></div>'
             f'  </div>'
+            f'  <span style="font-size:0.72rem;font-weight:700;color:{color};min-width:40px;">{ms:.0f}ms</span>'
             f'</div>'
         )
     return (
         f'<div class="glass-card">'
-        f'<div style="font-size:0.8rem;font-weight:700;color:#94a3b8;text-transform:uppercase;'
+        f'<div style="font-size:0.8rem;font-weight:700;color:#64748b;text-transform:uppercase;'
         f'letter-spacing:1px;margin-bottom:14px;">Agent Latency Breakdown</div>'
         f'{bars}</div>'
     )
 
 
 def _build_token_chart(token_data: Dict[str, int]) -> str:
-    """Horizontal bar chart showing token usage per agent."""
+    """Circular ring chart showing token usage per agent."""
     if not token_data:
         return _empty_state("No token data", "Run an analysis to see token usage.")
 
-    max_val = max(token_data.values()) if token_data else 1
-    colors = [_C["cyan"], _C["magenta"], _C["green"], _C["amber"]]
+    total = sum(token_data.values()) or 1
+    colors = ["rgba(255,255,255,0.7)", "rgba(255,255,255,0.55)", "rgba(255,255,255,0.4)", "rgba(255,255,255,0.25)"]
+    radius, stroke = 28, 5
+    circumference = 2 * math.pi * radius
 
-    bars = ""
-    total = 0
+    rings_html = ""
     for idx, (agent, tokens) in enumerate(token_data.items()):
-        total += tokens
+        pct = tokens / total
+        offset = circumference * (1 - pct)
         color = colors[idx % len(colors)]
-        width_pct = max(5, (tokens / max_val) * 100)
-        bars += (
-            f'<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">'
-            f'  <div style="width:130px;font-size:0.82rem;color:#94a3b8;font-weight:500;text-align:right;">{agent}</div>'
-            f'  <div style="flex:1;height:24px;background:rgba(255,255,255,0.04);border-radius:6px;overflow:hidden;">'
-            f'    <div style="width:{width_pct}%;height:100%;background:linear-gradient(90deg,{color},{color}88);'
-            f'border-radius:6px;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;'
-            f'font-size:0.72rem;font-weight:700;color:#fff;">{tokens:,}</div>'
-            f'  </div>'
+        rings_html += (
+            f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'
+            f'<svg width="64" height="64" viewBox="0 0 64 64">'
+            f'<circle cx="32" cy="32" r="{radius}" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="{stroke}"/>'
+            f'<circle cx="32" cy="32" r="{radius}" fill="none" stroke="{color}" stroke-width="{stroke}" '
+            f'stroke-dasharray="{circumference}" stroke-dashoffset="{offset}" '
+            f'transform="rotate(-90 32 32)" stroke-linecap="round"/>'
+            f'<text x="32" y="30" text-anchor="middle" dominant-baseline="middle" '
+            f'fill="{color}" font-size="11" font-weight="700">{tokens}</text>'
+            f'<text x="32" y="42" text-anchor="middle" dominant-baseline="middle" '
+            f'fill="{color}88" font-size="7">{pct*100:.0f}%</text>'
+            f'</svg>'
+            f'<div><div style="font-weight:600;font-size:0.82rem;color:#e2e8f0;">{agent}</div>'
+            f'<div style="font-size:0.7rem;color:#64748b;">{tokens:,} tokens</div></div>'
             f'</div>'
         )
 
     return (
         f'<div class="glass-card">'
-        f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">'
-        f'  <div style="font-size:0.8rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;">Token Usage per Agent</div>'
-        f'  <div style="font-size:0.82rem;color:{_C["cyan"]};font-weight:600;">Total: {total:,}</div>'
+        f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">'
+        f'  <div style="font-size:0.78rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;">Token Usage per Agent</div>'
+        f'  <div style="font-size:0.8rem;color:{_C["text"]};font-weight:600;">Total: {total:,}</div>'
         f'</div>'
-        f'{bars}</div>'
+        f'<div style="display:flex;flex-wrap:wrap;gap:4px;">{rings_html}</div>'
+        f'</div>'
     )
 
 
@@ -937,9 +943,10 @@ def _build_token_chart(token_data: Dict[str, int]) -> str:
 def _demo_scenarios() -> Dict[str, Dict[str, Any]]:
     """Built-in demo scenarios for when data_generator is not available."""
     return {
-        "🔴 Database Connection Pool Exhaustion": {
+        "Database Connection Pool Exhaustion": {
             "id": "INC-001",
             "title": "Database Connection Pool Exhaustion",
+            "severity": "P1",
             "description": "PostgreSQL connection pool fully exhausted on prod-db-01. "
                            "Applications experiencing timeouts and 500 errors across payment and user services.",
             "logs": [
@@ -961,9 +968,10 @@ def _demo_scenarios() -> Dict[str, Dict[str, Any]]:
                  "active_connections": 500},
             ],
         },
-        "🟠 Memory Leak in Auth Service": {
+        "Memory Leak in Auth Service": {
             "id": "INC-002",
             "title": "Memory Leak in Authentication Service",
+            "severity": "P2",
             "description": "Auth service memory usage climbing steadily. JWT token cache not being evicted properly. "
                            "OOM kills expected within 2 hours at current rate.",
             "logs": [
@@ -983,9 +991,10 @@ def _demo_scenarios() -> Dict[str, Dict[str, Any]]:
                  "active_connections": 180},
             ],
         },
-        "🟡 Disk Space Critical on Log Server": {
+        "Disk Space Critical on Log Server": {
             "id": "INC-003",
             "title": "Disk Space Critical on Centralized Log Server",
+            "severity": "P3",
             "description": "Log aggregation server running out of disk space. Log rotation misconfigured after "
                            "last deployment. Ingestion rate 3x normal due to debug logging left enabled.",
             "logs": [
@@ -1005,9 +1014,10 @@ def _demo_scenarios() -> Dict[str, Dict[str, Any]]:
                  "active_connections": 95},
             ],
         },
-        "🟢 Suspicious API Access Pattern": {
+        "Suspicious API Access Pattern": {
             "id": "INC-004",
             "title": "Suspicious API Access Pattern Detected",
+            "severity": "P4",
             "description": "Anomalous API call patterns from multiple IPs. Possible credential stuffing attack "
                            "targeting /api/v2/auth/login endpoint. Rate limiting triggered.",
             "logs": [
@@ -1027,9 +1037,10 @@ def _demo_scenarios() -> Dict[str, Dict[str, Any]]:
                  "active_connections": 1250},
             ],
         },
-        "🔴 Application-Level Cascade Failure": {
+        "Application-Level Cascade Failure": {
             "id": "INC-005",
             "title": "Application-Level Cascade Failure",
+            "severity": "P1",
             "description": "Client SDK serialization bug causes malformed API requests. Downstream circuit-breakers open on microservice timeouts. DB schema migration adds NOT NULL constraint without updating app INSERT code. All three failure modes cascade — illustrating common application-layer issues.",
             "logs": [
                 {"timestamp": "2026-06-11T21:00:00Z", "source": "api-gateway", "level": "ERROR",
@@ -1239,7 +1250,7 @@ def create_dashboard(
             f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">'
             f'<span style="font-size:1.3rem;">📋</span>'
             f'<span style="font-size:1.05rem;font-weight:700;color:#e2e8f0;">{sc.get("title", name)}</span>'
-            f'<span style="color:#94a3b8;font-size:0.78rem;">({sc.get("id", "")})</span>'
+            f'<span style="color:#64748b;font-size:0.78rem;">({sc.get("id", "")})</span>'
             f'</div>'
             f'<div style="font-size:0.88rem;color:#e2e8f0;line-height:1.7;">{sc.get("description", "")}</div>'
             f'</div>'
@@ -1302,7 +1313,7 @@ def create_dashboard(
                         remed_html = remed_html.replace(
                             '</div></div>',
                             f'<div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);">'
-                            f'<span style="color:#94a3b8;font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;">🛡️ SafetyGuard Audit</span>'
+                            f'<span style="color:#64748b;font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;">🛡️ SafetyGuard Audit</span>'
                             f'<div style="margin-top:6px;display:flex;gap:12px;font-size:0.78rem;">'
                             f'<span>✅ {total - blocked - flagged}/{total} passed</span>'
                             f'<span style="color:{_C["red"]};">🛑 {blocked} blocked</span>'
@@ -1317,12 +1328,12 @@ def create_dashboard(
                     agent_name = step.get("agent", "Unknown")
                     thought = step.get("reasoning", step.get("thought", ""))
                     reasoning_parts.append(
-                        f'<div class="evidence-item" style="border-left-color:{_C["purple"]};">'
-                        f'<span style="color:{_C["cyan"]};font-weight:600;">{agent_name}:</span>'
+                        f'<div class="evidence-item" style="border-left-color:{_C["text_muted"]};">'
+                        f'<span style="color:{_C["text"]};font-weight:600;">{agent_name}:</span>'
                         f' <span style="color:#e2e8f0;">{thought}</span></div>'
                     )
                 reasoning_html = (
-                    f'<div class="glass-card"><div style="font-size:0.8rem;font-weight:700;color:#94a3b8;'
+                    f'<div class="glass-card"><div style="font-size:0.8rem;font-weight:700;color:#64748b;'
                     f'text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">Agent Reasoning Chain</div>'
                     f'{"".join(reasoning_parts)}</div>'
                 ) if reasoning_parts else _empty_state("No reasoning chain captured")
@@ -1390,7 +1401,7 @@ def create_dashboard(
                     f'<div class="glass-card" style="border-left:3px solid {_C["red"]};">'
                     f'<div style="color:{_C["red"]};font-weight:700;margin-bottom:8px;">⚠️ Analysis Error</div>'
                     f'<div style="color:#e2e8f0;font-size:0.88rem;">{exc}</div>'
-                    f'<div style="color:#94a3b8;font-size:0.78rem;margin-top:8px;">'
+                    f'<div style="color:#64748b;font-size:0.78rem;margin-top:8px;">'
                     f'Ensure vLLM server is running at {VLLM_BASE_URL}</div>'
                     f'</div>'
                 )
@@ -1399,7 +1410,7 @@ def create_dashboard(
 
         # ---- Demo mode (no orchestrator) ----
         demo_triage = format_agent_output("Triage", {
-            "severity": "P1" if "🔴" in scenario_name else ("P2" if "🟠" in scenario_name else "P3"),
+            "severity": sc.get("severity", "P3"),
             "category": sc.get("title", "").split()[0].lower() if sc.get("title") else "infrastructure",
             "impact_summary": sc.get("description", "")[:120] + "...",
             "affected_services": ["payment-service", "user-service", "api-gateway"],
@@ -1427,7 +1438,7 @@ def create_dashboard(
             "report": (
                 f"## Incident Report: {sc.get('title', 'Unknown')}\n\n"
                 f"**Incident ID:** {sc.get('id', 'INC-XXX')}\n"
-                f"**Severity:** {'P1 — Critical' if '🔴' in scenario_name else 'P2 — High'}\n"
+                f"**Severity:** {sc.get('severity', 'P3')}\n"
                 f"**Status:** Under Investigation\n\n"
                 f"### Summary\n{sc.get('description', '')}\n\n"
                 f"### Timeline\n"
@@ -1442,22 +1453,22 @@ def create_dashboard(
         })
         demo_reasoning = (
             f'<div class="glass-card">'
-            f'<div style="font-size:0.8rem;font-weight:700;color:#94a3b8;text-transform:uppercase;'
+            f'<div style="font-size:0.8rem;font-weight:700;color:#64748b;text-transform:uppercase;'
             f'letter-spacing:1px;margin-bottom:12px;">Agent Reasoning Chain</div>'
-            f'<div class="evidence-item" style="border-left-color:{_C["cyan"]};">'
-            f'<span style="color:{_C["cyan"]};font-weight:600;">Triage Agent:</span> '
+            f'<div class="evidence-item" style="border-left-color:{_C["text_muted"]};">'
+            f'<span style="color:{_C["text"]};font-weight:600;">Triage Agent:</span> '
             f'Analyzed {len(sc.get("logs", []))} log entries and {len(sc.get("metrics", []))} metric snapshots. '
             f'Detected critical-level errors indicating service degradation.</div>'
-            f'<div class="evidence-item" style="border-left-color:{_C["magenta"]};">'
-            f'<span style="color:{_C["magenta"]};font-weight:600;">RCA Agent:</span> '
+            f'<div class="evidence-item" style="border-left-color:{_C["text_muted"]};">'
+            f'<span style="color:{_C["text"]};font-weight:600;">RCA Agent:</span> '
             f'Cross-referenced error patterns with knowledge base. Identified primary root cause with 87% confidence. '
             f'Used BM25 retrieval to match 3 relevant runbooks.</div>'
-            f'<div class="evidence-item" style="border-left-color:{_C["green"]};">'
-            f'<span style="color:{_C["green"]};font-weight:600;">Remediation Agent:</span> '
+            f'<div class="evidence-item" style="border-left-color:{_C["text_muted"]};">'
+            f'<span style="color:{_C["text"]};font-weight:600;">Remediation Agent:</span> '
             f'Generated 4-step remediation plan based on runbook RB-001. Validated action safety and '
             f'estimated rollback risk as LOW.</div>'
-            f'<div class="evidence-item" style="border-left-color:{_C["amber"]};">'
-            f'<span style="color:{_C["amber"]};font-weight:600;">Reporting Agent:</span> '
+            f'<div class="evidence-item" style="border-left-color:{_C["text_muted"]};">'
+            f'<span style="color:{_C["text"]};font-weight:600;">Reporting Agent:</span> '
             f'Compiled incident timeline, root cause summary, and action items into structured report. '
             f'SLA compliance check: within P1 15-minute window.</div>'
             f'</div>'
@@ -1487,7 +1498,7 @@ def create_dashboard(
         # Update pipeline state for chat context
         _last_pipeline_state.update({
             "triage": {
-                "severity": "P1" if "🔴" in scenario_name else ("P2" if "🟠" in scenario_name else "P3"),
+            "severity": sc.get("severity", "P3"),
                 "category": "application" if "Application" in scenario_name else "infrastructure",
                 "impact_assessment": sc.get("description", "")[:120],
             },
@@ -1523,7 +1534,7 @@ def create_dashboard(
         import time as _time
 
         LEVEL_META = {
-            "CRITICAL": {"icon": "🔴", "accent": "#FF006E", "label": "Critical"},
+            "CRITICAL": {"icon": "🔴", "accent": "#FF3B3B", "label": "Critical"},
             "ERROR": {"icon": "🟠", "accent": "#FF3B3B", "label": "Error"},
             "WARNING": {"icon": "🟡", "accent": "#FFB800", "label": "Warning"},
         }
@@ -1545,7 +1556,7 @@ def create_dashboard(
 
         html_parts = []
         for level in levels_to_process:
-            meta = LEVEL_META.get(level, {"icon": "⚪", "accent": "#94a3b8", "label": level})
+            meta = LEVEL_META.get(level, {"icon": "⚪", "accent": "#64748b", "label": level})
 
             # Simulate realistic analysis delay per level
             _time.sleep(1.5)
@@ -1581,7 +1592,7 @@ def create_dashboard(
                     f'<span style="font-size:1.1rem;">{meta["icon"]}</span>'
                     f'<span style="color:{meta["accent"]};">{level} — No Data</span></div>'
                     f'<div class="agent-panel-body">'
-                    f'<div style="color:#94a3b8;font-style:italic;">No {level}-level logs present in this scenario.</div>'
+                    f'<div style="color:#64748b;font-style:italic;">No {level}-level logs present in this scenario.</div>'
                     f'</div></div>'
                 )
                 continue
@@ -1597,14 +1608,14 @@ def create_dashboard(
 
             steps_html = "".join(
                 f'<div class="action-card">'
-                f'<div class="action-icon" style="background:rgba(255,255,255,0.1);color:#94a3b8;">{i}</div>'
+                f'<div class="action-icon" style="background:rgba(255,255,255,0.1);color:#64748b;">{i}</div>'
                 f'<div style="flex:1;min-width:0;">'
                 f'<div style="font-size:0.82rem;color:#e2e8f0;">{_render_step(s)}</div>'
                 f'</div>'
                 f'</div>'
                 for i, s in enumerate(steps, 1)
             ) if steps else (
-                f'<div style="color:#94a3b8;font-style:italic;padding:12px;">'
+                f'<div style="color:#64748b;font-style:italic;padding:12px;">'
                 f'No automated resolution steps generated.</div>'
             )
 
@@ -1614,28 +1625,28 @@ def create_dashboard(
                 f'<div class="agent-panel-header" style="background:linear-gradient(135deg,{meta["accent"]}15,transparent);">'
                 f'<span style="font-size:1.1rem;">{meta["icon"]}</span>'
                 f'<span style="color:{meta["accent"]};font-weight:700;">{level}</span>'
-                f'<span style="color:#94a3b8;font-size:0.78rem;margin-left:8px;">'
+                f'<span style="color:#64748b;font-size:0.78rem;margin-left:8px;">'
                 f'{an_count} anomaly{"ies" if an_count != 1 else "y"}</span>'
                 f'<span style="margin-left:auto;display:flex;align-items:center;gap:6px;">'
                 f'<span class="pulse-dot" style="width:6px;height:6px;"></span>'
                 f'<span style="font-size:0.72rem;color:{meta["accent"]};">Live</span>'
-                f'<span style="font-size:0.72rem;color:#94a3b8;margin-left:4px;">'
+                f'<span style="font-size:0.72rem;color:#64748b;margin-left:4px;">'
                 f'{conf_pct:.0f}% confidence</span>'
                 f'</span>'
                 f'</div>'
                 f'<div class="agent-panel-body">'
                 f'<div style="margin-bottom:14px;">'
-                f'<span style="color:#94a3b8;font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;">Resolution Summary</span>'
+                f'<span style="color:#64748b;font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;">Resolution Summary</span>'
                 f'<div style="margin-top:6px;font-size:0.88rem;color:#e2e8f0;line-height:1.6;">{summary}</div>'
                 f'</div>'
                 f'<div style="margin-bottom:12px;">'
-                f'<span style="color:#94a3b8;font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;">Root Cause</span>'
+                f'<span style="color:#64748b;font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;">Root Cause</span>'
                 f'<div style="margin-top:6px;font-size:0.85rem;color:#e2e8f0;background:rgba(255,255,255,0.02);'
                 f'padding:10px 14px;border-radius:8px;border-left:3px solid {meta["accent"]};">'
                 f'{root_cause}</div>'
                 f'</div>'
                 f'<div>'
-                f'<span style="color:#94a3b8;font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;display:block;">Resolution Steps</span>'
+                f'<span style="color:#64748b;font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;display:block;">Resolution Steps</span>'
                 f'{steps_html}'
                 f'</div>'
                 f'</div></div>'
@@ -1653,7 +1664,7 @@ def create_dashboard(
             f'border-radius:10px;">'
             f'<span class="pulse-dot"></span>'
             f'<span style="font-size:0.82rem;color:#00FF88;font-weight:600;">Analysis Complete</span>'
-            f'<span style="font-size:0.75rem;color:#94a3b8;">'
+            f'<span style="font-size:0.75rem;color:#64748b;">'
             f'Processed {len(levels_to_process)} level(s) · {now} · '
             f'{"Template-based" if (orchestrator is not None) else "Demo"} mode</span>'
             f'</div>'
@@ -1801,7 +1812,7 @@ def create_dashboard(
             f'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;">'
             f'{_metric_card_html("🚨", "Active Incidents", str(total_incidents), _C["red"])}'
             f'{_metric_card_html("⚡", "Anomalies Detected", str(anomaly_count), _C["amber"])}'
-            f'{_metric_card_html("⏱️", "Mean Resolution", resolution_str, _C["cyan"])}'
+            f'{_metric_card_html("⏱️", "Mean Resolution", resolution_str, _C["text"])}'
             f'{_metric_card_html("💚", "System Health", f"{health_pct}%", _C["green"])}'
             f'</div>'
         )
@@ -1853,17 +1864,15 @@ def create_dashboard(
         """Generate a summary report of all incidents."""
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         incident_rows = ""
-        sev_order = {"🔴": "P1", "🟠": "P2", "🟡": "P3", "🟢": "P4"}
         for name, sc in scenarios.items():
-            sev_key = name[0:2] if name[0:2] in ["🔴", "🟠", "🟡", "🟢"] else ""
-            sev = sev_order.get(sev_key, "P3")
+            sev = sc.get("severity", "P3")
             incident_rows += (
                 f'<tr>'
                 f'<td>{sc.get("id", "—")}</td>'
                 f'<td>{format_severity_badge(sev)}</td>'
                 f'<td>{sc.get("title", name)}</td>'
                 f'<td>{len(sc.get("logs", []))}</td>'
-                f'<td style="color:{_C["cyan"]};">Detected</td>'
+                f'<td style="color:{_C["text"]};">Detected</td>'
                 f'</tr>'
             )
 
@@ -1873,7 +1882,7 @@ def create_dashboard(
             f'<span style="font-size:1.3rem;">📊</span>'
             f'<div>'
             f'<div style="font-size:1.05rem;font-weight:700;color:#e2e8f0;">InfraHeal AI — Summary Report</div>'
-            f'<div style="font-size:0.75rem;color:#94a3b8;">Generated {now}</div>'
+            f'<div style="font-size:0.75rem;color:#64748b;">Generated {now}</div>'
             f'</div></div>'
             f'<table class="styled-table">'
             f'<thead><tr><th>ID</th><th>Severity</th><th>Title</th><th>Log Entries</th><th>Status</th></tr></thead>'
@@ -1882,7 +1891,7 @@ def create_dashboard(
             f'<div style="margin-top:18px;padding:14px;background:rgba(0,255,136,0.04);'
             f'border:1px solid rgba(0,255,136,0.15);border-radius:10px;">'
             f'<div style="font-size:0.82rem;color:{_C["green"]};font-weight:600;">✅ Report Complete</div>'
-            f'<div style="font-size:0.78rem;color:#94a3b8;margin-top:4px;">'
+            f'<div style="font-size:0.78rem;color:#64748b;margin-top:4px;">'
             f'{len(scenarios)} incidents catalogued · AMD GPU accelerated inference · Model: {MODEL_NAME.split("/")[-1]}</div>'
             f'</div></div>'
         )
@@ -1948,7 +1957,7 @@ def create_dashboard(
             f'<span style="font-size:1.3rem;">⚙️</span>'
             f'<div>'
             f'<div style="font-size:1.05rem;font-weight:700;color:#e2e8f0;">InfraHeal AI — Process All Incidents</div>'
-            f'<div style="font-size:0.75rem;color:#94a3b8;">Generated {now}</div>'
+            f'<div style="font-size:0.75rem;color:#64748b;">Generated {now}</div>'
             f'</div></div>'
             f'<table class="styled-table">'
             f'<thead><tr><th>ID</th><th>Sev</th><th>Title</th><th>Category</th><th>Root Cause</th><th>Actions</th><th>Status</th></tr></thead>'
@@ -1957,7 +1966,7 @@ def create_dashboard(
             f'<div style="margin-top:18px;padding:14px;background:rgba(0,255,136,0.04);'
             f'border:1px solid rgba(0,255,136,0.15);border-radius:10px;">'
             f'<div style="font-size:0.82rem;color:{_C["green"]};font-weight:600;">{status_icon} Pipeline Complete</div>'
-            f'<div style="font-size:0.78rem;color:#94a3b8;margin-top:4px;">'
+            f'<div style="font-size:0.78rem;color:#64748b;margin-top:4px;">'
             f'{processed} scenarios processed · {total_anomalies} anomalies · {total_actions} actions generated · '
             f'{failures} failures · Model: {MODEL_NAME.split("/")[-1]}</div>'
             f'</div></div>'
@@ -2129,7 +2138,7 @@ def create_dashboard(
         secondary_hue=gr.themes.colors.purple,
         neutral_hue=gr.themes.Color(
             c50="#f8fafc", c100="#f1f5f9", c200="#e2e8f0",
-            c300="#cbd5e1", c400="#94a3b8", c500="#64748b",
+            c300="#cbd5e1", c400="#64748b", c500="#64748b",
             c600="#475569", c700="#334155", c800="#1e293b",
             c900="#111128", c950="#0a0a1a",
         ),
@@ -2142,20 +2151,20 @@ def create_dashboard(
         #  TAB 1 — COMMAND CENTER
         # ──────────────────────────────────────────────────────────
         with gr.Tabs():
-            with gr.Tab("🏠 Command Center"):
+            with gr.Tab("Command Center"):
                 header = gr.HTML(value=_branding_header)
                 metrics_row = gr.HTML(value=_get_command_center_metrics)
 
                 gr.HTML(
-                    '<div class="section-label">📡 Live Log Stream</div>'
+                    '<div class="section-label">Live Log Stream</div>'
                 )
                 log_stream = gr.HTML(value=_get_command_center_logs)
 
                 gr.HTML('<div style="height:12px;"></div>')
                 with gr.Row():
-                    btn_scan = gr.Button("🔍 Run Anomaly Scan", variant="primary", scale=1)
-                    btn_process = gr.Button("⚙️ Process All Incidents", variant="secondary", scale=1)
-                    btn_report = gr.Button("📊 Generate Report", variant="secondary", scale=1)
+                    btn_scan = gr.Button("Run Anomaly Scan", variant="primary", scale=1)
+                    btn_process = gr.Button("Process All Incidents", variant="secondary", scale=1)
+                    btn_report = gr.Button("Generate Report", variant="secondary", scale=1)
 
                 scan_output = gr.HTML(
                     value=_empty_state("Anomaly scan results will appear here",
@@ -2169,9 +2178,9 @@ def create_dashboard(
             # ──────────────────────────────────────────────────────
             #  TAB 2 — INCIDENT ANALYSIS
             # ──────────────────────────────────────────────────────
-            with gr.Tab("🔍 Incident Analysis"):
+            with gr.Tab("Incident Analysis"):
                 gr.HTML(
-                    '<div class="section-title">🔍 Incident Analysis Pipeline</div>'
+                    '<div class="section-title">Incident Analysis Pipeline</div>'
                     '<div class="section-subtitle">'
                     'Select a scenario and run the full multi-agent analysis pipeline.</div>'
                 )
@@ -2182,7 +2191,7 @@ def create_dashboard(
                         label="Select Incident Scenario",
                         scale=3,
                     )
-                    analyze_btn = gr.Button("🚀 Analyze Incident", variant="primary", scale=1)
+                    analyze_btn = gr.Button("Analyze Incident", variant="primary", scale=1)
 
                 scenario_desc = gr.HTML(
                     value=_empty_state("Select a scenario", "Choose from the dropdown above.")
@@ -2213,7 +2222,7 @@ def create_dashboard(
                             value=_empty_state("Incident Report", "Awaiting analysis…")
                         )
 
-                with gr.Accordion("🧠 Agent Reasoning Chain", open=False):
+                with gr.Accordion("Agent Reasoning Chain", open=False):
                     reasoning_panel = gr.HTML(
                         value=_empty_state("Reasoning chain", "Run an analysis to see step-by-step reasoning.")
                     )
@@ -2222,7 +2231,7 @@ def create_dashboard(
 
                 # ── Error-Level Resolution Section ──────────────
                 gr.HTML(
-                    '<div class="section-title">🎯 Resolution by Error Level</div>'
+                    '<div class="section-title">Resolution by Error Level</div>'
                     '<div class="section-subtitle">'
                     'Pipeline outputs grouped by log severity — shows resolution steps '
                     'for each error level independently.</div>'
@@ -2235,7 +2244,7 @@ def create_dashboard(
                         scale=1,
                     )
                     level_resolve_btn = gr.Button(
-                        "🔄 Run Level-Specific Resolution", variant="secondary", scale=2
+                        "Run Level-Specific Resolution", variant="secondary", scale=2
                     )
                 level_resolution_panel = gr.HTML(
                     value=_empty_state(
@@ -2259,13 +2268,13 @@ def create_dashboard(
             # ──────────────────────────────────────────────────────────
             #  TAB 3 — PERFORMANCE METRICS
             # ──────────────────────────────────────────────────────
-            with gr.Tab("📊 Performance Metrics"):
+            with gr.Tab("Performance Metrics"):
                 gr.HTML(
-                    '<div class="section-title">📊 Agent Performance Dashboard</div>'
+                    '<div class="section-title">Agent Performance Dashboard</div>'
                     '<div class="section-subtitle">'
                     'Token usage, latency breakdown, and system metrics from the latest analysis run.</div>'
                 )
-                refresh_perf_btn = gr.Button("🔄 Refresh Metrics", variant="secondary")
+                refresh_perf_btn = gr.Button("Refresh Metrics", variant="secondary")
                 perf_output = gr.HTML(
                     value=_empty_state(
                         "No performance data yet",
@@ -2277,13 +2286,13 @@ def create_dashboard(
                 # ── GPU Benchmark Panel ───────────────────────────
                 gr.HTML('<div style="height:16px;"></div>')
                 gr.HTML(
-                    '<div class="section-title">🎛️ ROCm GPU Benchmarking</div>'
+                    '<div class="section-title">ROCm GPU Benchmarking</div>'
                     '<div class="section-subtitle">'
                     'Throughput profiling for Qwen2.5-7B-Instruct on AMD ROCm. '
                     'Measures tokens/sec across batch sizes and prompt lengths.</div>'
                 )
                 with gr.Row():
-                    tune_btn = gr.Button("🚀 Run GPU Benchmark", variant="primary", scale=1)
+                    tune_btn = gr.Button("Run GPU Benchmark", variant="primary", scale=1)
                     tune_status = gr.HTML(value=_empty_state("Benchmark not run", "Click to profile GPU throughput."), scale=3)
                 tune_config = gr.HTML(value=_empty_state("Optimal config", "Run benchmark to get recommendations."))
                 _tune_empty_fig = go.Figure()
@@ -2302,7 +2311,7 @@ def create_dashboard(
 
                     curve_data = tuner.get_benchmark_curve()
                     fig = go.Figure()
-                    colors = ["#00D4FF", "#A855F7", "#FF006E", "#FFB800"]
+                    colors = ["rgba(255,255,255,0.8)", "rgba(255,255,255,0.55)", "rgba(255,255,255,0.35)", "rgba(255,255,255,0.2)"]
                     for idx, curve in enumerate(curve_data.get("curves", [])):
                         plen = curve["prompt_length"]
                         fig.add_trace(go.Scatter(
@@ -2316,10 +2325,10 @@ def create_dashboard(
                     fig.update_layout(
                         paper_bgcolor="#0a0a1a", plot_bgcolor="#0a0a1a",
                         font=dict(color="#e2e8f0"), height=350,
-                        title=dict(text="Throughput: Tokens/sec vs Batch Size", x=0.5, font=dict(color="#00D4FF", size=13)),
+                        title=dict(text="Throughput: Tokens/sec vs Batch Size", x=0.5, font=dict(color="#e2e8f0", size=13)),
                         xaxis=dict(title="Batch Size", gridcolor="rgba(255,255,255,0.06)"),
                         yaxis=dict(title="Tokens/sec", gridcolor="rgba(255,255,255,0.06)"),
-                        legend=dict(font=dict(color="#94a3b8")),
+                        legend=dict(font=dict(color="#64748b")),
                         margin=dict(l=10, r=10, t=35, b=10),
                     )
 
@@ -2327,32 +2336,32 @@ def create_dashboard(
                         f'<div class="glass-card">'
                         f'<div style="display:flex;gap:20px;flex-wrap:wrap;">'
                         f'<div style="flex:1;min-width:120px;text-align:center;">'
-                        f'  <div style="font-size:1.8rem;font-weight:800;color:#00D4FF;">{avg_tok}</div>'
-                        f'  <div style="font-size:0.7rem;color:#94a3b8;text-transform:uppercase;">Avg Tokens/s</div>'
+                        f'  <div style="font-size:1.8rem;font-weight:800;color:#e2e8f0;">{avg_tok}</div>'
+                        f'  <div style="font-size:0.7rem;color:#64748b;text-transform:uppercase;">Avg Tokens/s</div>'
                         f'</div>'
                         f'<div style="flex:1;min-width:120px;text-align:center;">'
-                        f'  <div style="font-size:1.8rem;font-weight:800;color:#A855F7;">{best_tok}</div>'
-                        f'  <div style="font-size:0.7rem;color:#94a3b8;text-transform:uppercase;">Peak Tokens/s</div>'
+                        f'  <div style="font-size:1.8rem;font-weight:800;color:#e2e8f0;">{best_tok}</div>'
+                        f'  <div style="font-size:0.7rem;color:#64748b;text-transform:uppercase;">Peak Tokens/s</div>'
                         f'</div>'
                         f'<div style="flex:1;min-width:120px;text-align:center;">'
-                        f'  <div style="font-size:1.8rem;font-weight:800;color:#FF006E;">{bc.get("batch_size","?")}</div>'
-                        f'  <div style="font-size:0.7rem;color:#94a3b8;text-transform:uppercase;">Optimal Batch</div>'
+                        f'  <div style="font-size:1.8rem;font-weight:800;color:#e2e8f0;">{bc.get("batch_size","?")}</div>'
+                        f'  <div style="font-size:0.7rem;color:#64748b;text-transform:uppercase;">Optimal Batch</div>'
                         f'</div>'
                         f'<div style="flex:1;min-width:120px;text-align:center;">'
-                        f'  <div style="font-size:1.8rem;font-weight:800;color:#FFB800;">{bc.get("prompt_length","?")}</div>'
-                        f'  <div style="font-size:0.7rem;color:#94a3b8;text-transform:uppercase;">Optimal Prompt Len</div>'
+                        f'  <div style="font-size:1.8rem;font-weight:800;color:#e2e8f0;">{bc.get("prompt_length","?")}</div>'
+                        f'  <div style="font-size:0.7rem;color:#64748b;text-transform:uppercase;">Optimal Prompt Len</div>'
                         f'</div>'
                         f'</div></div>'
                     )
                     config_html = (
                         f'<div class="glass-card" style="margin-top:12px;">'
-                        f'<div style="font-size:0.85rem;font-weight:700;color:#00D4FF;margin-bottom:8px;">⚙️ Recommended vLLM Configuration</div>'
+                        f'<div style="font-size:0.85rem;font-weight:700;color:#e2e8f0;margin-bottom:8px;">⚙️ Recommended vLLM Configuration</div>'
                         f'<div style="font-size:0.88rem;color:#e2e8f0;">'
                         f'<code>--max-model-len {rec.get("max_context_length",2048)}</code><br>'
                         f'<code>--gpu-memory-utilization 0.9</code><br>'
                         f'<code>Batch concurrency: {rec.get("batch_concurrency","?")}</code>'
                         f'</div>'
-                        f'<div style="font-size:0.78rem;color:#94a3b8;margin-top:8px;">{rec.get("note","")}</div>'
+                        f'<div style="font-size:0.78rem;color:#64748b;margin-top:8px;">{rec.get("note","")}</div>'
                         f'</div>'
                     )
                     return status_html, config_html, fig
@@ -2378,11 +2387,11 @@ def create_dashboard(
                     f'</div>'
                     f'<div>'
                     f'  <div class="section-label" style="margin:0 0 2px;">RAG Backend</div>'
-                    f'  <div style="font-size:0.88rem;font-weight:600;color:var(--magenta);">BM25 (rank_bm25)</div>'
+                    f'  <div style="font-size:0.88rem;font-weight:600;color:var(--text);">BM25 (rank_bm25)</div>'
                     f'</div>'
                     f'<div>'
                     f'  <div class="section-label" style="margin:0 0 2px;">Agent Framework</div>'
-                    f'  <div style="font-size:0.88rem;font-weight:600;color:var(--purple);">4-Agent Pipeline</div>'
+                    f'  <div style="font-size:0.88rem;font-weight:600;color:var(--text);">4-Agent Pipeline</div>'
                     f'</div>'
                     f'<div>'
                     f'  <div class="section-label" style="margin:0 0 2px;">Hackathon</div>'
@@ -2394,9 +2403,9 @@ def create_dashboard(
             # ──────────────────────────────────────────────────────
             #  TAB 4 — VISUALIZATION
             # ──────────────────────────────────────────────────────
-            with gr.Tab("🌟 Visualization"):
+            with gr.Tab("Visualization"):
                 gr.HTML(
-                    '<div class="section-title">🌟 Metric &amp; Anomaly Visualization</div>'
+                    '<div class="section-title">Metric &amp; Anomaly Visualization</div>'
                     '<div class="section-subtitle">'
                     'Interactive 2D visualizations powered by Plotly — time-series analysis, '
                     'correlation heatmaps, anomaly timelines, and log distributions.</div>'
@@ -2408,7 +2417,7 @@ def create_dashboard(
                         label="Select Scenario",
                         scale=3,
                     )
-                    viz_refresh_btn = gr.Button("🔄 Generate Plots", variant="primary", scale=1)
+                    viz_refresh_btn = gr.Button("Generate Plots", variant="primary", scale=1)
 
                 _empty_fig = go.Figure()
                 _empty_fig.update_layout(paper_bgcolor="#0a0a1a", plot_bgcolor="#0a0a1a",
@@ -2417,7 +2426,7 @@ def create_dashboard(
                                          annotations=[dict(text="Select a scenario and click Generate",
                                                            xref="paper", yref="paper", x=0.5, y=0.5,
                                                            showarrow=False,
-                                                           font=dict(color="#94a3b8", size=14))])
+                                                           font=dict(color="#64748b", size=14))])
                 _empty_fig2 = go.Figure()
                 _empty_fig2.update_layout(paper_bgcolor="#0a0a1a", plot_bgcolor="#0a0a1a",
                                           xaxis=dict(visible=False), yaxis=dict(visible=False),
@@ -2446,9 +2455,9 @@ def create_dashboard(
             # ──────────────────────────────────────────────────────
             #  TAB 5 — KNOWLEDGE BASE
             # ──────────────────────────────────────────────────────
-            with gr.Tab("📋 Knowledge Base"):
+            with gr.Tab("Knowledge Base"):
                 gr.HTML(
-                    '<div class="section-title">📋 Runbook Knowledge Base</div>'
+                    '<div class="section-title">Runbook Knowledge Base</div>'
                     '<div class="section-subtitle">'
                     'Search and browse operational runbooks used by the RAG pipeline.</div>'
                 )
@@ -2459,7 +2468,7 @@ def create_dashboard(
                         label="Search",
                         scale=3,
                     )
-                    kb_btn = gr.Button("🔍 Search", variant="primary", scale=1)
+                    kb_btn = gr.Button("Search", variant="primary", scale=1)
 
                 kb_results = gr.HTML(
                     value="".join(_format_runbook_html(rb) for rb in runbooks)
@@ -2471,7 +2480,7 @@ def create_dashboard(
             # ──────────────────────────────────────────────────────
             #  TAB 6 — AGENT CHAT (CLI-style, multi-turn, multi-model)
             # ──────────────────────────────────────────────────────
-            with gr.Tab("💬 Agent Chat"):
+            with gr.Tab("Agent Chat"):
                 # ── Helper definitions (before components that use them) ──
                 model_choices = {
                     info["label"]: model_id
@@ -2504,7 +2513,7 @@ def create_dashboard(
                     ra = _run_risk_assessment()
                     rl = ra["risk_levels"]
                     sev = ra["severity"]
-                    sev_color = SEVERITY_LEVELS.get(sev, {}).get("color", "#94a3b8")
+                    sev_color = SEVERITY_LEVELS.get(sev, {}).get("color", "#64748b")
                     sev_label = SEVERITY_LEVELS.get(sev, {}).get("label", sev)
                     safety_summary = _last_pipeline_state.get("safety_audit_summary", {})
                     safety_html = ""
@@ -2536,7 +2545,7 @@ def create_dashboard(
                         <span>Low risk: <b style="color:#00FF88;">{rl.get("low",0)}</b></span>
                         <span>Medium risk: <b style="color:#FFB800;">{rl.get("medium",0)}</b></span>
                         <span>High risk: <b style="color:#FF3B3B;">{rl.get("high",0)}</b></span>
-                        {('🔒 <b style="color:#FF006E;">Security incident</b>' if ra["security_incident"] else '')}
+                        {('🔒 <b style="color:#FF3B3B;">Security incident</b>' if ra["security_incident"] else '')}
                       </div>
                       <div style="font-size:0.76rem;color:#8b949e;padding:6px 0 0 0;border-top:1px solid #21262d;">
                         {ra["recommendation"]}
@@ -2604,8 +2613,8 @@ def create_dashboard(
                         scale=5,
                         container=False,
                     )
-                    chat_send = gr.Button("⏎ Send", variant="primary", scale=1, elem_classes="chat-quick-btn")
-                    chat_clear = gr.Button("✕ Clear", variant="secondary", scale=1, elem_classes="chat-quick-btn")
+                    chat_send = gr.Button("Send", variant="primary", scale=1, elem_classes="chat-quick-btn")
+                    chat_clear = gr.Button("Clear", variant="secondary", scale=1, elem_classes="chat-quick-btn")
 
                 # ── Quick Questions ──
                 gr.HTML(

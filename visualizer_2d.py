@@ -19,14 +19,14 @@ logger = logging.getLogger(__name__)
 
 SEVERITY_COLORS = {
     "P1": "#FF3B3B", "P2": "#FFB800", "P3": "#FFD700", "P4": "#00FF88",
-    "CRITICAL": "#FF006E", "ERROR": "#FF3B3B", "WARNING": "#FFB800",
-    "INFO": "#00D4FF", "DEBUG": "#94a3b8",
+    "CRITICAL": "#FF3B3B", "ERROR": "#FF3B3B", "WARNING": "#FFB800",
+    "INFO": "#e2e8f0", "DEBUG": "#64748b",
 }
 
 THEME_BG = "#0a0a1a"
 THEME_TEXT = "#e2e8f0"
 THEME_GRID = "rgba(255,255,255,0.06)"
-ACCENT = "#00D4FF"
+ACCENT = "#e2e8f0"
 
 
 def _apply_theme(fig: go.Figure, height: int = 400) -> go.Figure:
@@ -42,9 +42,9 @@ def _apply_theme(fig: go.Figure, height: int = 400) -> go.Figure:
         hovermode="x unified",
     )
     fig.update_xaxes(gridcolor=THEME_GRID, zerolinecolor=THEME_GRID,
-                     title_font={"color": "#94a3b8"}, tickfont={"color": "#94a3b8"})
+                     title_font={"color": "#64748b"}, tickfont={"color": "#64748b"})
     fig.update_yaxes(gridcolor=THEME_GRID, zerolinecolor=THEME_GRID,
-                     title_font={"color": "#94a3b8"}, tickfont={"color": "#94a3b8"})
+                     title_font={"color": "#64748b"}, tickfont={"color": "#64748b"})
     return fig
 
 
@@ -56,7 +56,7 @@ def _empty_figure(message: str = "No data.") -> go.Figure:
         xaxis=dict(visible=False), yaxis=dict(visible=False),
         annotations=[dict(text=message, xref="paper", yref="paper",
                           x=0.5, y=0.5, showarrow=False,
-                          font=dict(color="#94a3b8", size=14))],
+                          font=dict(color="#64748b", size=14))],
     )
     return fig
 
@@ -173,7 +173,7 @@ def correlation_heatmap(
 
     fig = go.Figure(data=go.Heatmap(
         z=corr, x=labels, y=labels,
-        colorscale=[[0, "#1a0533"], [0.5, "#0a0a1a"], [1, "#00D4FF"]],
+        colorscale=[[0, "#1a0533"], [0.5, "#0a0a1a"], [1, "#e2e8f0"]],
         zmin=-1, zmax=1,
         text=[[f"{corr[i][j]:.2f}" for j in range(n)] for i in range(n)],
         texttemplate="%{text}",
@@ -255,8 +255,8 @@ def log_level_distribution(
 
     sources = sorted(set(p[0] for p in pairs))
     levels = ["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"]
-    colors_map = {"CRITICAL": "#FF006E", "ERROR": "#FF3B3B", "WARNING": "#FFB800",
-                  "INFO": "#00D4FF", "DEBUG": "#94a3b8"}
+    colors_map = {"CRITICAL": "#FF3B3B", "ERROR": "#FF3B3B", "WARNING": "#FFB800",
+                  "INFO": "#e2e8f0", "DEBUG": "#64748b"}
 
     fig = go.Figure()
     for lvl in levels:
@@ -265,7 +265,7 @@ def log_level_distribution(
             continue
         fig.add_trace(go.Bar(
             name=lvl, x=sources, y=vals,
-            marker_color=colors_map.get(lvl, "#94a3b8"),
+            marker_color=colors_map.get(lvl, "#64748b"),
             hovertemplate=f"Level: {lvl}<br>Source: %{{x}}<br>Count: %{{y}}<extra></extra>",
         ))
 
@@ -320,10 +320,10 @@ def draw_topology_map(
     for host in all_hosts:
         h = host.replace("_", "-")
         if h == root_cause_host:
-            node_colors.append("#FF006E")
+            node_colors.append("#FF3B3B")
             node_sizes.append(35)
-            node_borders.append("rgba(255,0,110,0.6)")
-            label_colors.append("#FF006E")
+            node_borders.append("rgba(255,59,59,0.6)")
+            label_colors.append("#FF3B3B")
         elif h in affected_hosts:
             node_colors.append("#FFB800")
             node_sizes.append(25)
@@ -386,7 +386,7 @@ def draw_topology_map(
 
     _apply_theme(fig, height=450)
     fig.update_layout(
-        title=dict(text=title, x=0.5, font=dict(size=14, color="#00D4FF")),
+        title=dict(text=title, x=0.5, font=dict(size=14, color="#e2e8f0")),
         xaxis=dict(visible=False, range=[-1.3, 1.3]),
         yaxis=dict(visible=False, range=[-1.3, 1.3]),
         paper_bgcolor="#0a0a1a",
@@ -396,7 +396,7 @@ def draw_topology_map(
                 x=0.02, y=0.02, xref="paper", yref="paper",
                 text=f"🔥 Root Cause: {root_cause_host}  |  ⚠️ Affected: {len(affected_hosts)}  |  ✅ Healthy: {len(all_hosts) - len(affected_hosts) - (1 if root_cause_host in all_hosts else 0)}",
                 showarrow=False,
-                font=dict(color="#94a3b8", size=10),
+                font=dict(color="#64748b", size=10),
             )
         ],
     )
@@ -451,8 +451,8 @@ def host_radar(
         polar=dict(
             bgcolor=THEME_BG,
             radialaxis=dict(visible=True, range=[0, 100],
-                           gridcolor=THEME_GRID, color="#94a3b8"),
-            angularaxis=dict(gridcolor=THEME_GRID, color="#94a3b8"),
+                           gridcolor=THEME_GRID, color="#64748b"),
+            angularaxis=dict(gridcolor=THEME_GRID, color="#64748b"),
         ),
         legend=dict(x=0.8, y=0.9),
     )

@@ -25,11 +25,11 @@ SEVERITY_COLORS = {
     "P2": "#FFB800",
     "P3": "#FFD700",
     "P4": "#00FF88",
-    "CRITICAL": "#FF006E",
+    "CRITICAL": "#FF3B3B",
     "ERROR": "#FF3B3B",
     "WARNING": "#FFB800",
-    "INFO": "#00D4FF",
-    "DEBUG": "#94a3b8",
+    "INFO": "#e2e8f0",
+    "DEBUG": "#64748b",
 }
 
 THEME_BG = "#0a0a1a"
@@ -43,7 +43,7 @@ def _apply_dark_theme(fig: go.Figure) -> go.Figure:
         paper_bgcolor=THEME_BG,
         plot_bgcolor=THEME_BG,
         font={"color": THEME_TEXT, "family": "Inter, system-ui, sans-serif"},
-        title_font={"size": 16, "color": "#00D4FF"},
+        title_font={"size": 16, "color": "#e2e8f0"},
         margin=dict(l=20, r=20, t=40, b=20),
         legend={"font": {"color": THEME_TEXT}},
     )
@@ -284,8 +284,8 @@ def log_level_distribution_3d(
 
     # Build 3D bar chart
     fig = go.Figure()
-    colors_map = {"CRITICAL": "#FF006E", "ERROR": "#FF3B3B", "WARNING": "#FFB800",
-                  "INFO": "#00D4FF", "DEBUG": "#94a3b8"}
+    colors_map = {"CRITICAL": "#FF3B3B", "ERROR": "#FF3B3B", "WARNING": "#FFB800",
+                  "INFO": "#e2e8f0", "DEBUG": "#64748b"}
 
     for lvl in levels:
         z_vals = []
