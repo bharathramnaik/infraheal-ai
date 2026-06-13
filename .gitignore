@@ -1,3 +1,16 @@
+# Reference / collateral files
+*.pdf
+*.pptx
+*.ppt
+agent_context.txt
+creteria_rules_rewards.txt
+extract_pdfs.py
+extracted_text.txt
+implementation_plan.md
+results.txt
+errors.txt
+DEPENDENCY_FIXES.md
+
 __pycache__/
 *.pyc
 *.pyo
