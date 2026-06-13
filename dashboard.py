@@ -1290,7 +1290,6 @@ def create_dashboard(
         desc_html = (
             f'<div class="glass-card">'
             f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">'
-            f'<span style="font-size:1.3rem;">📋</span>'
             f'<span style="font-size:1.05rem;font-weight:700;color:#e2e8f0;">{sc.get("title", name)}</span>'
             f'<span style="color:#64748b;font-size:0.78rem;">({sc.get("id", "")})</span>'
             f'</div>'
@@ -2749,15 +2748,15 @@ def create_dashboard(
                              status_dot, status_text, risk_panel],
                 )
 
-    logger.info("InfraHeal AI dashboard created successfully")
+        # On first load, auto-select the first scenario in the Incident Analysis tab
+        if scenario_names:
+            demo.load(
+                fn=_on_scenario_selected,
+                inputs=[scenario_dropdown],
+                outputs=[scenario_desc, scenario_logs],
+            )
 
-    # On first load, auto-select the first scenario in the Incident Analysis tab
-    if scenario_names:
-        demo.load(
-            fn=_on_scenario_selected,
-            inputs=[scenario_dropdown],
-            outputs=[scenario_desc, scenario_logs],
-        )
+    logger.info("InfraHeal AI dashboard created successfully")
 
     return demo
 
