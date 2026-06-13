@@ -526,32 +526,70 @@ button.secondary:active {
 }
 
 /* ── Agent Chat ────────────────────────────────────────────────── */
-.chat-terminal {
-  background: #0d1117 !important;
-  border: 1px solid #30363d !important;
-  border-radius: 12px !important;
-  font-family: 'JetBrains Mono', monospace !important;
+.chat-container {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 12px;
+  padding: 12px;
+  height: 360px;
+  overflow-y: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
 }
-.chat-terminal .chat-message {
-  border-bottom: 1px solid #21262d !important;
+.chat-msg {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid #21262d;
+  position: relative;
 }
-.chat-terminal .chat-message.user {
-  border-left: 3px solid #8b949e !important;
+.chat-msg:last-child { border-bottom: none; }
+.chat-msg .chat-label {
+  color: #8b949e;
+  font-weight: 700;
+  min-width: 14px;
+  font-size: 0.82rem;
+  line-height: 1.5;
 }
-.chat-terminal .chat-message.assistant {
-  border-left: 3px solid #60A5FA !important;
+.chat-msg.user .chat-label { color: #8b949e; }
+.chat-msg.assistant .chat-label { color: #60A5FA; }
+.chat-msg .chat-bubble {
+  flex: 1;
+  line-height: 1.5;
+  color: #e2e8f0;
 }
-/* Hide all action buttons by default */
-.chat-terminal .chat-message button {
-  display: none !important;
+.chat-msg .chat-bubble strong { color: #ffffff; font-weight: 700; }
+.chat-msg .chat-bubble code {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.78rem;
+  color: #60A5FA;
 }
-/* Show copy button only on hover */
-.chat-terminal .chat-message:hover button[aria-label="Copy"],
-.chat-terminal .chat-message:hover button[aria-label="Copy message"],
-.chat-terminal .chat-message:hover .copy-btn,
-.chat-terminal .chat-message:hover .copy-button,
-.chat-terminal .chat-message:hover [data-testid="copy"] {
-  display: inline-flex !important;
+/* Copy button: hidden by default, show on hover */
+.chat-msg .chat-copy-btn {
+  display: none;
+  position: absolute;
+  top: 8px;
+  right: 4px;
+  background: #21262d;
+  border: 1px solid #30363d;
+  color: #8b949e;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 0.7rem;
+  font-family: 'JetBrains Mono', monospace;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.chat-msg:hover .chat-copy-btn {
+  display: inline-flex;
+}
+.chat-msg .chat-copy-btn:hover {
+  background: #30363d;
+  color: #e2e8f0;
 }
 .chat-status-bar {
   background: #161b22;
@@ -2678,7 +2716,7 @@ def create_dashboard(
                         history_msgs.append({"role": "assistant", "content": str(h[1])})
                 history_msgs.append({"role": "user", "content": f"Current incident: {ctx}\n\nQuestion: {message}\n\nAnswer concisely with markdown formatting (tables, code, bold where helpful)."})
 
-                system = "You are InfraHeal AI, an autonomous incident diagnosis agent running on AMD ROCm + vLLM. Answer concisely and technically. Use markdown: **bold** for key terms, `code` for commands/metrics. Do not use tables — use plain inline format with **bold** labels instead. Keep responses under 300 words."
+                system = "You are InfraHeal AI, an autonomous incident diagnosis agent running on AMD ROCm + vLLM. Answer concisely and technically. Use **bold** for key terms, `code` for commands/metrics. Do not use tables — use inline **bold:** labels instead. Keep responses under 300 words."
                 past = _past_incidents_summary()
                 if past:
                     system += (
@@ -2718,6 +2756,32 @@ def create_dashboard(
             f"{len(remed.get('recommended_actions',[]))} remediation actions. "
             f"{'Critique confirmed.' if crit.get('confirmed',True) else 'Critique found gaps.'}"
         )
+
+    def _fm(text: str) -> str:
+        """Convert _mhl-style markers to HTML (bold, code, newlines)."""
+        import re as _re
+        t = _mhl(text)
+        t = _re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', t)
+        t = _re.sub(r'`(.+?)`', r'<code>\1</code>', t)
+        t = t.replace('\n', '<br>')
+        return t
+
+    def _render_chat_html(messages: list) -> str:
+        if not messages:
+            return '<div style="padding:20px;text-align:center;color:#8b949e;font-size:0.85rem;">No messages yet.</div>'
+        items = []
+        for i, msg in enumerate(messages):
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+            formatted = _fm(content)
+            items.append(
+                f'<div class="chat-msg {role}" data-idx="{i}">'
+                f'<div class="chat-label">{">" if role == "user" else ""}</div>'
+                f'<div class="chat-bubble">{formatted}</div>'
+                f'<button class="chat-copy-btn" onclick="copyChatMsg(this)">Copy</button>'
+                f'</div>'
+            )
+        return f'<div id="infraheal-chat" class="chat-container">{"".join(items)}</div>'
 
     # ═══════════════════════════════════════════════════════════════
     #  BUILD THE UI
@@ -2797,6 +2861,13 @@ function trigger_approval(val) {
   var btn = document.getElementById("approval-trigger-btn");
   if (btn) { btn.click(); }
   console.log("trigger_approval: " + val);
+}
+function copyChatMsg(btn) {
+  var bubble = btn.parentElement.querySelector(".chat-bubble");
+  if (bubble) {
+    var txt = bubble.innerText || bubble.textContent || "";
+    navigator.clipboard.writeText(txt).catch(function(){});
+  }
 }
 </script>''') as demo:
 
@@ -3495,16 +3566,12 @@ function trigger_approval(val) {
                         value=_chat_update_model_info(default_model_label)
                     )
 
-                # ── Chatbot ──
-                chatbot = gr.Chatbot(
-                    value=[{
-                        "role": "assistant",
-                        "content": "**System Ready**\n\nInfraHeal AI v1.0 — Autonomous Incident Diagnosis\nAMD ROCm + vLLM\n\nRun an analysis first, then ask me anything."
-                    }],
-                    height=360,
-                    label="Terminal Chat",
-                    elem_classes="chat-terminal",
-                )
+                # ── Custom Chat (fully custom HTML, no Gradio Chatbot) ──
+                chat_state = gr.State([{
+                    "role": "assistant",
+                    "content": "**System Ready**\n\nInfraHeal AI v1.0 \u2014 Autonomous Incident Diagnosis\nAMD ROCm + vLLM\n\nRun an analysis first, then ask me anything."
+                }])
+                chat_display = gr.HTML(value=_render_chat_html(chat_state.value))
 
                 # ── Input Row ──
                 with gr.Row():
@@ -3541,37 +3608,40 @@ function trigger_approval(val) {
 
                 def _chat_handler(message: str, history: list, model_label: str) -> tuple:
                     if not message or not message.strip():
-                        return history, ""
+                        return history, _render_chat_html(history), ""
                     model_id = model_choices.get(model_label, MODEL_NAME)
                     response = _chat_respond(message, history, model_id=model_id)
-                    history.append({"role": "user", "content": _mhl(message)})
-                    history.append({"role": "assistant", "content": _mhl(response)})
-                    return history, ""
+                    history.append({"role": "user", "content": message})
+                    history.append({"role": "assistant", "content": response})
+                    return history, _render_chat_html(history), ""
 
                 chat_send.click(
                     fn=_chat_handler,
-                    inputs=[chat_msg, chatbot, model_selector],
-                    outputs=[chatbot, chat_msg],
+                    inputs=[chat_msg, chat_state, model_selector],
+                    outputs=[chat_state, chat_display, chat_msg],
                 )
                 chat_msg.submit(
                     fn=_chat_handler,
-                    inputs=[chat_msg, chatbot, model_selector],
-                    outputs=[chatbot, chat_msg],
+                    inputs=[chat_msg, chat_state, model_selector],
+                    outputs=[chat_state, chat_display, chat_msg],
                 )
                 chat_clear.click(
                     fn=lambda: ([{
                         "role": "assistant",
-                        "content": "```\nInfraHeal AI v1.0 — Terminal cleared. Ready for new questions.\n```"
-                    }], ""),
+                        "content": "**System Ready**\n\nInfraHeal AI v1.0 \u2014 Terminal cleared. Ready for new questions."
+                    }], _render_chat_html([{
+                        "role": "assistant",
+                        "content": "**System Ready**\n\nInfraHeal AI v1.0 \u2014 Terminal cleared. Ready for new questions."
+                    }]), ""),
                     inputs=[],
-                    outputs=[chatbot, chat_msg],
+                    outputs=[chat_state, chat_display, chat_msg],
                 )
 
                 for btn, q_text in [(q1, "Why P1?"), (q2, "What's the root cause?"), (q3, "What should I do?"), (q4, "Explain evidence"), (q5, "Re-analyze")]:
                     btn.click(
                         fn=lambda h, m, q=q_text: _chat_handler(q, h, m),
-                        inputs=[chatbot, model_selector],
-                        outputs=[chatbot, chat_msg],
+                        inputs=[chat_state, model_selector],
+                        outputs=[chat_state, chat_display, chat_msg],
                     )
 
                 # Wire analysis button to also update chat status/risk components
