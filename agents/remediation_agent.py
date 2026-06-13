@@ -273,13 +273,13 @@ class RemediationAgent(BaseAgent):
                 "step": action.get("step", idx),
                 "tool_name": tool_name,
                 "parameters": action.get("parameters", {}),
-                "rationale": action.get("rationale", "Auto-generated."),
+                "rationale": action.get("rationale") or tool_name.replace("_"," ").title() + " — standard remediation step.",
                 "risk_level": action.get("risk_level", "medium"),
                 "requires_approval": action.get(
                     "requires_approval",
                     action.get("risk_level", "medium") == "high",
                 ),
-                "expected_outcome": action.get("expected_outcome", "See rationale."),
+                "expected_outcome": action.get("expected_outcome") or tool_name.replace("_"," ") + " executed.",
             })
 
         return {

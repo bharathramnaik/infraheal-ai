@@ -6,6 +6,7 @@ synthesising outputs from all upstream agents (triage, RCA,
 remediation) using LLM when available.
 """
 
+import json
 import logging
 import uuid
 from datetime import datetime, timezone

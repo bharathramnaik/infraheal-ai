@@ -518,9 +518,10 @@ def format_severity_badge(severity: str) -> str:
 
 
 def _hl(text: str) -> str:
-    """Wrap key technical terms in light-blue spans."""
+    """Wrap key technical terms in light-blue spans. HTML-escapes first."""
+    import html as _html
     import re as _re
-    t = str(text)
+    t = _html.escape(str(text))  # escape HTML first so <> in original text are safe
     # Severity/criticality labels
     t = _re.sub(r'\b(P[1-4])\b', r'<span style="color:#60A5FA;font-weight:600;">\1</span>', t)
     t = _re.sub(r'\b(CRITICAL|ERROR|FATAL|WARNING)\b', r'<span style="color:#60A5FA;font-weight:600;">\1</span>', t)
@@ -780,13 +781,12 @@ def format_metrics_panel(metrics: Dict[str, Any]) -> str:
     return f'<div style="display:flex;gap:14px;flex-wrap:wrap;">{cards_html}</div>'
 
 
-def _metric_card_html(icon: str, label: str, value: str, accent: str) -> str:
+def _metric_card_html(label: str, value: str, accent: str) -> str:
     """Build a single metric card block."""
     return (
         f'<div class="metric-card">'
-        f'<div style="position:absolute;top:0;left:0;right:0;height:3px;background:{accent};'
+        f'<div style="position:absolute;top:0;left:0;right:0;height:2px;background:{accent};'
         f'border-radius:14px 14px 0 0;"></div>'
-        f'<div style="font-size:1.4rem;margin-bottom:4px;">{icon}</div>'
         f'<div class="metric-value" style="color:{accent};">{value}</div>'
         f'<div class="metric-label">{label}</div>'
         f'</div>'
@@ -797,7 +797,6 @@ def _empty_state(title: str, subtitle: str = "") -> str:
     """Placeholder panel when no data is loaded."""
     return (
         f'<div style="text-align:center;padding:48px 24px;">'
-        f'<div style="font-size:2.5rem;margin-bottom:12px;opacity:0.3;">📭</div>'
         f'<div style="font-size:1rem;color:#64748b;font-weight:600;">{title}</div>'
         f'<div style="font-size:0.82rem;color:#64748b;margin-top:6px;">{subtitle}</div>'
         f'</div>'
@@ -1853,10 +1852,10 @@ def create_dashboard(
 
         return (
             f'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;">'
-            f'{_metric_card_html("🚨", "Active Incidents", str(total_incidents), _C["red"])}'
-            f'{_metric_card_html("⚡", "Anomalies Detected", str(anomaly_count), _C["amber"])}'
-            f'{_metric_card_html("⏱️", "Mean Resolution", resolution_str, _C["text"])}'
-            f'{_metric_card_html("💚", "System Health", f"{health_pct}%", _C["green"])}'
+            f'{_metric_card_html("Active Incidents", str(total_incidents), _C["red"])}'
+            f'{_metric_card_html("Anomalies Detected", str(anomaly_count), _C["amber"])}'
+            f'{_metric_card_html("Mean Resolution", resolution_str, _C["text"])}'
+            f'{_metric_card_html("System Health", f"{health_pct}%", _C["green"])}'
             f'</div>'
         )
 
@@ -1948,12 +1947,10 @@ def create_dashboard(
 
         return (
             f'<div class="glass-card">'
-            f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">'
-            f'<span style="font-size:1.3rem;">📊</span>'
-            f'<div>'
+            f'<div style="margin-bottom:18px;">'
             f'<div style="font-size:1.05rem;font-weight:700;color:#e2e8f0;">InfraHeal AI — Summary Report</div>'
             f'<div style="font-size:0.75rem;color:#64748b;">Generated {now}</div>'
-            f'</div></div>'
+            f'</div>'
             f'<table class="styled-table">'
             f'<thead><tr><th>ID</th><th>Severity</th><th>Title</th><th>Log Entries</th><th>Status</th></tr></thead>'
             f'<tbody>{incident_rows}</tbody>'
@@ -2011,8 +2008,8 @@ def create_dashboard(
             status_icon = "⚠️" if failures else "✅"
             rows += (
                 f'<tr>'
-                f'<td>{sc_data.get("id", "—")}</td>'
-                f'<td>{badge}</td>'
+                f'<td style="white-space:nowrap;">{sc_data.get("id", "—")}</td>'
+                f'<td style="white-space:nowrap;">{badge}</td>'
                 f'<td>{sc_data.get("title", name)}</td>'
                 f'<td>{cat}</td>'
                 f'<td style="font-size:0.78rem;">{rc}</td>'
@@ -2024,13 +2021,11 @@ def create_dashboard(
         return (
             f'<div class="glass-card">'
             f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">'
-            f'<span style="font-size:1.3rem;">⚙️</span>'
-            f'<div>'
-            f'<div style="font-size:1.05rem;font-weight:700;color:#e2e8f0;">InfraHeal AI — Process All Incidents</div>'
+            f'<span style="font-size:1.05rem;font-weight:700;color:#e2e8f0;">InfraHeal AI — Process All Incidents</span>'
             f'<div style="font-size:0.75rem;color:#64748b;">Generated {now}</div>'
             f'</div></div>'
             f'<table class="styled-table">'
-            f'<thead><tr><th>ID</th><th>Sev</th><th>Title</th><th>Category</th><th>Root Cause</th><th>Actions</th><th>Status</th></tr></thead>'
+            f'<thead><tr><th style="white-space:nowrap;">ID</th><th style="white-space:nowrap;">Sev</th><th>Title</th><th>Category</th><th>Root Cause</th><th>Actions</th><th>Status</th></tr></thead>'
             f'<tbody>{rows}</tbody>'
             f'</table>'
             f'<div style="margin-top:18px;padding:14px;background:rgba(0,255,136,0.04);'
@@ -2260,6 +2255,7 @@ def create_dashboard(
                 with gr.Row():
                     scenario_dropdown = gr.Dropdown(
                         choices=scenario_names,
+                        value=scenario_names[0] if scenario_names else None,
                         label="Select Incident Scenario",
                         scale=3,
                     )
@@ -2754,6 +2750,15 @@ def create_dashboard(
                 )
 
     logger.info("InfraHeal AI dashboard created successfully")
+
+    # On first load, auto-select the first scenario in the Incident Analysis tab
+    if scenario_names:
+        demo.load(
+            fn=_on_scenario_selected,
+            inputs=[scenario_dropdown],
+            outputs=[scenario_desc, scenario_logs],
+        )
+
     return demo
 
 
