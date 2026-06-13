@@ -654,10 +654,8 @@ button.secondary:active {
   padding: 4px 12px !important;
 }
 
-/* ── Approval command input ───────────────────────────────────── */
-#approval-cmd-input { margin-top: 8px; }
-#approval-cmd-input input,
-#approval-cmd-input textarea {
+/* ── Approval command input (container=False, elem_id on input) ── */
+#approval-cmd-input {
   font-family: 'JetBrains Mono', monospace !important;
   font-size: 0.75rem !important;
   background: #0d1117 !important;
@@ -665,11 +663,21 @@ button.secondary:active {
   border-radius: 6px !important;
   color: #8b949e !important;
   padding: 6px 10px !important;
+  margin-top: 8px !important;
+  width: 100% !important;
 }
-#approval-cmd-input input:focus,
-#approval-cmd-input textarea:focus {
+#approval-cmd-input:focus {
   border-color: #60A5FA !important;
   color: #e2e8f0 !important;
+}
+/* Trigger button: off-screen but in DOM for Svelte binding */
+#approval-trigger-btn {
+  position: absolute !important;
+  left: -9999px !important;
+  top: -9999px !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
 }
 /* Chat input and model selector: black & white */
 #agent-chat-tab .gr-box,
@@ -2910,15 +2918,16 @@ function denyAction(aid) {
   };
 }
 function trigger_approval(val) {
-  // Set the visible command input and trigger Gradio's change/submit event
-  var ta = document.querySelector("#approval-cmd-input input, #approval-cmd-input textarea");
-  if (ta) {
+  // With container=False, elem_id is directly on the <input> element
+  var ta = document.querySelector("#approval-cmd-input");
+  var btn = document.getElementById("approval-trigger-btn");
+  console.log("trigger_approval: " + val + " ta=" + (!!ta) + " btn=" + (!!btn));
+  if (ta && btn) {
     ta.value = val;
     ta.dispatchEvent(new Event("input", { bubbles: true }));
     ta.dispatchEvent(new Event("change", { bubbles: true }));
-    ta.dispatchEvent(new Event("submit", { bubbles: true }));
+    setTimeout(function() { btn.click(); }, 150);
   }
-  console.log("trigger_approval: " + val);
 }
 function copyChatMsg(btn) {
   var bubble = btn.parentElement.querySelector(".chat-bubble");
@@ -2999,6 +3008,7 @@ function copyChatMsg(btn) {
                     container=False,
                     scale=1,
                 )
+                approval_trigger = gr.Button("Trigger", elem_id="approval-trigger-btn", visible=True)
                 approval_status = gr.HTML(value="")
 
                 def _on_approval_cmd(cmd: str):
@@ -3026,6 +3036,7 @@ function copyChatMsg(btn) {
 
                 approval_cmd.change(fn=_on_approval_cmd, inputs=[approval_cmd], outputs=[approval_panel, approval_history_panel, approval_status, audit_log_panel])
                 approval_cmd.submit(fn=_on_approval_cmd, inputs=[approval_cmd], outputs=[approval_panel, approval_history_panel, approval_status, audit_log_panel])
+                approval_trigger.click(fn=_on_approval_cmd, inputs=[approval_cmd], outputs=[approval_panel, approval_history_panel, approval_status, audit_log_panel])
                 btn_process.click(fn=_render_approval_panel, inputs=[], outputs=[approval_panel])
                 btn_process.click(fn=_render_approval_history, inputs=[], outputs=[approval_history_panel])
                 btn_process.click(fn=_render_audit_log, inputs=[], outputs=[audit_log_panel])
