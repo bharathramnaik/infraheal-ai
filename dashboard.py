@@ -34,6 +34,11 @@ from log_streamer import LogStreamer, LiveAnalyzer
 _live_log_cache: List[Dict[str, Any]] = []
 _live_log_lock = threading.Lock()
 
+# Pending human approvals queue
+_pending_approvals: List[Dict[str, Any]] = []
+_approval_id_counter = 0
+_monitoring_active = False
+
 # Use DATA_DIR from config for reliable path resolution
 try:
     from config import DATA_DIR as _CFG_DATA_DIR
@@ -1456,6 +1461,13 @@ def create_dashboard(
                     "execution_results": result.get("execution_results", []),
                 })
 
+                # Queue high-risk actions for human approval
+                actions = remed_out.get("recommended_actions", [])
+                report_text = report_out.get("summary", report_out.get("narrative", ""))
+                q_count = _queue_actions_for_approval(scenario_name, actions, report_text)
+                if q_count:
+                    logger.info("Queued %d actions for human approval in scenario %s", q_count, scenario_name)
+
                 return triage_html, rca_html, remed_html, report_html, reasoning_html, \
                        _chat_update_status()[0], _chat_update_status()[1], _chat_refresh_risk()
 
@@ -2045,11 +2057,18 @@ def create_dashboard(
                 tri = result.get("triage", result.get("triage_result", {}))
                 rca = result.get("rca", result.get("rca_result", {}))
                 remed = result.get("remediation", result.get("remediation_result", {}))
+                rep = result.get("report", {})
                 sev = tri.get("severity", "P3")
                 cat = tri.get("category", "unknown")
                 rc = rca.get("root_cause", "—")[:80]
                 action_count = len(remed.get("recommended_actions", []))
                 total_actions += action_count
+
+                # Queue high-risk actions for human approval
+                report_text = rep.get("summary", rep.get("narrative", ""))
+                q_count = _queue_actions_for_approval(name, remed.get("recommended_actions", []), report_text)
+                if q_count:
+                    logger.info("Queued %d actions for human approval in scenario %s", q_count, name)
 
             badge = format_severity_badge(sev)
             status_icon = "⚠️" if failures else "✅"
@@ -2095,6 +2114,102 @@ def create_dashboard(
             f'{failures} failures · Model: {MODEL_NAME.split("/")[-1]}</div>'
             f'</div></div>'
         )
+
+    # ═══════════════════════════════════════════════════════════════
+    #  HUMAN APPROVAL & CONTINUOUS MONITORING
+    # ═══════════════════════════════════════════════════════════════
+
+    def _render_approval_panel() -> str:
+        """Render pending approvals as HTML panel."""
+        global _pending_approvals
+        if not _pending_approvals:
+            pending = [a for a in _pending_approvals if a.get("status") == "pending"]
+            if not pending:
+                return _empty_state("No pending approvals", "All actions have been reviewed.")
+        items = "".join(
+            f'<div style="padding:12px;margin:8px 0;border:1px solid rgba(255,255,255,0.08);border-radius:8px;'
+            f'background:rgba(255,184,0,0.04);border-left:3px solid {_C["amber"]};">'
+            f'<div style="display:flex;justify-content:space-between;align-items:start;">'
+            f'<div style="flex:1;">'
+            f'<div style="font-size:0.85rem;font-weight:600;color:#e2e8f0;">{a.get("title","Action")}</div>'
+            f'<div style="font-size:0.75rem;color:#8b949e;margin:4px 0;">Scenario: {a.get("scenario","?")} | '
+            f'Risk: <span style="color:{_C["red"]};">{a.get("risk","medium")}</span></div>'
+            f'<div style="font-size:0.78rem;color:#c9d1d9;white-space:pre-wrap;">{a.get("summary","")[:200]}</div>'
+            f'</div></div>'
+            f'<div style="display:flex;gap:8px;margin-top:10px;">'
+            f'<button class="chat-quick-btn" onclick="approveAction(\'{a.get("id","")}\')" '
+            f'style="background:#00FF8822!important;border-color:#00FF88!important;color:#00FF88!important;">'
+            f'Approve</button>'
+            f'<button class="chat-quick-btn" onclick="denyAction(\'{a.get("id","")}\')" '
+            f'style="background:#FF3B3B22!important;border-color:#FF3B3B!important;color:#FF3B3B!important;">'
+            f'Deny</button>'
+            f'</div></div>'
+            for a in _pending_approvals if a.get("status") == "pending"
+        )
+        if not items:
+            return _empty_state("No pending approvals", "All actions have been reviewed.")
+        return f'<div style="margin-top:12px;"><div style="font-size:0.8rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Pending Approvals ({len([a for a in _pending_approvals if a.get("status")=="pending"])})</div>{items}</div>'
+
+    def _approve_action(action_id: str) -> str:
+        """Approve a pending action and trigger execution."""
+        global _pending_approvals
+        for a in _pending_approvals:
+            if a.get("id") == action_id and a.get("status") == "pending":
+                a["status"] = "approved"
+                logger.info("Action %s approved by human", action_id)
+                return _render_approval_panel()
+        return _render_approval_panel()
+
+    def _deny_action(action_id: str, reason: str = "") -> str:
+        """Deny a pending action with optional reason."""
+        global _pending_approvals
+        for a in _pending_approvals:
+            if a.get("id") == action_id and a.get("status") == "pending":
+                a["status"] = "denied"
+                a["reason"] = reason or "No reason provided"
+                logger.info("Action %s denied by human: %s", action_id, a["reason"])
+                return _render_approval_panel()
+        return _render_approval_panel()
+
+    def _queue_actions_for_approval(scenario_name: str, actions: list, report_summary: str) -> int:
+        """Queue remediation actions that require human approval. Returns count."""
+        global _pending_approvals, _approval_id_counter
+        count = 0
+        for action in actions:
+            if action.get("requires_approval", False):
+                _approval_id_counter += 1
+                _pending_approvals.append({
+                    "id": f"APP-{_approval_id_counter:04d}",
+                    "scenario": scenario_name,
+                    "title": action.get("tool_name", "Unknown action"),
+                    "risk": action.get("risk_level", "medium"),
+                    "summary": report_summary[:200],
+                    "timestamp": datetime.now().isoformat(),
+                    "status": "pending",
+                    "reason": "",
+                })
+                count += 1
+        return count
+
+    def _continuous_monitor() -> str:
+        """Run continuous monitoring loop: process all incidents, queue approvals, report."""
+        global _monitoring_active
+        _monitoring_active = True
+        logger.info("Continuous monitoring started")
+        try:
+            result = _process_all_incidents()
+            return (
+                result + '<div style="margin-top:12px;padding:10px;background:rgba(0,255,136,0.04);'
+                f'border:1px solid rgba(0,255,136,0.15);border-radius:8px;">'
+                f'<span style="color:{_C["green"]};">Continuous monitoring loop complete.</span> '
+                f'<span style="color:#8b949e;font-size:0.78rem;">'
+                f'Pending approvals: {len([a for a in _pending_approvals if a.get("status")=="pending"])}</span></div>'
+            )
+        except Exception as exc:
+            logger.error("Continuous monitoring failed: %s", exc)
+            return f'<div style="color:{_C["red"]};">Monitoring failed: {exc}</div>'
+        finally:
+            _monitoring_active = False
 
     # ═══════════════════════════════════════════════════════════════
     #  MODEL / THINKING HELPERS
@@ -2172,6 +2287,46 @@ def create_dashboard(
     CHAT_SYSTEM_PROMPT = """You are InfraHeal AI, an autonomous incident diagnosis agent. You just analyzed an infrastructure incident. Answer questions about your analysis, reasoning, and decisions. Be concise and technical. If asked "why", explain your reasoning chain step by step. If asked "re-analyze", acknowledge and suggest running a new analysis."""
 
     def _chat_respond(message: str, history: list, model_id: str = "") -> str:
+        # Handle approval commands in chat
+        msg_lower = message.strip().lower()
+        if msg_lower.startswith("approve ") or msg_lower == "approve all":
+            parts = msg_lower.split()
+            if len(parts) >= 2 and parts[1] == "all":
+                approved = 0
+                for a in _pending_approvals:
+                    if a.get("status") == "pending":
+                        a["status"] = "approved"
+                        approved += 1
+                return f"Approved **{approved}** pending action(s). They will be executed."
+            elif len(parts) >= 2:
+                aid = parts[1].upper()
+                for a in _pending_approvals:
+                    if a.get("id") == aid and a.get("status") == "pending":
+                        a["status"] = "approved"
+                        return f"Action **{aid}** approved and queued for execution."
+                return f"Action **{aid}** not found or already resolved."
+        if msg_lower.startswith("deny ") or msg_lower.startswith("deny all"):
+            parts = msg_lower.split()
+            reason_start = message.find("because ")
+            reason = message[reason_start + 8:].strip() if reason_start >= 0 else "No reason provided"
+            if len(parts) >= 2 and parts[1] == "all":
+                denied = 0
+                for a in _pending_approvals:
+                    if a.get("status") == "pending":
+                        a["status"] = "denied"
+                        a["reason"] = reason
+                        denied += 1
+                return f"Denied **{denied}** pending action(s). Reason: {reason}"
+            elif len(parts) >= 2:
+                aid = parts[1].upper()
+                for a in _pending_approvals:
+                    if a.get("id") == aid and a.get("status") == "pending":
+                        a["status"] = "denied"
+                        a["reason"] = reason
+                        return f"Action **{aid}** denied. Reason: {reason}"
+                return f"Action **{aid}** not found or already resolved."
+
+        # ── normal LLM chat response below ──
         if not _last_pipeline_state.get("triage"):
             return "**No analysis data yet.**\n\nRun an incident analysis first from the **Incident Analysis** tab, then I can answer questions about it."
 
@@ -2279,8 +2434,14 @@ def create_dashboard(
                 header = gr.HTML(value=_branding_header)
                 metrics_row = gr.HTML(value=_get_command_center_metrics)
 
+                # Human approval panel
                 gr.HTML(
-                    '<div class="section-label">Live Log Stream</div>'
+                    '<div class="section-label" style="margin-top:16px;">Approvals Required</div>'
+                )
+                approval_panel = gr.HTML(value=_render_approval_panel)
+
+                gr.HTML(
+                    '<div class="section-label" style="margin-top:16px;">Live Log Stream</div>'
                 )
                 log_stream = gr.HTML(value=_get_command_center_logs)
                 live_timer = gr.Timer(value=3.0, active=True)
@@ -2292,6 +2453,9 @@ def create_dashboard(
                     btn_process = gr.Button("Process All Incidents", variant="secondary", scale=1)
                     btn_report = gr.Button("Generate Report", variant="secondary", scale=1)
 
+                with gr.Row():
+                    btn_monitor = gr.Button("Start Continuous Monitoring", variant="secondary", scale=1)
+
                 scan_output = gr.HTML(
                     value=_empty_state("Anomaly scan results will appear here",
                                        "Click 'Run Anomaly Scan' to start.")
@@ -2300,6 +2464,94 @@ def create_dashboard(
                 btn_scan.click(fn=_run_anomaly_scan, inputs=[], outputs=[scan_output])
                 btn_report.click(fn=_generate_report, inputs=[], outputs=[scan_output])
                 btn_process.click(fn=_process_all_incidents, inputs=[], outputs=[scan_output])
+                btn_monitor.click(fn=_continuous_monitor, inputs=[], outputs=[scan_output])
+
+                # ── Approval panel (refreshed after pipeline runs) ──
+                approval_cmd = gr.Textbox(visible=False, elem_id="approval-cmd-input")
+                approval_panel_out = gr.HTML(value=_render_approval_panel)
+
+                def _on_approval_cmd(cmd: str):
+                    if not cmd:
+                        return _render_approval_panel()
+                    parts = cmd.strip().split("|", 1)
+                    action = parts[0].strip().lower()
+                    aid = parts[1].strip() if len(parts) > 1 else ""
+                    if action == "approve":
+                        _approve_action(aid)
+                    elif action == "deny":
+                        _deny_action(aid)
+                    return _render_approval_panel()
+
+                approval_cmd.change(fn=_on_approval_cmd, inputs=[approval_cmd], outputs=[approval_panel_out])
+                # Refresh the approval panel when pipeline runs
+                btn_process.click(fn=_render_approval_panel, inputs=[], outputs=[approval_panel_out])
+
+                gr.HTML(
+                    '<script>'
+                    'function approveAction(aid) {'
+                    '  var el = document.getElementById("approval-cmd-input");'
+                    '  if (!el) return;'
+                    '  var ta = el.querySelector("textarea");'
+                    '  if (!ta) return;'
+                      # Use Gradio dispatch pattern
+                    '  var nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;'
+                    '  nativeInputValueSetter.call(ta, "approve|" + aid);'
+                    '  ta.dispatchEvent(new Event("input", { bubbles: true }));'
+                    '  ta.dispatchEvent(new Event("change", { bubbles: true }));'
+                    '}'
+                    'function denyAction(aid) {'
+                    '  var el = document.getElementById("approval-cmd-input");'
+                    '  if (!el) return;'
+                    '  var ta = el.querySelector("textarea");'
+                    '  if (!ta) return;'
+                    '  var nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;'
+                    '  nativeInputValueSetter.call(ta, "deny|" + aid);'
+                    '  ta.dispatchEvent(new Event("input", { bubbles: true }));'
+                    '  ta.dispatchEvent(new Event("change", { bubbles: true }));'
+                    '}'
+                    '</script>'
+                )
+
+                # ── Hidden JS bridge for approve/deny buttons ──
+                approval_cmd = gr.Textbox(visible=False, elem_id="approval-cmd-input")
+                approval_panel_out = gr.HTML(value=_render_approval_panel)
+
+                def _on_approval_cmd(cmd: str):
+                    if not cmd:
+                        return _render_approval_panel()
+                    parts = cmd.strip().split("|", 1)
+                    action = parts[0].strip().lower()
+                    aid = parts[1].strip() if len(parts) > 1 else ""
+                    if action == "approve":
+                        _approve_action(aid)
+                    elif action == "deny":
+                        _deny_action(aid)
+                    return _render_approval_panel()
+
+                approval_cmd.change(fn=_on_approval_cmd, inputs=[approval_cmd], outputs=[approval_panel_out])
+                # Also refresh the approval panel when pipeline runs
+                btn_process.click(fn=_render_approval_panel, inputs=[], outputs=[approval_panel_out])
+
+                gr.HTML(
+                    '<script>'
+                    'function approveAction(aid) {'
+                    '  var tb = document.querySelector("#approval-cmd-input textarea, .approval-cmd textarea");'
+                    '  if (!tb) return;'
+                    '  var nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;'
+                    '  nativeInputValueSetter.call(tb, "approve|" + aid);'
+                    '  tb.dispatchEvent(new Event("input", { bubbles: true }));'
+                    '  tb.dispatchEvent(new Event("change", { bubbles: true }));'
+                    '}'
+                    'function denyAction(aid) {'
+                    '  var tb = document.querySelector("#approval-cmd-input textarea, .approval-cmd textarea");'
+                    '  if (!tb) return;'
+                    '  var nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;'
+                    '  nativeInputValueSetter.call(tb, "deny|" + aid);'
+                    '  tb.dispatchEvent(new Event("input", { bubbles: true }));'
+                    '  tb.dispatchEvent(new Event("change", { bubbles: true }));'
+                    '}'
+                    '</script>'
+                )
 
             # ──────────────────────────────────────────────────────
             #  TAB 2 — INCIDENT ANALYSIS
