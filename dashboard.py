@@ -707,7 +707,7 @@ def format_agent_output(agent_name: str, result: Dict[str, Any]) -> str:
             body_parts.append(
                 f'<div style="margin-bottom:8px;">'
                 f'<span style="color:#64748b;font-size:0.72rem;text-transform:uppercase;letter-spacing:1px;">{k.replace("_"," ").title()}</span>'
-                f'<div style="margin-top:3px;font-size:0.82rem;color:#e2e8f0;white-space:pre-wrap;">{_hl(val)}</div>'
+                f'<div style="margin-top:3px;font-size:0.82rem;color:#e2e8f0;white-space:pre-wrap;">{_hl(val) if isinstance(v, str) else val}</div>'
                 f'</div>'
             )
 
