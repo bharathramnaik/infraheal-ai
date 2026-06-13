@@ -2659,25 +2659,65 @@ def create_dashboard(
         font_mono=gr.themes.GoogleFont("JetBrains Mono"),
     )
     with gr.Blocks(title="InfraHeal AI — Autonomous Incident Resolution", css=CUSTOM_CSS, theme=_theme,
-                    head='''<script>
+                    head='''<style>
+.agent-modal { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:9999; }
+.agent-modal-box { background:#161b22; border:1px solid #30363d; border-radius:12px; padding:24px; max-width:460px; width:90%; box-shadow:0 20px 60px rgba(0,0,0,0.5); }
+.agent-modal-title { font-size:1rem; font-weight:700; color:#e2e8f0; margin-bottom:12px; }
+.agent-modal-body { font-size:0.85rem; color:#8b949e; margin-bottom:20px; line-height:1.5; }
+.agent-modal-input { width:100%; padding:10px 12px; background:#0d1117; border:1px solid #30363d; border-radius:8px; color:#e2e8f0; font-size:0.85rem; outline:none; box-sizing:border-box; margin-bottom:16px; }
+.agent-modal-input:focus { border-color:#58a6ff; }
+.agent-modal-actions { display:flex; gap:10px; justify-content:flex-end; }
+.agent-modal-btn { padding:8px 20px; border-radius:8px; border:1px solid; font-size:0.82rem; font-weight:600; cursor:pointer; background:transparent; }
+.agent-modal-btn-primary { background:#00FF8822; border-color:#00FF88; color:#00FF88; }
+.agent-modal-btn-primary:hover { background:#00FF8833; }
+.agent-modal-btn-danger { background:#FF3B3B22; border-color:#FF3B3B; color:#FF3B3B; }
+.agent-modal-btn-danger:hover { background:#FF3B3B33; }
+.agent-modal-btn-cancel { border-color:#30363d; color:#8b949e; }
+.agent-modal-btn-cancel:hover { background:rgba(255,255,255,0.05); }
+</style>
+<script>
+function showModal(title, bodyHtml, confirmCb) {
+  var existing = document.querySelector(".agent-modal");
+  if (existing) existing.remove();
+  var m = document.createElement("div");
+  m.className = "agent-modal";
+  m.innerHTML = '<div class="agent-modal-box"><div class="agent-modal-title">' + title + '</div><div class="agent-modal-body">' + bodyHtml + '</div><div class="agent-modal-actions" id="agent-modal-actions"></div></div>';
+  document.body.appendChild(m);
+  m.addEventListener("click", function(e) { if (e.target === m) m.remove(); });
+  return m;
+}
 function approveAction(aid) {
-  if (!confirm("Approve action " + aid + "? This will execute the remediation step.")) return;
-  var ta = document.querySelector("#approval-cmd-input textarea");
-  if (!ta) { console.warn("approval-cmd-input not found"); return; }
-  var nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
-  nativeInputValueSetter.call(ta, "approve|" + aid);
-  ta.dispatchEvent(new Event("input", { bubbles: true }));
-  ta.dispatchEvent(new Event("change", { bubbles: true }));
+  var m = showModal("Approve Action", "Are you sure you want to approve <b>" + aid + "</b>? This will execute the remediation step.", null);
+  var actions = m.querySelector("#agent-modal-actions");
+  actions.innerHTML = '<button class="agent-modal-btn agent-modal-btn-cancel" onclick="this.closest(\\'.agent-modal\\').remove()">Cancel</button>' +
+    '<button class="agent-modal-btn agent-modal-btn-primary" id="agent-modal-confirm">Approve</button>';
+  document.getElementById("agent-modal-confirm").onclick = function() {
+    m.remove();
+    var ta = document.querySelector("#approval-cmd-input textarea");
+    if (!ta) { console.warn("approval-cmd-input not found"); return; }
+    var nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
+    nativeInputValueSetter.call(ta, "approve|" + aid);
+    ta.dispatchEvent(new Event("input", { bubbles: true }));
+    ta.dispatchEvent(new Event("change", { bubbles: true }));
+  };
 }
 function denyAction(aid) {
-  var reason = prompt("Reason for denying " + aid + ":");
-  if (reason === null) return;
-  var ta = document.querySelector("#approval-cmd-input textarea");
-  if (!ta) { console.warn("approval-cmd-input not found"); return; }
-  var nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
-  nativeInputValueSetter.call(ta, "deny|" + aid + "|" + (reason || "No reason provided"));
-  ta.dispatchEvent(new Event("input", { bubbles: true }));
-  ta.dispatchEvent(new Event("change", { bubbles: true }));
+  var m = showModal("Deny Action", "Provide a reason for denying <b>" + aid + "</b>:", null);
+  var actions = m.querySelector("#agent-modal-actions");
+  actions.innerHTML = '<input class="agent-modal-input" id="agent-modal-reason" placeholder="e.g. Action not needed, already resolved manually" autofocus>' +
+    '<div style="display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="agent-modal-btn agent-modal-btn-cancel" onclick="this.closest(\\'.agent-modal\\').remove()">Cancel</button>' +
+    '<button class="agent-modal-btn agent-modal-btn-danger" id="agent-modal-deny">Deny</button></div>';
+  document.getElementById("agent-modal-deny").onclick = function() {
+    var reason = document.getElementById("agent-modal-reason").value.trim() || "No reason provided";
+    m.remove();
+    var ta = document.querySelector("#approval-cmd-input textarea");
+    if (!ta) { console.warn("approval-cmd-input not found"); return; }
+    var nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
+    nativeInputValueSetter.call(ta, "deny|" + aid + "|" + reason);
+    ta.dispatchEvent(new Event("input", { bubbles: true }));
+    ta.dispatchEvent(new Event("change", { bubbles: true }));
+  };
 }
 </script>''') as demo:
 
@@ -2689,8 +2729,9 @@ function denyAction(aid) {
                 header = gr.HTML(value=_branding_header)
                 metrics_row = gr.HTML(value=_get_command_center_metrics)
 
-                # Human approval panel (collapsible)
-                with gr.Accordion("Approvals Required", open=False):
+                # Human approval panel (collapsible — auto-opens on new approvals)
+                approval_accordion = gr.Accordion("Approvals Required", open=False)
+                with approval_accordion:
                     approval_panel = gr.HTML(value=_render_approval_panel)
 
                 # Approval history display
@@ -2728,8 +2769,12 @@ function denyAction(aid) {
                 btn_report.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
                 btn_process.click(fn=_process_all_incidents, inputs=[], outputs=[scan_output])
                 btn_process.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
+                btn_process.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[approval_accordion])
+                btn_process.click(fn=_render_approval_panel, inputs=[], outputs=[approval_panel])
+                btn_process.click(fn=_render_approval_history, inputs=[], outputs=[approval_history_panel])
                 btn_monitor.click(fn=_continuous_monitor, inputs=[], outputs=[scan_output])
                 btn_monitor.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
+                btn_monitor.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[approval_accordion])
                 btn_monitor.click(fn=_render_approval_panel, inputs=[], outputs=[approval_panel])
                 btn_monitor.click(fn=_render_approval_history, inputs=[], outputs=[approval_history_panel])
                 btn_optimize.click(fn=_run_optimize, inputs=[], outputs=[scan_output])
@@ -2737,21 +2782,27 @@ function denyAction(aid) {
 
                 # ── Approval panel (refreshed after pipeline runs) ──
                 approval_cmd = gr.Textbox(visible=False, elem_id="approval-cmd-input")
+                approval_status = gr.HTML(value="")
 
                 def _on_approval_cmd(cmd: str):
                     if not cmd:
-                        return _render_approval_panel(), _render_approval_history()
+                        return _render_approval_panel(), _render_approval_history(), ""
                     parts = cmd.strip().split("|", 2)
                     action = parts[0].strip().lower()
                     aid = parts[1].strip() if len(parts) > 1 else ""
-                    reason = parts[2].strip() if len(parts) > 2 else ""
+                    reason = html.escape(parts[2].strip()) if len(parts) > 2 else ""
+                    ts = datetime.now().strftime("%H:%M:%S")
                     if action == "approve":
                         _approve_action(aid)
+                        status = f'<div style="padding:8px 12px;margin:4px 0;background:rgba(0,255,136,0.06);border-left:3px solid #00FF88;border-radius:0 6px 6px 0;font-size:0.8rem;"><span style="color:#00FF88;">Approved</span> <span style="color:#8b949e;">{aid} at {ts}</span></div>'
                     elif action == "deny":
                         _deny_action(aid, reason)
-                    return _render_approval_panel(), _render_approval_history()
+                        status = f'<div style="padding:8px 12px;margin:4px 0;background:rgba(255,59,59,0.06);border-left:3px solid #FF3B3B;border-radius:0 6px 6px 0;font-size:0.8rem;"><span style="color:#FF3B3B;">Denied</span> <span style="color:#8b949e;">{aid} at {ts} — {reason[:80]}</span></div>'
+                    else:
+                        status = ""
+                    return _render_approval_panel(), _render_approval_history(), status
 
-                approval_cmd.change(fn=_on_approval_cmd, inputs=[approval_cmd], outputs=[approval_panel, approval_history_panel])
+                approval_cmd.change(fn=_on_approval_cmd, inputs=[approval_cmd], outputs=[approval_panel, approval_history_panel, approval_status])
                 btn_process.click(fn=_render_approval_panel, inputs=[], outputs=[approval_panel])
                 btn_process.click(fn=_render_approval_history, inputs=[], outputs=[approval_history_panel])
 
