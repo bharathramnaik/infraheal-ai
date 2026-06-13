@@ -3515,7 +3515,6 @@ function trigger_approval(val) {
                     height=360,
                     label="Terminal Chat",
                     elem_classes="chat-terminal",
-                    likeable=False,
                 )
 
                 # ── Input Row ──
