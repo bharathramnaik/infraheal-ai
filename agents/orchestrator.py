@@ -217,10 +217,15 @@ class InfraHealOrchestrator:
         logger.info("Step 4/5: Running Remediation Agent…")
         step_start = time.time()
         try:
-            remediation_result = self.remediation_agent.run({
+            remediation_context = {
                 "rca_result": rca_result,
                 "triage_result": triage_result,
-            })
+            }
+            # Inject continuous learning context if provided
+            for key in ("few_shot_examples", "action_preferences"):
+                if key in scenario:
+                    remediation_context[key] = scenario[key]
+            remediation_result = self.remediation_agent.run(remediation_context)
         except Exception as exc:
             logger.error("Remediation failed: %s", exc)
             remediation_result = RemediationAgent._default_result()

@@ -80,6 +80,8 @@ class RemediationAgent(BaseAgent):
                 - ``triage_result``: output from TriageAgent.
                 Optionally:
                 - ``available_tools``: override tool registry.
+                - ``few_shot_examples``: past successful remediations for in-context learning.
+                - ``action_preferences``: historical approval rate string.
 
         Returns:
             Dict with recommended_actions, execution_order,
@@ -88,12 +90,14 @@ class RemediationAgent(BaseAgent):
         """
         rca_result = context.get("rca_result", {})
         triage_result = context.get("triage_result", {})
+        few_shot = context.get("few_shot_examples", "")
+        preferences = context.get("action_preferences", "")
 
         if not rca_result.get("root_cause"):
             self.logger.warning("Remediation called without root cause")
             return self._default_result()
 
-        user_content = self._format_remediation_prompt(rca_result, triage_result)
+        user_content = self._format_remediation_prompt(rca_result, triage_result, few_shot, preferences)
         messages = [
             {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": user_content},
@@ -238,7 +242,8 @@ class RemediationAgent(BaseAgent):
             )
         return "\n".join(lines)
 
-    def _format_remediation_prompt(self, rca_result: dict, triage_result: dict) -> str:
+    def _format_remediation_prompt(self, rca_result: dict, triage_result: dict,
+                                    few_shot: str = "", preferences: str = "") -> str:
         tri = triage_result
         rca = rca_result
         parts = [
@@ -248,6 +253,10 @@ class RemediationAgent(BaseAgent):
         evidence = rca.get("evidence_chain", [])
         if evidence:
             parts.append("ev: " + " | ".join(e[:50] for e in evidence[:2]))
+        if preferences:
+            parts.append("Action success history: " + preferences)
+        if few_shot:
+            parts.append("Past similar incidents resolved with:\n" + few_shot)
         parts.append("Plan remediation. ONLY JSON.")
         return "\n".join(parts)
 

@@ -40,6 +40,100 @@ _approval_history: List[Dict[str, Any]] = []
 _approval_id_counter = 0
 _monitoring_active = False
 
+# Experience store for continuous learning
+_experience_store: List[Dict[str, Any]] = []
+_action_preferences: Dict[str, Dict[str, float]] = {}  # tool_name -> {approved, denied, total}
+EXPERIENCE_STORE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "experience_store.json")
+
+def _save_experience_store():
+    """Persist experience store and action preferences to JSON."""
+    try:
+        data = {
+            "experiences": _experience_store,
+            "preferences": _action_preferences,
+        }
+        with open(EXPERIENCE_STORE_PATH, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, default=str)
+    except Exception as exc:
+        logger.warning("Failed to save experience store: %s", exc)
+
+def _load_experience_store():
+    """Load experience store and action preferences from JSON."""
+    global _experience_store, _action_preferences
+    try:
+        if os.path.exists(EXPERIENCE_STORE_PATH):
+            with open(EXPERIENCE_STORE_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            _experience_store = data.get("experiences", [])
+            _action_preferences = data.get("preferences", {})
+            logger.info("Loaded %d experiences, %d action types from store", len(_experience_store), len(_action_preferences))
+    except Exception as exc:
+        logger.warning("Failed to load experience store: %s", exc)
+
+def _add_experience(entry: dict):
+    """Add an experience entry and update action preferences."""
+    global _experience_store, _action_preferences
+    _experience_store.append(entry)
+    # Update action preferences
+    for action in entry.get("actions_attempted", []):
+        tool = action.get("tool_name", "unknown")
+        if tool not in _action_preferences:
+            _action_preferences[tool] = {"approved": 0, "denied": 0, "total": 0}
+        _action_preferences[tool]["total"] = _action_preferences[tool].get("total", 0) + 1
+        if action.get("approved", False) or entry.get("verdict") == "approved":
+            _action_preferences[tool]["approved"] = _action_preferences[tool].get("approved", 0) + 1
+        if action.get("denied", False) or entry.get("verdict") == "denied":
+            _action_preferences[tool]["denied"] = _action_preferences[tool].get("denied", 0) + 1
+    _save_experience_store()
+
+def _get_few_shot_examples(severity: str, category: str, max_examples: int = 3) -> str:
+    """Retrieve top similar past successful remediations as few-shot string."""
+    if not _experience_store:
+        return ""
+    # Score by matching severity and category, then take most recent
+    scored = []
+    for exp in _experience_store:
+        score = 0
+        if exp.get("severity") == severity:
+            score += 2
+        if exp.get("category") == category:
+            score += 3
+        if exp.get("verdict") == "approved":
+            score += 1
+        scored.append((score, exp))
+    scored.sort(key=lambda x: (-x[0], x[1].get("timestamp", "")))
+    examples = scored[:max_examples]
+    parts = []
+    for _, exp in examples:
+        actions = exp.get("actions_attempted", [])
+        approved_actions = [a for a in actions if not a.get("denied")]
+        if not approved_actions:
+            continue
+        parts.append(
+            f"[Past] sev={exp.get('severity')} cat={exp.get('category')}"
+            f" rc=\"{exp.get('root_cause','')[:60]}\""
+            f" actions={[a['tool_name'] for a in approved_actions]}"
+        )
+    return "\n".join(parts) if parts else ""
+
+def _get_preference_ranking() -> str:
+    """Generate action preference string from historical approval rates."""
+    if not _action_preferences:
+        return ""
+    ranked = sorted(
+        _action_preferences.items(),
+        key=lambda x: x[1].get("approved", 0) / max(x[1].get("total", 1), 1),
+        reverse=True,
+    )
+    parts = []
+    for tool, prefs in ranked:
+        rate = prefs.get("approved", 0) / max(prefs.get("total", 1), 1) * 100
+        parts.append(f"{tool}: {rate:.0f}% approval ({prefs.get('approved',0)}/{prefs.get('total',0)})")
+    return " | ".join(parts)
+
+# Load on startup
+_load_experience_store()
+
 # Use DATA_DIR from config for reliable path resolution
 try:
     from config import DATA_DIR as _CFG_DATA_DIR
@@ -1351,6 +1445,14 @@ def create_dashboard(
                     sc["anomalies"] = detected
                     logger.info("Pre-run anomaly detection: %d anomalies found", len(detected))
 
+                # Inject few-shot examples and preference ranking from experience store
+                sev = sc.get("severity", "P3")
+                cat = sc.get("title", "").split()[0].lower() if sc.get("title") else "infrastructure"
+                sc["few_shot_examples"] = _get_few_shot_examples(sev, cat)
+                sc["action_preferences"] = _get_preference_ranking()
+                if sc.get("few_shot_examples"):
+                    logger.info("Injected %d chars of few-shot examples for %s", len(sc["few_shot_examples"]), scenario_name)
+
                 result = orchestrator.process_scenario(sc)
                 elapsed = time.time() - start
 
@@ -2179,6 +2281,22 @@ def create_dashboard(
                     "timestamp": a["resolved_at"],
                     "execution": exec_result.get("status", "unknown"),
                 })
+                # Log to experience store
+                _add_experience({
+                    "scenario": a.get("scenario", "?"),
+                    "severity": a.get("severity", "P3"),
+                    "category": a.get("category", "infrastructure"),
+                    "root_cause": a.get("summary", "")[:120],
+                    "actions_attempted": [{
+                        "tool_name": a.get("title", "?"),
+                        "risk_level": a.get("risk", "medium"),
+                        "approved": True,
+                        "denied": False,
+                    }] if a.get("action_payload") else [],
+                    "verdict": "approved",
+                    "execution_status": exec_result.get("status", "unknown"),
+                    "timestamp": a["resolved_at"],
+                })
                 return _render_approval_panel()
         return _render_approval_panel()
 
@@ -2196,6 +2314,22 @@ def create_dashboard(
                     "scenario": a.get("scenario", "?"),
                     "title": a.get("title", "?"),
                     "action": "denied",
+                    "reason": a["reason"],
+                    "timestamp": a["resolved_at"],
+                })
+                # Log to experience store
+                _add_experience({
+                    "scenario": a.get("scenario", "?"),
+                    "severity": a.get("severity", "P3"),
+                    "category": a.get("category", "infrastructure"),
+                    "root_cause": a.get("summary", "")[:120],
+                    "actions_attempted": [{
+                        "tool_name": a.get("title", "?"),
+                        "risk_level": a.get("risk", "medium"),
+                        "approved": False,
+                        "denied": True,
+                    }] if a.get("action_payload") else [],
+                    "verdict": "denied",
                     "reason": a["reason"],
                     "timestamp": a["resolved_at"],
                 })
@@ -2243,6 +2377,51 @@ def create_dashboard(
             return f'<div style="color:{_C["red"]};">Monitoring failed: {exc}</div>'
         finally:
             _monitoring_active = False
+
+    def _run_optimize() -> str:
+        """Run LoRA fine-tuning on approved experiences."""
+        try:
+            store_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "experience_store.json")
+            if not os.path.exists(store_path):
+                return f'<div style="color:{_C["amber"]};">No experience store found. Approve some actions first.</div>'
+            with open(store_path) as f:
+                data = json.load(f)
+            experiences = data.get("experiences", [])
+            approved = [e for e in experiences if e.get("verdict") == "approved"]
+            if len(approved) < 3:
+                return (f'<div style="color:{_C["amber"]};">Only {len(approved)} approved experiences '
+                        '(need at least 3 for meaningful training). Keep approving actions.</div>')
+
+            # Run optimize.py as a subprocess
+            opt_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "optimize.py")
+            import subprocess
+            result = subprocess.run(
+                [sys.executable, opt_path, "--adapter-name", "remediation"],
+                capture_output=True, text=True, timeout=600,
+            )
+            output = result.stdout + "\n" + result.stderr
+            logger.info("Optimize output:\n%s", output)
+
+            if result.returncode == 0:
+                return (
+                    f'<div style="padding:12px;background:rgba(0,255,136,0.04);border:1px solid rgba(0,255,136,0.15);'
+                    f'border-radius:8px;">'
+                    f'<div style="color:{_C["green"]};font-weight:600;">Agent optimized successfully</div>'
+                    f'<div style="font-size:0.78rem;color:#8b949e;margin-top:4px;">'
+                    f'Trained on {len(approved)} approved experiences. '
+                    f'Adapter saved to adapters/remediation/</div>'
+                    f'<pre style="font-size:0.7rem;color:#8b949e;margin-top:8px;max-height:200px;overflow:auto;">'
+                    f'{output[:500]}</pre></div>'
+                )
+            else:
+                return (f'<div style="color:{_C["red"]};">Training failed</div>'
+                        f'<pre style="font-size:0.7rem;color:#8b949e;margin-top:4px;max-height:200px;overflow:auto;">'
+                        f'{output[:500]}</pre>')
+        except subprocess.TimeoutExpired:
+            return f'<div style="color:{_C["red"]};">Training timed out after 10 minutes.</div>'
+        except Exception as exc:
+            logger.error("Optimize failed: %s", exc)
+            return f'<div style="color:{_C["red"]};">Optimization failed: {exc}</div>'
 
     def _render_approval_history() -> str:
         """Render approval history as HTML."""
@@ -2512,6 +2691,7 @@ def create_dashboard(
 
                 with gr.Row():
                     btn_monitor = gr.Button("Start Continuous Monitoring", variant="secondary", scale=1)
+                    btn_optimize = gr.Button("Optimize Agent (LoRA)", variant="secondary", scale=1)
 
                 scan_output = gr.HTML(
                     value=_empty_state("Anomaly scan results will appear here",
@@ -2522,6 +2702,7 @@ def create_dashboard(
                 btn_report.click(fn=_generate_report, inputs=[], outputs=[scan_output])
                 btn_process.click(fn=_process_all_incidents, inputs=[], outputs=[scan_output])
                 btn_monitor.click(fn=_continuous_monitor, inputs=[], outputs=[scan_output])
+                btn_optimize.click(fn=_run_optimize, inputs=[], outputs=[scan_output])
 
                 # ── Approval panel (refreshed after pipeline runs) ──
                 approval_cmd = gr.Textbox(visible=False, elem_id="approval-cmd-input")
