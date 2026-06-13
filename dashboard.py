@@ -541,21 +541,17 @@ button.secondary:active {
 .chat-terminal .chat-message.assistant {
   border-left: 3px solid #60A5FA !important;
 }
-/* Hide share + delete icons entirely */
-.chat-terminal button[aria-label="Share"],
-.chat-terminal button[aria-label="Share this message"],
-.chat-terminal button[aria-label="Delete"],
-.chat-terminal button[aria-label="Remove"] {
+/* Hide all action buttons by default */
+.chat-terminal .chat-message button {
   display: none !important;
 }
-/* Copy button: hidden by default, show on hover */
-.chat-terminal .chat-message button[aria-label="Copy"],
-.chat-terminal .chat-message .copy-button {
-  opacity: 0 !important; transition: opacity 0.15s ease !important; pointer-events: none !important;
-}
+/* Show copy button only on hover */
 .chat-terminal .chat-message:hover button[aria-label="Copy"],
-.chat-terminal .chat-message:hover .copy-button {
-  opacity: 1 !important; pointer-events: auto !important;
+.chat-terminal .chat-message:hover button[aria-label="Copy message"],
+.chat-terminal .chat-message:hover .copy-btn,
+.chat-terminal .chat-message:hover .copy-button,
+.chat-terminal .chat-message:hover [data-testid="copy"] {
+  display: inline-flex !important;
 }
 .chat-status-bar {
   background: #161b22;
@@ -2682,7 +2678,7 @@ def create_dashboard(
                         history_msgs.append({"role": "assistant", "content": str(h[1])})
                 history_msgs.append({"role": "user", "content": f"Current incident: {ctx}\n\nQuestion: {message}\n\nAnswer concisely with markdown formatting (tables, code, bold where helpful)."})
 
-                system = "You are InfraHeal AI, an autonomous incident diagnosis agent running on AMD ROCm + vLLM. Answer concisely and technically. Use markdown: **bold** for key terms (outside tables only), `code` for commands/metrics. For tables use plain headers and values — never put **bold** inside table cells as it breaks rendering. Keep tables simple with 2-3 columns."
+                system = "You are InfraHeal AI, an autonomous incident diagnosis agent running on AMD ROCm + vLLM. Answer concisely and technically. Use markdown: **bold** for key terms, `code` for commands/metrics. Do not use tables — use plain inline format with **bold** labels instead. Keep responses under 300 words."
                 past = _past_incidents_summary()
                 if past:
                     system += (
@@ -2715,9 +2711,9 @@ def create_dashboard(
 
         return (
             f"**Incident Summary**\n\n"
-            f"| Severity | Category | Confidence | Actions |\n"
-            f"|----------|----------|-----------|--------|\n"
-            f"| {tri.get('severity','?')} | {tri.get('category','?')} | {rca.get('confidence_score',0):.0%} | {len(remed.get('recommended_actions',[]))} |\n\n"
+            f"**Severity:** {tri.get('severity','?')}  **Category:** {tri.get('category','?')}  "
+            f"**Confidence:** {rca.get('confidence_score',0):.0%}  "
+            f"**Actions:** {len(remed.get('recommended_actions',[]))}\n\n"
             f"**Root cause:** {rca.get('root_cause','unknown')}\n\n"
             f"{len(remed.get('recommended_actions',[]))} remediation actions. "
             f"{'Critique confirmed.' if crit.get('confirmed',True) else 'Critique found gaps.'}"
@@ -3514,11 +3510,12 @@ function trigger_approval(val) {
                 chatbot = gr.Chatbot(
                     value=[{
                         "role": "assistant",
-                        "content": "```\nInfraHeal AI v1.0 — Autonomous Incident Diagnosis\nAMD ROCm + vLLM\n----------------------------------------\nSystem ready. Run an analysis first, then ask me anything.\n```"
+                        "content": "**System Ready**\n\nInfraHeal AI v1.0 — Autonomous Incident Diagnosis\nAMD ROCm + vLLM\n\nRun an analysis first, then ask me anything."
                     }],
                     height=360,
                     label="Terminal Chat",
                     elem_classes="chat-terminal",
+                    likeable=False,
                 )
 
                 # ── Input Row ──
