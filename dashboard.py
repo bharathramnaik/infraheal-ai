@@ -11,6 +11,7 @@ import os
 import time
 import json
 import math
+import html
 import warnings
 import threading
 from datetime import datetime, timedelta
@@ -39,6 +40,55 @@ _pending_approvals: List[Dict[str, Any]] = []
 _approval_history: List[Dict[str, Any]] = []
 _approval_id_counter = 0
 _monitoring_active = False
+
+# Approval audit log (persistent)
+APPROVAL_AUDIT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "approval_audit.json")
+
+def _append_audit_log(entry: dict):
+    """Append to persistent approval audit log."""
+    try:
+        entries = []
+        if os.path.exists(APPROVAL_AUDIT_PATH):
+            with open(APPROVAL_AUDIT_PATH, "r", encoding="utf-8") as f:
+                entries = json.load(f)
+        entries.append(entry)
+        with open(APPROVAL_AUDIT_PATH, "w", encoding="utf-8") as f:
+            json.dump(entries, f, indent=2, default=str)
+    except Exception as exc:
+        logger.warning("Failed to write approval audit log: %s", exc)
+
+def _load_audit_log() -> list:
+    try:
+        if os.path.exists(APPROVAL_AUDIT_PATH):
+            with open(APPROVAL_AUDIT_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception as exc:
+        logger.warning("Failed to read approval audit log: %s", exc)
+    return []
+
+def _render_audit_log() -> str:
+    entries = _load_audit_log()
+    if not entries:
+        return ""
+    rows = "".join(
+        f'<tr>'
+        f'<td style="font-size:0.76rem;white-space:nowrap;">{e.get("action","")}</td>'
+        f'<td style="font-size:0.76rem;">{e.get("id","")}</td>'
+        f'<td style="font-size:0.76rem;">{e.get("title","")[:24]}</td>'
+        f'<td style="font-size:0.76rem;">{e.get("scenario","")[:20]}</td>'
+        f'<td style="font-size:0.76rem;color:#8b949e;">{e.get("reason","")[:40]}</td>'
+        f'<td style="font-size:0.76rem;color:#8b949e;white-space:nowrap;">{str(e.get("timestamp",""))[:19]}</td>'
+        f'</tr>'
+        for e in reversed(entries[-50:])
+    )
+    return (
+        '<div style="margin-top:16px;">'
+        '<div style="font-size:0.8rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">'
+        f'Approval Audit Log ({len(entries)})</div>'
+        '<table class="styled-table" style="font-size:0.76rem;">'
+        '<thead><tr><th>Action</th><th>ID</th><th>Tool</th><th>Scenario</th><th>Reason/Outcome</th><th>Timestamp</th></tr></thead>'
+        f'<tbody>{rows}</tbody></table></div>'
+    )
 
 # Experience store for continuous learning
 _experience_store: List[Dict[str, Any]] = []
@@ -2295,6 +2345,18 @@ def create_dashboard(
                     "execution_status": exec_result.get("status", "unknown"),
                     "timestamp": a["resolved_at"],
                 })
+                # Write audit log
+                _append_audit_log({
+                    "action": "approved",
+                    "id": action_id,
+                    "title": a.get("title", "?"),
+                    "scenario": a.get("scenario", "?"),
+                    "risk": a.get("risk", "medium"),
+                    "execution": exec_result.get("status", "unknown"),
+                    "reason": "",
+                    "timestamp": a["resolved_at"],
+                })
+                logger.info("Audit: approved %s (%s)", action_id, a.get("title", "?"))
                 return _render_approval_panel()
         return _render_approval_panel()
 
@@ -2331,6 +2393,18 @@ def create_dashboard(
                     "reason": a["reason"],
                     "timestamp": a["resolved_at"],
                 })
+                # Write audit log
+                _append_audit_log({
+                    "action": "denied",
+                    "id": action_id,
+                    "title": a.get("title", "?"),
+                    "scenario": a.get("scenario", "?"),
+                    "risk": a.get("risk", "medium"),
+                    "execution": "skipped",
+                    "reason": a["reason"],
+                    "timestamp": a["resolved_at"],
+                })
+                logger.info("Audit: denied %s (%s) — %s", action_id, a.get("title", "?"), a["reason"])
                 return _render_approval_panel()
         return _render_approval_panel()
 
@@ -2689,16 +2763,11 @@ function showModal(title, bodyHtml, confirmCb) {
 function approveAction(aid) {
   var m = showModal("Approve Action", "Are you sure you want to approve <b>" + aid + "</b>? This will execute the remediation step.", null);
   var actions = m.querySelector("#agent-modal-actions");
-  actions.innerHTML = '<button class="agent-modal-btn agent-modal-btn-cancel" onclick="this.closest(\\'.agent-modal\\').remove()">Cancel</button>' +
+  actions.innerHTML = '<button class="agent-modal-btn agent-modal-btn-cancel" onclick="this.closest(\'.agent-modal\').remove()">Cancel</button>' +
     '<button class="agent-modal-btn agent-modal-btn-primary" id="agent-modal-confirm">Approve</button>';
   document.getElementById("agent-modal-confirm").onclick = function() {
     m.remove();
-    var ta = document.querySelector("#approval-cmd-input textarea");
-    if (!ta) { console.warn("approval-cmd-input not found"); return; }
-    var nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
-    nativeInputValueSetter.call(ta, "approve|" + aid);
-    ta.dispatchEvent(new Event("input", { bubbles: true }));
-    ta.dispatchEvent(new Event("change", { bubbles: true }));
+    trigger_approval("approve|" + aid);
   };
 }
 function denyAction(aid) {
@@ -2706,18 +2775,20 @@ function denyAction(aid) {
   var actions = m.querySelector("#agent-modal-actions");
   actions.innerHTML = '<input class="agent-modal-input" id="agent-modal-reason" placeholder="e.g. Action not needed, already resolved manually" autofocus>' +
     '<div style="display:flex;gap:10px;justify-content:flex-end;">' +
-    '<button class="agent-modal-btn agent-modal-btn-cancel" onclick="this.closest(\\'.agent-modal\\').remove()">Cancel</button>' +
+    '<button class="agent-modal-btn agent-modal-btn-cancel" onclick="this.closest(\'.agent-modal\').remove()">Cancel</button>' +
     '<button class="agent-modal-btn agent-modal-btn-danger" id="agent-modal-deny">Deny</button></div>';
   document.getElementById("agent-modal-deny").onclick = function() {
     var reason = document.getElementById("agent-modal-reason").value.trim() || "No reason provided";
     m.remove();
-    var ta = document.querySelector("#approval-cmd-input textarea");
-    if (!ta) { console.warn("approval-cmd-input not found"); return; }
-    var nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
-    nativeInputValueSetter.call(ta, "deny|" + aid + "|" + reason);
-    ta.dispatchEvent(new Event("input", { bubbles: true }));
-    ta.dispatchEvent(new Event("change", { bubbles: true }));
+    trigger_approval("deny|" + aid + "|" + reason);
   };
+}
+function trigger_approval(val) {
+  var ta = document.querySelector("#approval-cmd-input textarea");
+  if (!ta) { console.error("approval-cmd-input textarea not found"); return; }
+  ta.value = val;
+  ta.dispatchEvent(new Event("input", { bubbles: true }));
+  ta.dispatchEvent(new Event("change", { bubbles: true }));
 }
 </script>''') as demo:
 
@@ -2736,6 +2807,9 @@ function denyAction(aid) {
 
                 # Approval history display
                 approval_history_panel = gr.HTML(value=_render_approval_history)
+
+                # Approval audit log (persistent)
+                audit_log_panel = gr.HTML(value=_render_audit_log)
 
                 gr.HTML(
                     '<div class="section-label" style="margin-top:16px;">Live Log Stream</div>'
@@ -2786,7 +2860,7 @@ function denyAction(aid) {
 
                 def _on_approval_cmd(cmd: str):
                     if not cmd:
-                        return _render_approval_panel(), _render_approval_history(), ""
+                        return _render_approval_panel(), _render_approval_history(), "", _render_audit_log()
                     parts = cmd.strip().split("|", 2)
                     action = parts[0].strip().lower()
                     aid = parts[1].strip() if len(parts) > 1 else ""
@@ -2800,11 +2874,13 @@ function denyAction(aid) {
                         status = f'<div style="padding:8px 12px;margin:4px 0;background:rgba(255,59,59,0.06);border-left:3px solid #FF3B3B;border-radius:0 6px 6px 0;font-size:0.8rem;"><span style="color:#FF3B3B;">Denied</span> <span style="color:#8b949e;">{aid} at {ts} — {reason[:80]}</span></div>'
                     else:
                         status = ""
-                    return _render_approval_panel(), _render_approval_history(), status
+                    return _render_approval_panel(), _render_approval_history(), status, _render_audit_log()
 
-                approval_cmd.change(fn=_on_approval_cmd, inputs=[approval_cmd], outputs=[approval_panel, approval_history_panel, approval_status])
+                approval_cmd.change(fn=_on_approval_cmd, inputs=[approval_cmd], outputs=[approval_panel, approval_history_panel, approval_status, audit_log_panel])
                 btn_process.click(fn=_render_approval_panel, inputs=[], outputs=[approval_panel])
                 btn_process.click(fn=_render_approval_history, inputs=[], outputs=[approval_history_panel])
+                btn_process.click(fn=_render_audit_log, inputs=[], outputs=[audit_log_panel])
+                btn_monitor.click(fn=_render_audit_log, inputs=[], outputs=[audit_log_panel])
 
                 # Approval history
                 gr.HTML('<div style="margin-top:12px;"></div>')
