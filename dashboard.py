@@ -679,14 +679,156 @@ button.secondary:active {
   height: 1px !important;
   opacity: 0 !important;
 }
-/* Chat input and model selector: black & white */
-#agent-chat-tab .gr-box,
-#agent-chat-tab .gr-form,
+/* Chat input: buttons overlaid inside textbox at right bottom */
+.chat-input-col {
+  position: relative !important;
+  border: 1px solid #30363d !important;
+  border-radius: 8px !important;
+  background: #0d1117 !important;
+  padding: 0 !important;
+  margin-top: 6px !important;
+}
+.chat-input-col .gr-box {
+  border: none !important;
+  background: transparent !important;
+}
+.chat-input-col textarea,
+.chat-input-col input[type="text"] {
+  border: none !important;
+  background: transparent !important;
+  padding: 10px 80px 10px 12px !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 0.82rem !important;
+  color: #c9d1d9 !important;
+  min-height: 40px !important;
+  resize: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.chat-input-overlay {
+  position: absolute !important;
+  right: 4px !important;
+  bottom: 4px !important;
+  width: auto !important;
+  gap: 2px !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.chat-send-btn, .chat-clear-btn {
+  min-width: 32px !important;
+  height: 28px !important;
+  padding: 2px 6px !important;
+  font-size: 1rem !important;
+  border-radius: 4px !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  color: #8b949e !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  position: relative !important;
+}
+.chat-send-btn {
+  color: #1a6cff !important;
+}
+.chat-send-btn:disabled,
+.chat-send-btn button:disabled {
+  opacity: 0.25 !important;
+  cursor: not-allowed !important;
+}
+.chat-send-btn:hover:not(:disabled),
+.chat-clear-btn:hover {
+  background: #21262d !important;
+  border-color: #30363d !important;
+}
+#chat-send-btn:hover:not(:disabled)::after {
+  content: "Send";
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 0;
+  background: #161b22;
+  border: 1px solid #30363d;
+  color: #c9d1d9;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  white-space: nowrap;
+  font-family: 'JetBrains Mono', monospace;
+  z-index: 100;
+}
+#chat-clear-btn:hover::after {
+  content: "Clear";
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 0;
+  background: #161b22;
+  border: 1px solid #30363d;
+  color: #c9d1d9;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  white-space: nowrap;
+  font-family: 'JetBrains Mono', monospace;
+  z-index: 100;
+}
+/* Model selector: black & white */
 #agent-chat-tab select,
-#agent-chat-tab input[type="text"] {
+#agent-chat-tab .gr-dropdown,
+#agent-chat-tab .gr-dropdown select,
+#agent-chat-tab .gr-dropdown .gr-box,
+#agent-chat-tab label,
+#agent-chat-tab .gr-form,
+#agent-chat-tab .gr-input-field,
+#agent-chat-tab .gr-dropdown-container,
+#agent-chat-tab .choices-wrapper,
+#agent-chat-tab .wrap-inner,
+#agent-chat-tab .dropdown-option {
   background: #0d1117 !important;
   border-color: #30363d !important;
   color: #c9d1d9 !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  border-radius: 6px !important;
+}
+#agent-chat-tab select:focus,
+#agent-chat-tab .gr-dropdown:focus {
+  border-color: #8b949e !important;
+  box-shadow: none !important;
+}
+/* Model selector label */
+#agent-chat-tab label,
+#agent-chat-tab .label-text,
+#agent-chat-tab .gr-dropdown label {
+  color: #8b949e !important;
+  font-size: 0.75rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 1px !important;
+  font-weight: 600 !important;
+}
+/* Chat input and model selector: black & white */
+#agent-chat-tab .gr-box,
+#agent-chat-tab .gr-form {
+  background: transparent !important;
+  border-color: #30363d !important;
+  color: #c9d1d9 !important;
+}
+/* Approval JS bridge: hidden off-screen */
+#approval-cmd-input {
+  position: absolute !important;
+  left: -9999px !important;
+  top: 0 !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+#approval-trigger-btn {
+  position: absolute !important;
+  left: -9999px !important;
+  top: 0 !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 /* ── Misc ─────────────────────────────────────────────────────── */
 .gr-group { border: none !important; }
@@ -2895,13 +3037,16 @@ function showModal(title, bodyHtml, confirmCb) {
   return m;
 }
 function approveAction(aid) {
-  var m = showModal("Approve Action", "Are you sure you want to approve <b>" + aid + "</b>? This will execute the remediation step.", null);
+  var m = showModal("Approve Action", 'Provide a command or note (optional) for approving <b>' + aid + '</b>:', null);
   var actions = m.querySelector("#agent-modal-actions");
-  actions.innerHTML = '<button class="agent-modal-btn agent-modal-btn-cancel" onclick="this.closest(\'.agent-modal\').remove()">Cancel</button>' +
-    '<button class="agent-modal-btn agent-modal-btn-primary" id="agent-modal-confirm">Approve</button>';
-  document.getElementById("agent-modal-confirm").onclick = function() {
+  actions.innerHTML = '<input class="agent-modal-input" id="agent-modal-approve-cmd" placeholder="e.g. Approved, proceed with remediation" autofocus>' +
+    '<div style="display:flex;gap:10px;justify-content:flex-end;">' +
+    '<button class="agent-modal-btn agent-modal-btn-cancel" onclick="this.closest(\'.agent-modal\').remove()">Cancel</button>' +
+    '<button class="agent-modal-btn agent-modal-btn-primary" id="agent-modal-approve">Approve</button></div>';
+  document.getElementById("agent-modal-approve").onclick = function() {
+    var cmd = document.getElementById("agent-modal-approve-cmd").value.trim() || "Approved";
     m.remove();
-    trigger_approval("approve|" + aid);
+    trigger_approval("approve|" + aid + "|" + cmd);
   };
 }
 function denyAction(aid) {
@@ -3000,11 +3145,10 @@ function copyChatMsg(btn) {
                 btn_optimize.click(fn=_run_optimize, inputs=[], outputs=[scan_output])
                 btn_optimize.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
 
-                # ── Approval panel (refreshed after pipeline runs) ──
+                # ── Approval JS bridge (hidden off-screen) ──
                 approval_cmd = gr.Textbox(
                     visible=True,
                     elem_id="approval-cmd-input",
-                    placeholder="approve APP-0001 or deny APP-0001 because ...",
                     container=False,
                     scale=1,
                 )
@@ -3643,15 +3787,15 @@ function copyChatMsg(btn) {
                 chat_display = gr.HTML(value=_render_chat_html(chat_state.value))
 
                 # ── Input Row ──
-                with gr.Row():
+                with gr.Column(elem_classes="chat-input-col"):
                     chat_msg = gr.Textbox(
                         placeholder="Ask a question about the analysis...",
-                        label="Your Question",
-                        scale=5,
+                        label=False,
                         container=False,
                     )
-                    chat_send = gr.Button("\u2191", variant="primary", scale=1, elem_classes="chat-send-btn", interactive=False)
-                    chat_clear = gr.Button("\u2715", variant="secondary", scale=1, elem_classes="chat-clear-btn")
+                    with gr.Row(elem_classes="chat-input-overlay"):
+                        chat_send = gr.Button("\u2191", variant="primary", scale=1, elem_classes="chat-send-btn", elem_id="chat-send-btn", interactive=False)
+                        chat_clear = gr.Button("\u2715", variant="secondary", scale=1, elem_classes="chat-clear-btn", elem_id="chat-clear-btn")
 
                 # ── Quick Questions ──
                 gr.HTML(
@@ -3668,6 +3812,9 @@ function copyChatMsg(btn) {
                 # ── Risk Panel (initialised from state) ──
                 risk_panel = gr.HTML(value=_chat_refresh_risk())
 
+                # Pending quick question state (for generator chaining)
+                pending_quick_q = gr.State("")
+
                 # ── Event Wiring ──
                 model_selector.change(
                     fn=_chat_update_model_info,
@@ -3677,15 +3824,13 @@ function copyChatMsg(btn) {
 
                 def _chat_handler(message: str, history: list, model_label: str):
                     if not message or not message.strip():
-                        yield history, _render_chat_html(history), ""
+                        yield history, _render_chat_html(history), gr.update()
                         return
                     history.append({"role": "user", "content": message})
                     yield history, _render_chat_html(history), ""
-                    # Show thinking indicator
                     history.append({"role": "assistant", "content": "*Thinking...*"})
                     yield history, _render_chat_html(history), ""
                     model_id = model_choices.get(model_label, MODEL_NAME)
-                    # Exclude the temporary "Thinking..." message from LLM context
                     ctx = [h for h in history if h.get("content") != "*Thinking...*"]
                     response = _chat_respond(message, ctx, model_id=model_id)
                     history[-1] = {"role": "assistant", "content": response}
@@ -3720,8 +3865,12 @@ function copyChatMsg(btn) {
 
                 for btn, q_text in [(q1, "Why P1?"), (q2, "What's the root cause?"), (q3, "What should I do?"), (q4, "Explain evidence"), (q5, "Re-analyze")]:
                     btn.click(
-                        fn=lambda h, m, q=q_text: _chat_handler(q, h, m),
-                        inputs=[chat_state, model_selector],
+                        fn=lambda q=q_text: q,
+                        inputs=[],
+                        outputs=[pending_quick_q],
+                    ).then(
+                        fn=_chat_handler,
+                        inputs=[pending_quick_q, chat_state, model_selector],
                         outputs=[chat_state, chat_display, chat_msg],
                     )
 
