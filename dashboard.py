@@ -1970,6 +1970,13 @@ def create_dashboard(
         total_actions = 0
         processed = 0
         failures = 0
+        agg_time = 0.0
+        agg_tokens = 0
+        agg_calls = 0
+        agg_latency_sum = 0.0
+        agg_latency_count = 0
+        agg_timings: Dict[str, float] = {}
+        agg_tokens_per_agent: Dict[str, int] = {}
 
         for name, sc in scenarios.items():
             sc_data = dict(sc)
@@ -1988,6 +1995,24 @@ def create_dashboard(
                 except Exception as exc:
                     logger.warning("Pipeline failed for %s: %s", name, exc)
                     failures += 1
+
+            if result:
+                perf = result.get("pipeline_metrics", {})
+                agg_time += perf.get("total_time_seconds", 0)
+                agent_m = perf.get("agent_metrics", {})
+                totals = agent_m.get("totals", {})
+                agg_tokens += totals.get("total_tokens", 0)
+                agg_calls += totals.get("total_calls", 0)
+                agents_data = agent_m.get("agents", {})
+                for akey, adata in agents_data.items():
+                    lat = adata.get("avg_latency", 0)
+                    tok = adata.get("total_tokens", 0)
+                    alabel = akey.replace("_", " ").title()
+                    agg_timings[alabel] = agg_timings.get(alabel, 0) + lat
+                    agg_tokens_per_agent[alabel] = agg_tokens_per_agent.get(alabel, 0) + tok
+                    if adata.get("successful_calls", 0) > 0:
+                        agg_latency_sum += lat
+                        agg_latency_count += 1
 
             sev = "P3"
             cat = "unknown"
@@ -2016,6 +2041,18 @@ def create_dashboard(
                 f'<td style="color:{_C["green"]};">Analyzed</td>'
                 f'</tr>'
             )
+
+        # Update perf state with aggregated data
+        _perf_state.update({
+            "total_time_seconds": round(agg_time, 1),
+            "total_tokens": agg_tokens,
+            "llm_calls": agg_calls,
+            "avg_latency_ms": round((agg_latency_sum / agg_latency_count) * 1000, 0) if agg_latency_count > 0 else 0,
+            "gpu_memory_mb": 0,
+            "model": MODEL_NAME.split("/")[-1],
+            "agent_timings": agg_timings,
+            "agent_tokens": agg_tokens_per_agent,
+        })
 
         return (
             f'<div class="glass-card">'
@@ -2173,20 +2210,20 @@ def create_dashboard(
                     thinking, clean = _extract_think(content)
                     if thinking:
                         return (
-                            f"<details><summary>🧠 Thinking Trace</summary>\n\n```\n{thinking}\n```\n\n</details>\n\n---\n\n{_hl(clean)}"
+                            f"<details><summary>Thinking Trace</summary>\n\n```\n{thinking}\n```\n\n</details>\n\n---\n\n{clean}"
                         )
-                return _hl(content)
+                return content
             except Exception as exc:
                 logger.warning("Chat LLM failed: %s", exc)
 
-        return _hl(
+        return (
             f"**Incident Summary**\n\n"
             f"| Severity | Category | Confidence | Actions |\n"
             f"|----------|----------|-----------|--------|\n"
             f"| {tri.get('severity','?')} | {tri.get('category','?')} | {rca.get('confidence_score',0):.0%} | {len(remed.get('recommended_actions',[]))} |\n\n"
             f"**Root cause:** {rca.get('root_cause','unknown')}\n\n"
             f"{len(remed.get('recommended_actions',[]))} remediation actions. "
-            f"{'✅ Critique confirmed.' if crit.get('confirmed',True) else '⚠️ Critique found gaps.'}"
+            f"{'Critique confirmed.' if crit.get('confirmed',True) else 'Critique found gaps.'}"
         )
 
     # ═══════════════════════════════════════════════════════════════
