@@ -541,13 +541,18 @@ button.secondary:active {
 .chat-terminal .chat-message.assistant {
   border-left: 3px solid #60A5FA !important;
 }
+/* Hide share + delete icons entirely */
+.chat-terminal button[aria-label="Share"],
+.chat-terminal button[aria-label="Share this message"],
+.chat-terminal button[aria-label="Delete"],
+.chat-terminal button[aria-label="Remove"] {
+  display: none !important;
+}
 /* Copy button: hidden by default, show on hover */
-.chat-terminal .chat-message .copy-icon-wrapper,
 .chat-terminal .chat-message button[aria-label="Copy"],
 .chat-terminal .chat-message .copy-button {
   opacity: 0 !important; transition: opacity 0.15s ease !important; pointer-events: none !important;
 }
-.chat-terminal .chat-message:hover .copy-icon-wrapper,
 .chat-terminal .chat-message:hover button[aria-label="Copy"],
 .chat-terminal .chat-message:hover .copy-button {
   opacity: 1 !important; pointer-events: auto !important;
@@ -2702,13 +2707,13 @@ def create_dashboard(
                     thinking, clean = _extract_think(content)
                     if thinking:
                         return (
-                            f"<details><summary>Thinking Trace</summary>\n\n```\n{thinking}\n```\n\n</details>\n\n---\n\n{clean}"
+                            f"**Thinking Trace**\n\n```\n{thinking}\n```\n\n---\n\n{clean}"
                         )
                 return content
             except Exception as exc:
                 logger.warning("Chat LLM failed: %s", exc)
 
-        return _mhl(
+        return (
             f"**Incident Summary**\n\n"
             f"| Severity | Category | Confidence | Actions |\n"
             f"|----------|----------|-----------|--------|\n"
@@ -3555,7 +3560,7 @@ function trigger_approval(val) {
                     model_id = model_choices.get(model_label, MODEL_NAME)
                     response = _chat_respond(message, history, model_id=model_id)
                     history.append({"role": "user", "content": _mhl(message)})
-                    history.append({"role": "assistant", "content": response})
+                    history.append({"role": "assistant", "content": _mhl(response)})
                     return history, ""
 
                 chat_send.click(
