@@ -72,7 +72,8 @@ AGENT_MAX_TOKENS = {
     "triage_agent": 512,
     "rca_agent": 1024,
     "remediation_agent": 1024,
-    "reporting_agent": 256,
+    "reporting_agent": 1024,
+    "critique_agent": 512,
 }
 TEMPERATURE = 0.3         # Low for consistent agent outputs
 TOP_P = 0.9
