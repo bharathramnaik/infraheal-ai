@@ -36,6 +36,7 @@ _live_log_lock = threading.Lock()
 
 # Pending human approvals queue
 _pending_approvals: List[Dict[str, Any]] = []
+_approval_history: List[Dict[str, Any]] = []
 _approval_id_counter = 0
 _monitoring_active = False
 
@@ -2151,23 +2152,53 @@ def create_dashboard(
         return f'<div style="margin-top:12px;"><div style="font-size:0.8rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Pending Approvals ({len([a for a in _pending_approvals if a.get("status")=="pending"])})</div>{items}</div>'
 
     def _approve_action(action_id: str) -> str:
-        """Approve a pending action and trigger execution."""
-        global _pending_approvals
+        """Approve a pending action and execute it."""
+        global _pending_approvals, _approval_history
         for a in _pending_approvals:
             if a.get("id") == action_id and a.get("status") == "pending":
                 a["status"] = "approved"
+                a["resolved_at"] = datetime.now().isoformat()
                 logger.info("Action %s approved by human", action_id)
+
+                # Execute the action if orchestrator is available
+                exec_result = {"status": "approved_pending"}
+                if orchestrator is not None and a.get("action_payload"):
+                    try:
+                        exec_result = orchestrator.remediation_agent.execute_action(a["action_payload"])
+                        exec_result["step"] = a.get("step", 0)
+                        logger.info("Action %s executed: %s", action_id, exec_result.get("status"))
+                    except Exception as exc:
+                        logger.error("Action %s execution failed: %s", action_id, exc)
+                        exec_result = {"status": "failed", "error": str(exc)}
+
+                _approval_history.append({
+                    "id": action_id,
+                    "scenario": a.get("scenario", "?"),
+                    "title": a.get("title", "?"),
+                    "action": "approved",
+                    "timestamp": a["resolved_at"],
+                    "execution": exec_result.get("status", "unknown"),
+                })
                 return _render_approval_panel()
         return _render_approval_panel()
 
     def _deny_action(action_id: str, reason: str = "") -> str:
         """Deny a pending action with optional reason."""
-        global _pending_approvals
+        global _pending_approvals, _approval_history
         for a in _pending_approvals:
             if a.get("id") == action_id and a.get("status") == "pending":
                 a["status"] = "denied"
                 a["reason"] = reason or "No reason provided"
+                a["resolved_at"] = datetime.now().isoformat()
                 logger.info("Action %s denied by human: %s", action_id, a["reason"])
+                _approval_history.append({
+                    "id": action_id,
+                    "scenario": a.get("scenario", "?"),
+                    "title": a.get("title", "?"),
+                    "action": "denied",
+                    "reason": a["reason"],
+                    "timestamp": a["resolved_at"],
+                })
                 return _render_approval_panel()
         return _render_approval_panel()
 
@@ -2175,7 +2206,7 @@ def create_dashboard(
         """Queue remediation actions that require human approval. Returns count."""
         global _pending_approvals, _approval_id_counter
         count = 0
-        for action in actions:
+        for step_idx, action in enumerate(actions):
             if action.get("requires_approval", False):
                 _approval_id_counter += 1
                 _pending_approvals.append({
@@ -2187,6 +2218,8 @@ def create_dashboard(
                     "timestamp": datetime.now().isoformat(),
                     "status": "pending",
                     "reason": "",
+                    "step": step_idx + 1,
+                    "action_payload": action,
                 })
                 count += 1
         return count
@@ -2210,6 +2243,32 @@ def create_dashboard(
             return f'<div style="color:{_C["red"]};">Monitoring failed: {exc}</div>'
         finally:
             _monitoring_active = False
+
+    def _render_approval_history() -> str:
+        """Render approval history as HTML."""
+        global _approval_history
+        if not _approval_history:
+            return _empty_state("No approval history", "Actions approved or denied will appear here.")
+        rows = "".join(
+            f'<tr>'
+            f'<td style="white-space:nowrap;font-size:0.78rem;color:#8b949e;">{h.get("id","")}</td>'
+            f'<td style="white-space:nowrap;font-size:0.78rem;">{h.get("scenario","")[:20]}</td>'
+            f'<td style="font-size:0.78rem;">{h.get("title","")}</td>'
+            f'<td style="font-size:0.78rem;"><span style="color:{"#00FF88" if h.get("action")=="approved" else "#FF3B3B"};">{h.get("action","")}</span></td>'
+            f'<td style="font-size:0.78rem;color:#8b949e;">{h.get("reason","—")[:40]}</td>'
+            f'<td style="font-size:0.78rem;color:#8b949e;white-space:nowrap;">{h.get("timestamp","")[:19].replace("T"," ")}</td>'
+            f'<td style="font-size:0.78rem;">{h.get("execution","—")}</td>'
+            f'</tr>'
+            for h in reversed(_approval_history)
+        )
+        return (
+            '<div style="margin-top:16px;">'
+            '<div style="font-size:0.8rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">'
+            f'Approval History ({len(_approval_history)})</div>'
+            '<table class="styled-table">'
+            '<thead><tr><th>ID</th><th>Scenario</th><th>Action</th><th>Verdict</th><th>Reason</th><th>Timestamp</th><th>Execution</th></tr></thead>'
+            f'<tbody>{rows}</tbody></table></div>'
+        )
 
     # ═══════════════════════════════════════════════════════════════
     #  MODEL / THINKING HELPERS
@@ -2295,15 +2354,15 @@ def create_dashboard(
                 approved = 0
                 for a in _pending_approvals:
                     if a.get("status") == "pending":
-                        a["status"] = "approved"
+                        _approve_action(a["id"])
                         approved += 1
                 return f"Approved **{approved}** pending action(s). They will be executed."
             elif len(parts) >= 2:
                 aid = parts[1].upper()
                 for a in _pending_approvals:
                     if a.get("id") == aid and a.get("status") == "pending":
-                        a["status"] = "approved"
-                        return f"Action **{aid}** approved and queued for execution."
+                        _approve_action(aid)
+                        return f"Action **{aid}** approved and executed."
                 return f"Action **{aid}** not found or already resolved."
         if msg_lower.startswith("deny ") or msg_lower.startswith("deny all"):
             parts = msg_lower.split()
@@ -2313,16 +2372,14 @@ def create_dashboard(
                 denied = 0
                 for a in _pending_approvals:
                     if a.get("status") == "pending":
-                        a["status"] = "denied"
-                        a["reason"] = reason
+                        _deny_action(a["id"], reason)
                         denied += 1
                 return f"Denied **{denied}** pending action(s). Reason: {reason}"
             elif len(parts) >= 2:
                 aid = parts[1].upper()
                 for a in _pending_approvals:
                     if a.get("id") == aid and a.get("status") == "pending":
-                        a["status"] = "denied"
-                        a["reason"] = reason
+                        _deny_action(aid, reason)
                         return f"Action **{aid}** denied. Reason: {reason}"
                 return f"Action **{aid}** not found or already resolved."
 
@@ -2469,10 +2526,11 @@ def create_dashboard(
                 # ── Approval panel (refreshed after pipeline runs) ──
                 approval_cmd = gr.Textbox(visible=False, elem_id="approval-cmd-input")
                 approval_panel_out = gr.HTML(value=_render_approval_panel)
+                approval_history_out = gr.HTML(value=_render_approval_history)
 
                 def _on_approval_cmd(cmd: str):
                     if not cmd:
-                        return _render_approval_panel()
+                        return _render_approval_panel(), _render_approval_history()
                     parts = cmd.strip().split("|", 1)
                     action = parts[0].strip().lower()
                     aid = parts[1].strip() if len(parts) > 1 else ""
@@ -2480,11 +2538,12 @@ def create_dashboard(
                         _approve_action(aid)
                     elif action == "deny":
                         _deny_action(aid)
-                    return _render_approval_panel()
+                    return _render_approval_panel(), _render_approval_history()
 
-                approval_cmd.change(fn=_on_approval_cmd, inputs=[approval_cmd], outputs=[approval_panel_out])
-                # Refresh the approval panel when pipeline runs
+                approval_cmd.change(fn=_on_approval_cmd, inputs=[approval_cmd], outputs=[approval_panel_out, approval_history_out])
+                # Refresh panels when pipeline runs
                 btn_process.click(fn=_render_approval_panel, inputs=[], outputs=[approval_panel_out])
+                btn_process.click(fn=_render_approval_history, inputs=[], outputs=[approval_history_out])
 
                 gr.HTML(
                     '<script>'
@@ -2493,7 +2552,6 @@ def create_dashboard(
                     '  if (!el) return;'
                     '  var ta = el.querySelector("textarea");'
                     '  if (!ta) return;'
-                      # Use Gradio dispatch pattern
                     '  var nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;'
                     '  nativeInputValueSetter.call(ta, "approve|" + aid);'
                     '  ta.dispatchEvent(new Event("input", { bubbles: true }));'
@@ -2512,46 +2570,8 @@ def create_dashboard(
                     '</script>'
                 )
 
-                # ── Hidden JS bridge for approve/deny buttons ──
-                approval_cmd = gr.Textbox(visible=False, elem_id="approval-cmd-input")
-                approval_panel_out = gr.HTML(value=_render_approval_panel)
-
-                def _on_approval_cmd(cmd: str):
-                    if not cmd:
-                        return _render_approval_panel()
-                    parts = cmd.strip().split("|", 1)
-                    action = parts[0].strip().lower()
-                    aid = parts[1].strip() if len(parts) > 1 else ""
-                    if action == "approve":
-                        _approve_action(aid)
-                    elif action == "deny":
-                        _deny_action(aid)
-                    return _render_approval_panel()
-
-                approval_cmd.change(fn=_on_approval_cmd, inputs=[approval_cmd], outputs=[approval_panel_out])
-                # Also refresh the approval panel when pipeline runs
-                btn_process.click(fn=_render_approval_panel, inputs=[], outputs=[approval_panel_out])
-
-                gr.HTML(
-                    '<script>'
-                    'function approveAction(aid) {'
-                    '  var tb = document.querySelector("#approval-cmd-input textarea, .approval-cmd textarea");'
-                    '  if (!tb) return;'
-                    '  var nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;'
-                    '  nativeInputValueSetter.call(tb, "approve|" + aid);'
-                    '  tb.dispatchEvent(new Event("input", { bubbles: true }));'
-                    '  tb.dispatchEvent(new Event("change", { bubbles: true }));'
-                    '}'
-                    'function denyAction(aid) {'
-                    '  var tb = document.querySelector("#approval-cmd-input textarea, .approval-cmd textarea");'
-                    '  if (!tb) return;'
-                    '  var nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;'
-                    '  nativeInputValueSetter.call(tb, "deny|" + aid);'
-                    '  tb.dispatchEvent(new Event("input", { bubbles: true }));'
-                    '  tb.dispatchEvent(new Event("change", { bubbles: true }));'
-                    '}'
-                    '</script>'
-                )
+                # Approval history
+                gr.HTML('<div style="margin-top:12px;"></div>')
 
             # ──────────────────────────────────────────────────────
             #  TAB 2 — INCIDENT ANALYSIS
