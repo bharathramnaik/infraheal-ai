@@ -2997,6 +2997,7 @@ def create_dashboard(
             for i, (name, sc) in enumerate(scenario_list):
                 sc_data = dict(sc)
                 result = None
+                detected = []
                 title = sc_data.get("title", name)
                 step_name = f"  [{i+1}/{total_scenarios}] {title}"
                 sub = _add_step(step_name, "Anomaly detection & agents", "running")
@@ -3042,11 +3043,16 @@ def create_dashboard(
                         rcs = rca_out.get("root_causes", []) if isinstance(rca_out, dict) else []
                         rc_text = html.escape(rcs[0][:80] if rcs else "—")
 
+                    # Queue actions for human approval
+                    report_text = report_out.get("summary", report_out.get("narrative", "")) if report_out else ""
+                    if actions:
+                        _queue_actions_for_approval(name, actions, report_text)
+
                     summary_rows += (
                         f'<tr><td style="padding:4px 8px;border-bottom:1px solid #21262d;color:#e2e8f0;">{html.escape(title)}</td>'
                         f'<td style="padding:4px 8px;border-bottom:1px solid #21262d;"><span class="severity-{severity}">{severity}</span></td>'
                         f'<td style="padding:4px 8px;border-bottom:1px solid #21262d;color:#8b949e;">{rc_text}</td>'
-                        f'<td style="padding:4px 8px;border-bottom:1px solid #21262d;color:#c9d1d9;text-align:center;">{len(detected) if anomaly_detector is not None else "—"}</td>'
+                        f'<td style="padding:4px 8px;border-bottom:1px solid #21262d;color:#c9d1d9;text-align:center;">{len(detected)}</td>'
                         f'<td style="padding:4px 8px;border-bottom:1px solid #21262d;color:#c9d1d9;text-align:center;">{len(actions)}</td></tr>'
                     )
 
