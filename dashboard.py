@@ -1790,7 +1790,7 @@ def create_dashboard(
             bar_class = st if st in ("completed","failed","warning") else "running"
             prog = s.get("progress", 100 if st in ("completed","failed","warning") else 0)
             if st == "running" and s.get("start", 0) > 0:
-                dur_html = f'<span class="step-timer" data-start="{s["start"]}">00:00</span>'
+                dur_html = f'<span class="step-timer" data-start="{s["start"]}" data-status="running">00:00</span>'
             elif st == "completed" and s.get("start", 0) > 0:
                 dur_html = f'{dur_str}'
             else:
@@ -3438,35 +3438,30 @@ function copyChatMsg(btn) {
     navigator.clipboard.writeText(txt).catch(function(){});
   }
 }
-function startPipelineTimers() {
+function initPipelineTimers() {
   if(window._pipeTimerActive) return;
   window._pipeTimerActive = true;
-  function tick(e,s){if(!e||!s||s<=0)return;var n=Date.now()/1e3,d=Math.max(0,Math.floor(n-s)),m=Math.floor(d/60),sc=d%60;e.textContent=String(m).padStart(2,"0")+":"+String(sc).padStart(2,"0");}
+  function tick(e,s){if(!e||!s||s<=0)return;if(e.dataset.status==="completed")return;var n=Date.now()/1e3,d=Math.max(0,Math.floor(n-s)),m=Math.floor(d/60),sc=d%60;e.textContent=String(m).padStart(2,"0")+":"+String(sc).padStart(2,"0");}
   function poll(){
-    var pe=document.querySelector(".pipeline-timer");
-    if(pe){var ps=parseFloat(pe.dataset.start);tick(pe,ps);}
+    var pe=document.querySelector(".pipeline-timer");if(pe)tick(pe,parseFloat(pe.dataset.start));
     document.querySelectorAll(".step-timer").forEach(function(e){tick(e,parseFloat(e.dataset.start));});
   }
-  setInterval(poll,1000);
-  poll();
+  setInterval(poll,1000);poll();
 }
-document.addEventListener("DOMContentLoaded", startPipelineTimers);
-// Re-tick after Gradio DOM updates (no new interval, just force refresh)
-var _obs = new MutationObserver(function(){
-  var pe=document.querySelector(".pipeline-timer");
-  if(!pe) return;
-  var ps=parseFloat(pe.dataset.start);
-  if(!ps||ps<=0) return;
-  var n=Date.now()/1e3,d=Math.max(0,Math.floor(n-ps)),m=Math.floor(d/60),sc=d%60;
-  pe.textContent=String(m).padStart(2,"0")+":"+String(sc).padStart(2,"0");
+document.addEventListener("DOMContentLoaded", initPipelineTimers);
+// Watch for Gradio DOM swaps — target the Gradio app container
+var _timerRoot=document.querySelector("gradio-app")||document.querySelector(".gradio-container")||document.body;
+var _obs=new MutationObserver(function(){
+  var found=document.querySelector(".pipeline-timer");
+  if(!found)return;
+  var n=Date.now()/1e3,ts=parseFloat(found.dataset.start);
+  if(ts>0)found.textContent=String(Math.floor(Math.max(0,(n-ts))/60)).padStart(2,"0")+":"+String(Math.floor(Math.max(0,(n-ts)))%60).padStart(2,"0");
   document.querySelectorAll(".step-timer").forEach(function(e){
-    var s=parseFloat(e.dataset.start);
-    if(!s||s<=0)return;
-    var d2=Math.max(0,Math.floor(n-s)),m2=Math.floor(d2/60),sc2=d2%60;
-    e.textContent=String(m2).padStart(2,"0")+":"+String(sc2).padStart(2,"0");
+    var s=parseFloat(e.dataset.start);if(!s||s<=0||e.dataset.status==="completed")return;
+    e.textContent=String(Math.floor(Math.max(0,(n-s))/60)).padStart(2,"0")+":"+String(Math.floor(Math.max(0,(n-s)))%60).padStart(2,"0");
   });
 });
-_obs.observe(document.body,{childList:true,subtree:true,attributes:false});
+_obs.observe(_timerRoot,{childList:true,subtree:true,attributes:false});
 </script>''') as demo:
 
         # ──────────────────────────────────────────────────────────
