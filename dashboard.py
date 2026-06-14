@@ -868,6 +868,43 @@ footer { display: none !important; }
   transform: rotate(90deg);
 }
 
+/* ── Button pairs (main + rerun merged) ── */
+.btn-pair {
+  display: inline-flex !important;
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  gap: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+.btn-pair > * {
+  margin: 0 !important;
+}
+.btn-pair .gr-box {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+.btn-pair-main {
+  border-radius: 6px 0 0 6px !important;
+  border-right: 1px solid #30363d !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+.btn-pair-main + .rerun-btn {
+  border-radius: 0 6px 6px 0 !important;
+  margin-left: -1px !important;
+  border-left: 1px solid #30363d !important;
+}
+.btn-pair-main + .rerun-btn:hover {
+  border-color: #58a6ff !important;
+  border-left-color: #58a6ff !important;
+}
+
 /* ── Pipeline Flow ──────────────────────────────────────────────── */
 .pipeline-flow { margin-bottom:20px; }
 .pipeline-header { display:flex; align-items:center; gap:12px; padding:14px 16px; background:#161b22; border:1px solid #30363d; border-radius:10px; margin-bottom:12px; flex-wrap:wrap; }
@@ -3283,9 +3320,9 @@ def create_dashboard(
                     elif isinstance(h, (list, tuple)) and len(h) == 2:
                         history_msgs.append({"role": "user", "content": str(h[0])})
                         history_msgs.append({"role": "assistant", "content": str(h[1])})
-                history_msgs.append({"role": "user", "content": f"Current incident: {ctx}\n\nQuestion: {message}\n\nAnswer concisely with markdown formatting (tables, code, bold where helpful)."})
+                history_msgs.append({"role": "user", "content": f"Current incident: {ctx}\n\nQuestion: {message}\n\nUse clean markdown: start with a direct answer, use ## headers for sections, **bold** key terms, tables for data, and `code` for metrics."})
 
-                system = "You are InfraHeal AI, an autonomous incident diagnosis agent running on AMD ROCm + vLLM. Answer concisely and technically. Use **bold** for key terms, `code` for commands/metrics. Do not use tables \u2014 use inline **bold:** labels instead. Never repeat or restate the user\u2019s question in your response. Keep responses under 250 words."
+                system = "You are InfraHeal AI, an autonomous incident diagnosis agent running on AMD ROCm + vLLM. Follow these formatting rules strictly:\n- Use **bold** for key terms and important phrases\n- Use ## or ### headers to separate sections\n- Use bullet points or numbered lists instead of long paragraphs\n- Use markdown tables for data, comparisons, or lists with multiple traits\n- Use `code` for commands, metrics, and technical values\n- Start with a direct 1-2 sentence answer\n- Never repeat or restate the user's question\n- Keep responses under 250 words"
                 past = _past_incidents_summary()
                 if past:
                     system += (
@@ -3327,22 +3364,40 @@ def create_dashboard(
         )
 
     def _fm(text: str) -> str:
-        """Convert _mhl-style markers to HTML (bold, italic, code, newlines)."""
+        """Convert _mhl-style markers to HTML (bold, italic, code, newlines, tables)."""
         import re as _re
         t = _mhl(text)
         # Strip markdown/code fences: ```markdown ... ```, ```code ... ```, triple backticks
         t = _re.sub(r'```(?:markdown|code|)\s*\n?(.*?)\n?```', r'\1', t, flags=_re.DOTALL)
-        # Convert markdown tables to inline format
+        # Convert markdown tables to HTML tables
         lines = t.split('\n')
         converted = []
-        for line in lines:
+        i = 0
+        while i < len(lines):
+            line = lines[i]
             if line.strip().startswith('|') and line.count('|') > 2:
-                cells = [c.strip() for c in line.split('|') if c.strip()]
-                if cells and not all(c == '-' for c in cells):
-                    # Skip separator rows (|---|)
-                    converted.append(' | '.join(cells))
-                    continue
-            converted.append(line)
+                table_rows = []
+                while i < len(lines) and lines[i].strip().startswith('|') and lines[i].count('|') > 2:
+                    table_rows.append(lines[i].strip())
+                    i += 1
+                if len(table_rows) >= 2:
+                    header_cells = [c.strip() for c in table_rows[0].split('|') if c.strip()]
+                    data_rows = table_rows[2:]  # skip separator row (row 1)
+                    if data_rows:
+                        html = '<table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:0.82rem;">'
+                        html += '<thead><tr>' + ''.join(f'<th style="padding:6px 8px;border:1px solid #30363d;color:#8b949e;text-align:left;">{h}</th>' for h in header_cells) + '</tr></thead>'
+                        html += '<tbody>'
+                        for row in data_rows:
+                            cells = [c.strip() for c in row.split('|') if c.strip()]
+                            html += '<tr>' + ''.join(f'<td style="padding:6px 8px;border:1px solid #30363d;color:#c9d1d9;">{c}</td>' for c in cells) + '</tr>'
+                        html += '</tbody></table>'
+                        converted.append(html)
+                        continue
+                else:
+                    converted.append(line)
+            else:
+                converted.append(line)
+                i += 1
         t = '\n'.join(converted)
         t = _re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', t)
         t = _re.sub(r'\*(.+?)\*', r'<em>\1</em>', t)
@@ -3518,18 +3573,23 @@ function copyChatMsg(btn) {
 
                 gr.HTML('<div style="height:12px;"></div>')
                 # ── Action buttons with rerun ──
-                with gr.Row():
-                    btn_scan = gr.Button("Run Anomaly Scan", variant="secondary", scale=1)
-                    btn_scan_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-scan")
-                    btn_process = gr.Button("Process All Incidents", variant="secondary", scale=1)
-                    btn_process_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-process")
-                    btn_report = gr.Button("Generate Report", variant="secondary", scale=1)
-                    btn_report_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-report")
-                with gr.Row():
-                    btn_monitor = gr.Button("Start Continuous Monitoring", variant="secondary", scale=1)
-                    btn_monitor_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-monitor")
-                    btn_optimize = gr.Button("Optimize Agent (LoRA)", variant="secondary", scale=1)
-                    btn_optimize_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-optimize")
+                with gr.Row(equal_height=True):
+                    with gr.Row(elem_classes="btn-pair"):
+                        btn_scan = gr.Button("Run Anomaly Scan", variant="secondary", elem_id="btn-scan-main", elem_classes="btn-pair-main")
+                        btn_scan_rerun = gr.Button("\u21bb", elem_classes="rerun-btn", elem_id="rerun-scan")
+                    with gr.Row(elem_classes="btn-pair"):
+                        btn_process = gr.Button("Process All Incidents", variant="secondary", elem_id="btn-process-main", elem_classes="btn-pair-main")
+                        btn_process_rerun = gr.Button("\u21bb", elem_classes="rerun-btn", elem_id="rerun-process")
+                    with gr.Row(elem_classes="btn-pair"):
+                        btn_report = gr.Button("Generate Report", variant="secondary", elem_id="btn-report-main", elem_classes="btn-pair-main")
+                        btn_report_rerun = gr.Button("\u21bb", elem_classes="rerun-btn", elem_id="rerun-report")
+                with gr.Row(equal_height=True):
+                    with gr.Row(elem_classes="btn-pair"):
+                        btn_monitor = gr.Button("Start Continuous Monitoring", variant="secondary", elem_id="btn-monitor-main", elem_classes="btn-pair-main")
+                        btn_monitor_rerun = gr.Button("\u21bb", elem_classes="rerun-btn", elem_id="rerun-monitor")
+                    with gr.Row(elem_classes="btn-pair"):
+                        btn_optimize = gr.Button("Optimize Agent (LoRA)", variant="secondary", elem_id="btn-optimize-main", elem_classes="btn-pair-main")
+                        btn_optimize_rerun = gr.Button("\u21bb", elem_classes="rerun-btn", elem_id="rerun-optimize")
 
                 scan_accordion = gr.Accordion("Scan & Pipeline Output", open=False)
                 with scan_accordion:
