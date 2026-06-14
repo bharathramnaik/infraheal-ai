@@ -833,7 +833,7 @@ label { color: var(--text-muted) !important; font-weight: 500 !important; }
 .gr-check-radio label { color: var(--text) !important; }
 footer { display: none !important; }
 
-/* ── Rerun Buttons ──────────────────────────────────────────────── */
+/* ── Rerun Buttons (black & white) ──────────────────────────── */
 .rerun-btn {
   min-width: 32px !important;
   width: 32px !important;
@@ -841,15 +841,16 @@ footer { display: none !important; }
   padding: 0 !important;
   font-size: 1.1rem !important;
   border-radius: 6px !important;
-  border: 1px solid #30363d !important;
-  background: transparent !important;
-  color: #8b949e !important;
+  border: 1px solid #484f58 !important;
+  background: #0d1117 !important;
+  color: #c9d1d9 !important;
   cursor: pointer !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   transition: all 0.15s ease !important;
   line-height: 1 !important;
+  box-shadow: none !important;
 }
 .rerun-btn * {
   padding: 0 !important;
@@ -861,48 +862,11 @@ footer { display: none !important; }
 }
 .rerun-btn:hover {
   background: #21262d !important;
-  border-color: #58a6ff !important;
-  color: #58a6ff !important;
+  border-color: #8b949e !important;
+  color: #ffffff !important;
 }
 .rerun-btn:active {
   transform: rotate(90deg);
-}
-
-/* ── Button pairs (main + rerun merged) ── */
-.btn-pair {
-  display: inline-flex !important;
-  flex: 1 1 0 !important;
-  min-width: 0 !important;
-  gap: 0 !important;
-  border: none !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  padding: 0 !important;
-  margin: 0 !important;
-}
-.btn-pair > * {
-  margin: 0 !important;
-}
-.btn-pair .gr-box {
-  border: none !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  padding: 0 !important;
-}
-.btn-pair-main {
-  border-radius: 6px 0 0 6px !important;
-  border-right: 1px solid #30363d !important;
-  flex: 1 !important;
-  min-width: 0 !important;
-}
-.btn-pair-main + .rerun-btn {
-  border-radius: 0 6px 6px 0 !important;
-  margin-left: -1px !important;
-  border-left: 1px solid #30363d !important;
-}
-.btn-pair-main + .rerun-btn:hover {
-  border-color: #58a6ff !important;
-  border-left-color: #58a6ff !important;
 }
 
 /* ── Pipeline Flow ──────────────────────────────────────────────── */
@@ -1837,6 +1801,8 @@ def create_dashboard(
                 f'</div>'
             )
         elapsed_str = f"{int(elapsed//60):02d}:{int(elapsed%60):02d}"
+        timer_color = "#58a6ff" if status == "running" else ("#00FF88" if status == "completed" else status_color)
+        timer_icon = "\u23F1" if status == "running" else "\u23F0"
         return (
             f'<div class="pipeline-flow">'
             f'<div class="pipeline-header">'
@@ -1844,7 +1810,7 @@ def create_dashboard(
             f'<div class="pipeline-progress" style="flex:1;max-width:160px;height:6px;background:#21262d;border-radius:3px;overflow:hidden;">'
             f'<div style="width:{pct}%;height:100%;background:#{status_color};border-radius:3px;transition:width 0.5s;"></div></div>'
             f'<div class="pipeline-status {status}" style="color:#{status_color};">{status_label} — {pct}%</div>'
-            f'<div class="pipeline-elapsed">{elapsed_str} elapsed</div>'
+            f'<div class="pipeline-elapsed" style="color:#{timer_color};font-weight:600;font-size:0.95rem;font-variant-numeric:tabular-nums;">{timer_icon} {elapsed_str}</div>'
             f'</div>'
             f'<div class="pipeline-steps">{step_html}</div>'
             f'</div>'
@@ -2675,14 +2641,17 @@ def create_dashboard(
                         )
                         sc_data["anomalies"] = detected
                         total_anomalies += len(detected)
-                    result = orchestrator.process_scenario(sc_data)
+                    from concurrent.futures import ThreadPoolExecutor
+                    with ThreadPoolExecutor(max_workers=1) as pool:
+                        fut = pool.submit(orchestrator.process_scenario, sc_data)
+                        result = fut.result(timeout=120)
                     processed += 1
                     _complete_step(step, "completed")
                 except Exception as exc:
                     logger.warning("Pipeline failed for %s: %s", name, exc)
                     failures += 1
                     _complete_step(step, "failed")
-                    step["desc"] = str(exc)[:80]
+                    step["desc"] = f"Timeout or error: {str(exc)[:70]}"
             else:
                 # Demo mode: simulate
                 time.sleep(0.3)
@@ -3017,14 +2986,17 @@ def create_dashboard(
                             )
                             sc_data["anomalies"] = detected
                             total_anomalies += len(detected)
-                        result = orchestrator.process_scenario(sc_data)
+                        from concurrent.futures import ThreadPoolExecutor
+                        with ThreadPoolExecutor(max_workers=1) as pool:
+                            fut = pool.submit(orchestrator.process_scenario, sc_data)
+                            result = fut.result(timeout=120)
                         processed += 1
                         _complete_step(sub, "completed")
                     except Exception as exc:
                         logger.warning("Monitor scenario failed for %s: %s", name, exc)
                         failures += 1
                         _complete_step(sub, "failed")
-                        sub["desc"] = str(exc)[:80]
+                        sub["desc"] = f"Timeout or error: {str(exc)[:70]}"
                 else:
                     time.sleep(0.3)
                     processed += 1
@@ -3573,23 +3545,18 @@ function copyChatMsg(btn) {
 
                 gr.HTML('<div style="height:12px;"></div>')
                 # ── Action buttons with rerun ──
-                with gr.Row(equal_height=True):
-                    with gr.Row(elem_classes="btn-pair"):
-                        btn_scan = gr.Button("Run Anomaly Scan", variant="secondary", elem_id="btn-scan-main", elem_classes="btn-pair-main")
-                        btn_scan_rerun = gr.Button("\u21bb", elem_classes="rerun-btn", elem_id="rerun-scan")
-                    with gr.Row(elem_classes="btn-pair"):
-                        btn_process = gr.Button("Process All Incidents", variant="secondary", elem_id="btn-process-main", elem_classes="btn-pair-main")
-                        btn_process_rerun = gr.Button("\u21bb", elem_classes="rerun-btn", elem_id="rerun-process")
-                    with gr.Row(elem_classes="btn-pair"):
-                        btn_report = gr.Button("Generate Report", variant="secondary", elem_id="btn-report-main", elem_classes="btn-pair-main")
-                        btn_report_rerun = gr.Button("\u21bb", elem_classes="rerun-btn", elem_id="rerun-report")
-                with gr.Row(equal_height=True):
-                    with gr.Row(elem_classes="btn-pair"):
-                        btn_monitor = gr.Button("Start Continuous Monitoring", variant="secondary", elem_id="btn-monitor-main", elem_classes="btn-pair-main")
-                        btn_monitor_rerun = gr.Button("\u21bb", elem_classes="rerun-btn", elem_id="rerun-monitor")
-                    with gr.Row(elem_classes="btn-pair"):
-                        btn_optimize = gr.Button("Optimize Agent (LoRA)", variant="secondary", elem_id="btn-optimize-main", elem_classes="btn-pair-main")
-                        btn_optimize_rerun = gr.Button("\u21bb", elem_classes="rerun-btn", elem_id="rerun-optimize")
+                with gr.Row():
+                    btn_scan = gr.Button("Run Anomaly Scan", variant="secondary", scale=1)
+                    btn_scan_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-scan")
+                    btn_process = gr.Button("Process All Incidents", variant="secondary", scale=1)
+                    btn_process_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-process")
+                    btn_report = gr.Button("Generate Report", variant="secondary", scale=1)
+                    btn_report_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-report")
+                with gr.Row():
+                    btn_monitor = gr.Button("Start Continuous Monitoring", variant="secondary", scale=1)
+                    btn_monitor_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-monitor")
+                    btn_optimize = gr.Button("Optimize Agent (LoRA)", variant="secondary", scale=1)
+                    btn_optimize_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-optimize")
 
                 scan_accordion = gr.Accordion("Scan & Pipeline Output", open=False)
                 with scan_accordion:
