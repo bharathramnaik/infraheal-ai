@@ -1802,7 +1802,7 @@ def create_dashboard(
             )
         elapsed_str = f"{int(elapsed//60):02d}:{int(elapsed%60):02d}"
         timer_color = "#58a6ff" if status == "running" else ("#00FF88" if status == "completed" else status_color)
-        timer_icon = "\u23F1" if status == "running" else "\u23F0"
+        timer_icon = "\u23f1" if status == "running" else "\u23f0"
         start_ts = pr.get("start_time", now)
         js = (
             '<script>(function(){'
@@ -1810,13 +1810,13 @@ def create_dashboard(
             'if(!e||e.dataset.active)return;'
             'e.dataset.active="1";'
             'var s=parseFloat(e.dataset.start);'
-            'if(!s)return;'
+            'if(!s||s<=0)return;'
             'function t(){'
             'var n=Date.now()/1e3;'
             'var d=Math.max(0,Math.floor(n-s));'
             'var m=Math.floor(d/60);'
-            'var sec=d%60;'
-            'e.textContent="\\u23F1 "+String(m).padStart(2,"0")+":"+String(sec).padStart(2,"0");'
+            'var sc=d%60;'
+            'e.textContent="\u23f1 "+String(m).padStart(2,"0")+":"+String(sc).padStart(2,"0");'
             '}'
             't();setInterval(t,1000);'
             '})();</script>'
