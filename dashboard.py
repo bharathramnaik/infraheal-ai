@@ -654,48 +654,49 @@ button.secondary:active {
   padding: 4px 12px !important;
 }
 
-/* Chat input: buttons overlaid inside textbox at right bottom */
-.chat-input-col {
-  position: relative !important;
+/* Chat input: inline row with textbox + buttons */
+.chat-input-row {
+  background: #0d1117 !important;
   border: 1px solid #30363d !important;
   border-radius: 8px !important;
-  background: #0d1117 !important;
-  padding: 0 !important;
   margin-top: 6px !important;
+  padding: 2px 2px !important;
+  gap: 2px !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  min-height: 38px !important;
 }
-.chat-input-col .gr-box {
+.chat-input-row > * {
+  align-self: center !important;
+  margin: 0 !important;
+}
+.chat-input-row .form-control,
+.chat-input-row .wrap,
+.chat-input-row .wrap-inner {
   border: none !important;
   background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
 }
-.chat-input-col textarea,
-.chat-input-col input[type="text"] {
+.chat-input-row textarea,
+.chat-input-row input[type="text"] {
   border: none !important;
   background: transparent !important;
-  padding: 10px 80px 10px 12px !important;
+  padding: 4px 8px !important;
   font-family: 'JetBrains Mono', monospace !important;
   font-size: 0.82rem !important;
   color: #c9d1d9 !important;
-  min-height: 40px !important;
+  min-height: 30px !important;
+  max-height: 80px !important;
   resize: none !important;
   outline: none !important;
   box-shadow: none !important;
-}
-.chat-input-overlay {
-  position: absolute !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
-  right: 4px !important;
-  width: auto !important;
-  gap: 2px !important;
-  border: none !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  overflow: visible !important;
-  z-index: 50 !important;
+  line-height: 1.4 !important;
 }
 .chat-send-btn, .chat-clear-btn {
   min-width: 32px !important;
-  height: 28px !important;
+  height: 30px !important;
   padding: 2px 6px !important;
   font-size: 1rem !important;
   border-radius: 4px !important;
@@ -4178,15 +4179,16 @@ function copyChatMsg(btn) {
                 chat_display = gr.HTML(value=_render_chat_html(chat_state.value))
 
                 # ── Input Row ──
-                with gr.Column(elem_classes="chat-input-col"):
+                with gr.Row(elem_classes="chat-input-row", equal_height=True):
                     chat_msg = gr.Textbox(
                         placeholder="Ask a question about the analysis...",
                         label=False,
                         container=False,
+                        scale=10,
+                        min_width=100,
                     )
-                    with gr.Row(elem_classes="chat-input-overlay"):
-                        chat_send = gr.Button("\u2191", variant="primary", scale=1, elem_classes="chat-send-btn", elem_id="chat-send-btn", interactive=False)
-                        chat_clear = gr.Button("\u2715", variant="secondary", scale=1, elem_classes="chat-clear-btn", elem_id="chat-clear-btn")
+                    chat_send = gr.Button("\u2191", variant="primary", elem_classes="chat-send-btn", elem_id="chat-send-btn", interactive=False, scale=0, min_width=36)
+                    chat_clear = gr.Button("\u2715", variant="secondary", elem_classes="chat-clear-btn", elem_id="chat-clear-btn", scale=0, min_width=36)
 
                 # ── Quick Questions ──
                 gr.HTML(
