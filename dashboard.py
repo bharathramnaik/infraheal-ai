@@ -2649,9 +2649,14 @@ def create_dashboard(
                         sc_data["anomalies"] = detected
                         total_anomalies += len(detected)
                     from concurrent.futures import ThreadPoolExecutor
-                    with ThreadPoolExecutor(max_workers=1) as pool:
-                        fut = pool.submit(orchestrator.process_scenario, sc_data)
+                    pool = ThreadPoolExecutor(max_workers=1)
+                    fut = pool.submit(orchestrator.process_scenario, sc_data)
+                    try:
                         result = fut.result(timeout=120)
+                    finally:
+                        pool.shutdown(wait=False)
+                        if not fut.done():
+                            fut.cancel()
                     processed += 1
                     _complete_step(step, "completed")
                 except Exception as exc:
@@ -2963,36 +2968,116 @@ def create_dashboard(
             _complete_step(_pipeline_run["steps"][-1])
             yield _render_pipeline_flow()
 
-            # Let _process_all_incidents handle all scenarios (confirmed working)
-            saved_pipeline = dict(_pipeline_run)
-            saved_steps = list(_pipeline_run["steps"])
-            try:
-                final_output = ""
-                for partial in _process_all_incidents():
-                    final_output = partial
-            except Exception as exc:
-                logger.warning("Monitor processing failed: %s", exc)
-                final_output = ""
-            # Restore monitor pipeline with completed step
-            _pipeline_run.clear()
-            _pipeline_run.update({
-                "name": "Continuous Monitoring",
-                "status": "running",
-                "steps": saved_steps,
-                "start_time": saved_pipeline.get("start_time", time.time()),
-                "elapsed": 0,
-            })
-            _add_step("Process Active Incidents", "All scenarios completed")
-            _complete_step(_pipeline_run["steps"][-1])
+            # Process each scenario inline with visible per-scenario steps
+            scenario_list = list(scenarios.items())
+            total_scenarios = len(scenario_list)
+            summary_rows = ""
+            total_anomalies = 0
+            total_actions = 0
+            processed = 0
+            failures = 0
+
+            parent_step = _add_step("Process Active Incidents", f"0/{total_scenarios} scenarios", "running")
             yield _render_pipeline_flow()
 
-            # Queue approvals (relies on _process_all_incidents having queued approvals)
+            for i, (name, sc) in enumerate(scenario_list):
+                sc_data = dict(sc)
+                result = None
+                detected_list = []
+                title = sc_data.get("title", name)
+                step_name = f"  [{i+1}/{total_scenarios}] {title}"
+                sub = _add_step(step_name, "Anomaly detection & agents", "running")
+                yield _render_pipeline_flow()
+
+                if orchestrator is not None:
+                    try:
+                        if anomaly_detector is not None:
+                            detected_list = anomaly_detector.detect_all(
+                                logs=sc_data.get("logs", []),
+                                metrics=sc_data.get("metrics", []),
+                            )
+                            sc_data["anomalies"] = detected_list
+                            total_anomalies += len(detected_list)
+                        from concurrent.futures import ThreadPoolExecutor
+                        pool = ThreadPoolExecutor(max_workers=1)
+                        fut = pool.submit(orchestrator.process_scenario, sc_data)
+                        try:
+                            result = fut.result(timeout=120)
+                        finally:
+                            pool.shutdown(wait=False)
+                            if not fut.done():
+                                fut.cancel()
+                        processed += 1
+                        _complete_step(sub, "completed")
+                    except Exception as exc:
+                        logger.warning("Monitor scenario failed for %s: %s", name, exc)
+                        failures += 1
+                        _complete_step(sub, "failed")
+                        sub["desc"] = f"Timeout or error: {str(exc)[:70]}"
+                else:
+                    time.sleep(0.3)
+                    processed += 1
+                    _complete_step(sub, "completed")
+
+                parent_step["desc"] = f"{i+1}/{total_scenarios} scenarios"
+                yield _render_pipeline_flow()
+
+                if result:
+                    remed = result.get("remediation", {})
+                    actions = remed.get("recommended_actions", [])
+                    total_actions += len(actions)
+                    report_out = result.get("report", {})
+                    severity = sc_data.get("severity", "P3")
+                    rc_text = ""
+                    rca_out = result.get("rca", {})
+                    if rca_out:
+                        rcs = rca_out.get("root_causes", []) if isinstance(rca_out, dict) else []
+                        rc_text = html.escape(rcs[0][:80] if rcs else "—")
+
+                    report_text = report_out.get("summary", report_out.get("narrative", "")) if report_out else ""
+                    if actions:
+                        _queue_actions_for_approval(name, actions, report_text)
+
+                    summary_rows += (
+                        f'<tr><td style="padding:4px 8px;border-bottom:1px solid #21262d;color:#e2e8f0;">{html.escape(title)}</td>'
+                        f'<td style="padding:4px 8px;border-bottom:1px solid #21262d;"><span class="severity-{severity}">{severity}</span></td>'
+                        f'<td style="padding:4px 8px;border-bottom:1px solid #21262d;color:#8b949e;">{rc_text}</td>'
+                        f'<td style="padding:4px 8px;border-bottom:1px solid #21262d;color:#c9d1d9;text-align:center;">{len(detected_list)}</td>'
+                        f'<td style="padding:4px 8px;border-bottom:1px solid #21262d;color:#c9d1d9;text-align:center;">{len(actions)}</td></tr>'
+                    )
+
+            _complete_step(parent_step)
+            yield _render_pipeline_flow()
+
             pending = len([a for a in _pending_approvals if a.get("status") == "pending"])
             _add_step("Queue Approvals", f"{pending} pending human review")
             _complete_step(_pipeline_run["steps"][-1], "warning" if pending else "completed")
 
+            now_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            final_output = (
+                f'<div class="glass-card" style="margin-top:16px;">'
+                f'<div style="font-size:1.05rem;font-weight:700;color:#e2e8f0;margin-bottom:12px;">Continuous Monitoring Report</div>'
+                f'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px;">'
+                f'<div class="metric-card"><div class="metric-value">{total_scenarios}</div><div class="metric-label">Scenarios</div></div>'
+                f'<div class="metric-card"><div class="metric-value">{processed}</div><div class="metric-label">Processed</div></div>'
+                f'<div class="metric-card"><div class="metric-value">{failures}</div><div class="metric-label">Failures</div></div>'
+                f'<div class="metric-card"><div class="metric-value">{total_anomalies}</div><div class="metric-label">Anomalies</div></div>'
+                f'<div class="metric-card"><div class="metric-value">{total_actions}</div><div class="metric-label">Actions</div></div>'
+                f'</div>'
+                f'<table style="width:100%;border-collapse:collapse;font-size:0.82rem;">'
+                f'<thead><tr style="border-bottom:2px solid #30363d;">'
+                f'<th style="padding:6px 8px;text-align:left;color:#8b949e;">Incident</th>'
+                f'<th style="padding:6px 8px;text-align:left;color:#8b949e;">Severity</th>'
+                f'<th style="padding:6px 8px;text-align:left;color:#8b949e;">Root Cause</th>'
+                f'<th style="padding:6px 8px;text-align:center;color:#8b949e;">Anomalies</th>'
+                f'<th style="padding:6px 8px;text-align:center;color:#8b949e;">Actions</th>'
+                f'</tr></thead><tbody>{summary_rows}</tbody></table>'
+                f'<div style="color:#8b949e;font-size:0.72rem;margin-top:12px;text-align:right;">Report generated at {now_ts}</div>'
+                f'</div>'
+            )
+
             _pipeline_run["status"] = "completed"
-            yield _render_pipeline_flow() + (final_output or "")
+            yield _render_pipeline_flow() + final_output
         except Exception as exc:
             logger.error("Continuous monitoring failed: %s", exc, exc_info=True)
             _pipeline_run.clear()
