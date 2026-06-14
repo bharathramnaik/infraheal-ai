@@ -1790,10 +1790,9 @@ def create_dashboard(
             bar_class = st if st in ("completed","failed","warning") else "running"
             prog = s.get("progress", 100 if st in ("completed","failed","warning") else 0)
             if st == "running" and s.get("start", 0) > 0:
-                dur_html = f'<span class="step-timer" data-start="{s["start"]}">\u23f1 00:00</span>'
+                dur_html = f'<span class="step-timer" data-start="{s["start"]}">00:00</span>'
             elif st == "completed" and s.get("start", 0) > 0:
-                end_t = s.get("start", 0) + dur
-                dur_html = f'<span class="step-timer-done" data-start="{s["start"]}" data-end="{end_t}">\u23f0 {dur_str}</span>'
+                dur_html = f'{dur_str}'
             else:
                 dur_html = dur_str
             step_html += (
@@ -1809,7 +1808,6 @@ def create_dashboard(
             )
         elapsed_str = f"{int(elapsed//60):02d}:{int(elapsed%60):02d}"
         timer_color = "#58a6ff" if status == "running" else ("#00FF88" if status == "completed" else status_color)
-        timer_icon = "\u23f1" if status == "running" else "\u23f0"
         start_ts = pr.get("start_time", now)
         js = (
             '<script>(function(){'
@@ -1819,7 +1817,7 @@ def create_dashboard(
             'var d=Math.max(0,Math.floor(n-start));'
             'var m=Math.floor(d/60);'
             'var sc=d%60;'
-            'e.textContent="\u23f1 "+String(m).padStart(2,"0")+":"+String(sc).padStart(2,"0");'
+            'e.textContent=String(m).padStart(2,"0")+":"+String(sc).padStart(2,"0");'
             '}'
             'var pe=document.querySelector(".pipeline-timer");'
             'var ps=pe?parseFloat(pe.dataset.start):0;'
@@ -1841,7 +1839,7 @@ def create_dashboard(
             f'<div class="pipeline-progress" style="flex:1;max-width:160px;height:6px;background:#21262d;border-radius:3px;overflow:hidden;">'
             f'<div style="width:{pct}%;height:100%;background:#{status_color};border-radius:3px;transition:width 0.5s;"></div></div>'
             f'<div class="pipeline-status {status}" style="color:#{status_color};">{status_label} — {pct}%</div>'
-            f'<span class="pipeline-timer" data-start="{start_ts}" style="color:#{timer_color};font-weight:600;font-size:0.95rem;font-variant-numeric:tabular-nums;">{timer_icon} {elapsed_str}</span>'
+            f'<span class="pipeline-timer" data-start="{start_ts}" style="color:#{timer_color};font-weight:600;font-size:0.95rem;font-variant-numeric:tabular-nums;">{elapsed_str}</span>'
             f'</div>'
             f'<div class="pipeline-steps">{step_html}</div>'
             f'{js}</div>'
@@ -2977,18 +2975,11 @@ def create_dashboard(
             yield _render_pipeline_flow()
             if anomaly_detector is not None:
                 try:
-                    from concurrent.futures import ThreadPoolExecutor, TimeoutError as _TimeoutError
-                    with ThreadPoolExecutor(max_workers=1) as _pool:
-                        _fut = _pool.submit(_generate_live_logs)
-                        logs = _fut.result(timeout=30)
+                    logs = _generate_live_logs()
                     if logs:
-                        with ThreadPoolExecutor(max_workers=1) as _pool2:
-                            _fut2 = _pool2.submit(anomaly_detector.detect, logs=logs, metrics=[])
-                            detected = _fut2.result(timeout=60)
+                        detected = anomaly_detector.detect(logs=logs, metrics=[])
                         if detected:
                             logger.info("Monitor detected %d anomalies", len(detected))
-                except _TimeoutError:
-                    logger.warning("Log stream scan timed out")
                 except Exception as exc:
                     logger.warning("Log stream scan issue: %s", exc)
             _complete_step(_pipeline_run["steps"][-1])
