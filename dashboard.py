@@ -682,8 +682,9 @@ button.secondary:active {
 }
 .chat-input-overlay {
   position: absolute !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
   right: 4px !important;
-  bottom: 4px !important;
   width: auto !important;
   gap: 2px !important;
   border: none !important;
@@ -793,26 +794,24 @@ button.secondary:active {
   border-color: #30363d !important;
   color: #c9d1d9 !important;
 }
-/* Approval JS bridge: hidden off-screen */
+/* Approval command input inside accordion */
 #approval-cmd-input {
-  position: absolute !important;
-  left: -9999px !important;
-  top: 0 !important;
-  width: 1px !important;
-  height: 1px !important;
-  opacity: 0.01 !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 0.75rem !important;
+  background: #0d1117 !important;
+  border: 1px solid #30363d !important;
+  border-radius: 6px !important;
+  color: #c9d1d9 !important;
+  padding: 8px 12px !important;
+  width: 100% !important;
+  margin-top: 8px !important;
+  box-sizing: border-box !important;
+}
+#approval-cmd-input:focus {
+  border-color: #58a6ff !important;
 }
 #approval-trigger-btn {
-  position: absolute !important;
-  left: -9999px !important;
-  top: 0 !important;
-  width: 1px !important;
-  height: 1px !important;
-  opacity: 0.01 !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  border: none !important;
-  overflow: hidden !important;
+  margin-top: 6px !important;
 }
 /* ── Misc ─────────────────────────────────────────────────────── */
 .gr-group { border: none !important; }
@@ -2005,7 +2004,7 @@ def create_dashboard(
                 triage_html = pipeline_html + triage_html
 
                 return triage_html, rca_html, remed_html, report_html, reasoning_html, \
-                       _chat_update_status()[0], _chat_update_status()[1], _chat_refresh_risk()
+                       _chat_update_status()[0], _chat_update_status()[1], _chat_refresh_risk(), pipeline_html
 
             except Exception as exc:
                 logger.error("Orchestrator failed: %s", exc, exc_info=True)
@@ -2028,7 +2027,7 @@ def create_dashboard(
                     f'</div>'
                 )
                 return error_html, error_html, error_html, error_html, error_html, \
-                       _chat_update_status()[0], _chat_update_status()[1], _chat_refresh_risk()
+                       _chat_update_status()[0], _chat_update_status()[1], _chat_refresh_risk(), pipeline_html
 
         # ---- Demo mode (no orchestrator) ----
         demo_triage = format_agent_output("Triage", {
@@ -2148,7 +2147,7 @@ def create_dashboard(
         demo_triage = pipeline_html + demo_triage
 
         return demo_triage, demo_rca, demo_remed, demo_report, demo_reasoning, \
-               _chat_update_status()[0], _chat_update_status()[1], _chat_refresh_risk()
+               _chat_update_status()[0], _chat_update_status()[1], _chat_refresh_risk(), pipeline_html
 
     def _run_error_level_resolution(scenario_name: str, level_filter: str) -> str:
         """Run error-level specific resolution analysis with progress timing."""
@@ -3242,6 +3241,18 @@ def create_dashboard(
         t = _mhl(text)
         # Strip markdown/code fences: ```markdown ... ```, ```code ... ```, triple backticks
         t = _re.sub(r'```(?:markdown|code|)\s*\n?(.*?)\n?```', r'\1', t, flags=_re.DOTALL)
+        # Convert markdown tables to inline format
+        lines = t.split('\n')
+        converted = []
+        for line in lines:
+            if line.strip().startswith('|') and line.count('|') > 2:
+                cells = [c.strip() for c in line.split('|') if c.strip()]
+                if cells and not all(c == '-' for c in cells):
+                    # Skip separator rows (|---|)
+                    converted.append(' | '.join(cells))
+                    continue
+            converted.append(line)
+        t = '\n'.join(converted)
         t = _re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', t)
         t = _re.sub(r'\*(.+?)\*', r'<em>\1</em>', t)
         t = _re.sub(r'`(.+?)`', r'<code>\1</code>', t)
@@ -3389,6 +3400,15 @@ function copyChatMsg(btn) {
                 approval_accordion = gr.Accordion("Approvals Required", open=False)
                 with approval_accordion:
                     approval_panel = gr.HTML(value=_render_approval_panel)
+                    approval_cmd = gr.Textbox(
+                        visible=True,
+                        elem_id="approval-cmd-input",
+                        placeholder="approve APP-001 or deny APP-001 because <reason>",
+                        container=False,
+                        scale=1,
+                    )
+                    approval_trigger = gr.Button("Submit", elem_id="approval-trigger-btn", variant="primary", visible=True)
+                    approval_status = gr.HTML(value="")
 
                 # Approval history display
                 approval_history_panel = gr.HTML(value=_render_approval_history)
@@ -3525,16 +3545,6 @@ function copyChatMsg(btn) {
                     btn.click(fn=_render_approval_history, inputs=[], outputs=[approval_history_panel])
                     btn.click(fn=_render_audit_log, inputs=[], outputs=[audit_log_panel])
 
-                # ── Approval JS bridge (hidden off-screen) ──
-                approval_cmd = gr.Textbox(
-                    visible=True,
-                    elem_id="approval-cmd-input",
-                    container=False,
-                    scale=1,
-                )
-                approval_trigger = gr.Button("Trigger", elem_id="approval-trigger-btn", visible=True)
-                approval_status = gr.HTML(value="")
-
                 def _on_approval_cmd(cmd: str):
                     try:
                         if not cmd:
@@ -3545,7 +3555,6 @@ function copyChatMsg(btn) {
                         reason = html.escape(parts[2].strip()) if len(parts) > 2 else ""
                         ts = datetime.now().strftime("%H:%M:%S")
                         logger.info("Approval cmd received: %s | %s", action, aid)
-                        # Find the action title for display
                         action_title = aid
                         for a in _pending_approvals:
                             if a.get("id") == aid:
@@ -4261,7 +4270,7 @@ function copyChatMsg(btn) {
                     fn=_run_analysis,
                     inputs=[scenario_dropdown],
                     outputs=[triage_panel, rca_panel, remed_panel, report_panel, reasoning_panel,
-                             status_dot, status_text, risk_panel],
+                             status_dot, status_text, risk_panel, scan_output],
                 )
 
         # On first load, auto-select the first scenario in the Incident Analysis tab
