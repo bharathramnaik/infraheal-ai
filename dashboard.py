@@ -823,6 +823,41 @@ button.secondary:active {
 label { color: var(--text-muted) !important; font-weight: 500 !important; }
 .gr-check-radio label { color: var(--text) !important; }
 footer { display: none !important; }
+
+/* ── Pipeline Flow ──────────────────────────────────────────────── */
+.pipeline-flow { margin-bottom:20px; }
+.pipeline-header { display:flex; align-items:center; gap:12px; padding:14px 16px; background:#161b22; border:1px solid #30363d; border-radius:10px; margin-bottom:12px; flex-wrap:wrap; }
+.pipeline-title { font-size:0.85rem; font-weight:700; color:#e2e8f0; flex:1; }
+.pipeline-status { font-size:0.75rem; font-weight:600; padding:4px 10px; border-radius:12px; white-space:nowrap; }
+.pipeline-status.running { background:rgba(88,166,255,0.15); color:#58a6ff; }
+.pipeline-status.completed { background:rgba(0,255,136,0.15); color:#00FF88; }
+.pipeline-status.failed { background:rgba(255,59,59,0.15); color:#FF3B3B; }
+.pipeline-status.warning { background:rgba(255,184,0,0.15); color:#FFB800; }
+.pipeline-elapsed { font-size:0.72rem; color:#8b949e; font-family:'JetBrains Mono',monospace; white-space:nowrap; }
+.pipeline-steps { display:flex; flex-direction:column; gap:2px; position:relative; padding-left:20px; }
+.pipeline-steps::before { content:''; position:absolute; left:9px; top:12px; bottom:12px; width:2px; background:#21262d; }
+.pipeline-step { display:flex; align-items:center; gap:12px; padding:10px 14px; background:#0d1117; border:1px solid #21262d; border-radius:6px; position:relative; transition:all 0.2s; }
+.pipeline-step:hover { border-color:#30363d; background:#161b22; }
+.pipeline-step-icon { width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.7rem; flex-shrink:0; position:relative; z-index:1; }
+.pipeline-step-icon.pending { background:#21262d; border:2px solid #30363d; color:#484f58; }
+.pipeline-step-icon.running { background:rgba(88,166,255,0.2); border:2px solid #58a6ff; animation:pulse 1.2s infinite; }
+.pipeline-step-icon.completed { background:rgba(0,255,136,0.2); border:2px solid #00FF88; }
+.pipeline-step-icon.completed::after { content:'✓'; color:#00FF88; font-weight:700; }
+.pipeline-step-icon.failed { background:rgba(255,59,59,0.2); border:2px solid #FF3B3B; }
+.pipeline-step-icon.failed::after { content:'✗'; color:#FF3B3B; font-weight:700; }
+.pipeline-step-icon.warning { background:rgba(255,184,0,0.2); border:2px solid #FFB800; }
+.pipeline-step-icon.warning::after { content:'⚠'; color:#FFB800; font-weight:700; }
+@keyframes pulse { 0%,100% { box-shadow:0 0 0 0 rgba(88,166,255,0.4); } 50% { box-shadow:0 0 0 6px rgba(88,166,255,0); } }
+.pipeline-step-info { flex:1; min-width:0; }
+.pipeline-step-name { font-size:0.8rem; font-weight:600; color:#c9d1d9; }
+.pipeline-step-desc { font-size:0.72rem; color:#8b949e; margin-top:1px; }
+.pipeline-step-duration { font-size:0.7rem; color:#64748b; font-family:'JetBrains Mono',monospace; white-space:nowrap; margin-left:auto; padding-left:12px; }
+.pipeline-step-progress { width:80px; height:4px; background:#21262d; border-radius:2px; overflow:hidden; margin-left:8px; flex-shrink:0; }
+.pipeline-step-progress-bar { height:100%; border-radius:2px; transition:width 0.5s ease; }
+.pipeline-step-progress-bar.completed { background:#00FF88; }
+.pipeline-step-progress-bar.running { background:#58a6ff; }
+.pipeline-step-progress-bar.failed { background:#FF3B3B; }
+.pipeline-step-progress-bar.warning { background:#FFB800; }
 """
 
 
@@ -1680,6 +1715,80 @@ def create_dashboard(
     _perf_state: Dict[str, Any] = {}
     _last_pipeline_state: Dict[str, Any] = {}
 
+    # ── Pipeline flow state ────────────────────────────────────────
+    _pipeline_run: Dict[str, Any] = {"name": "", "status": "idle", "steps": [], "start_time": 0, "elapsed": 0}
+
+    def _pipeline_step(name: str, desc: str = "", status: str = "pending", progress: int = 0):
+        return {"name": name, "desc": desc, "status": status, "progress": progress, "duration": 0, "start": time.time()}
+
+    def _render_pipeline_flow() -> str:
+        pr = _pipeline_run
+        steps = pr.get("steps", [])
+        if not steps:
+            return ""
+        now = time.time()
+        elapsed = now - pr.get("start_time", now)
+        pr["elapsed"] = elapsed
+        status = pr.get("status", "idle")
+        status_color = {"running":"58a6ff","completed":"00FF88","failed":"FF3B3B","warning":"FFB800","idle":"8b949e"}.get(status, "8b949e")
+        status_label = {"running":"Running...","completed":"Completed","failed":"Failed","warning":"Warning","idle":"Idle"}.get(status, status)
+        done = sum(1 for s in steps if s["status"] in ("completed","failed","warning"))
+        total = len(steps)
+        pct = int(done / total * 100) if total else 0
+        step_html = ""
+        for s in steps:
+            st = s["status"]
+            icon_html = f'<div class="pipeline-step-icon {st}"></div>'
+            dur = s.get("duration", 0)
+            dur_str = f"{dur:.1f}s" if dur > 0 else ("..." if st == "running" else "--")
+            bar_class = st if st in ("completed","failed","warning") else "running"
+            prog = s.get("progress", 100 if st in ("completed","failed","warning") else 0)
+            step_html += (
+                f'<div class="pipeline-step">'
+                f'{icon_html}'
+                f'<div class="pipeline-step-info">'
+                f'<div class="pipeline-step-name">{s["name"]}</div>'
+                f'<div class="pipeline-step-desc">{s.get("desc","")}</div>'
+                f'</div>'
+                f'<div class="pipeline-step-progress"><div class="pipeline-step-progress-bar {bar_class}" style="width:{prog}%"></div></div>'
+                f'<div class="pipeline-step-duration">{dur_str}</div>'
+                f'</div>'
+            )
+        elapsed_str = f"{int(elapsed//60):02d}:{int(elapsed%60):02d}"
+        return (
+            f'<div class="pipeline-flow">'
+            f'<div class="pipeline-header">'
+            f'<div class="pipeline-title">{pr.get("name","Pipeline")}</div>'
+            f'<div class="pipeline-progress" style="flex:1;max-width:160px;height:6px;background:#21262d;border-radius:3px;overflow:hidden;">'
+            f'<div style="width:{pct}%;height:100%;background:#{status_color};border-radius:3px;transition:width 0.5s;"></div></div>'
+            f'<div class="pipeline-status {status}" style="color:#{status_color};">{status_label} — {pct}%</div>'
+            f'<div class="pipeline-elapsed">{elapsed_str} elapsed</div>'
+            f'</div>'
+            f'<div class="pipeline-steps">{step_html}</div>'
+            f'</div>'
+        )
+
+    def _with_pipeline(name: str, steps: list) -> str:
+        """Execute a list of step dicts with timing and return pipeline-flow HTML.
+        Each step dict: {"name": ..., "desc": ..., "fn": callable}
+        """
+        global _pipeline_run
+        _pipeline_run = {"name": name, "status": "running", "steps": [], "start_time": time.time(), "elapsed": 0}
+        for s in steps:
+            step_data = {"name": s["name"], "desc": s.get("desc", ""), "status": "running", "progress": 0, "duration": 0, "start": time.time()}
+            _pipeline_run["steps"].append(step_data)
+            try:
+                s["fn"]()
+                step_data["status"] = "completed"
+            except Exception as exc:
+                logger.warning("Pipeline step '%s' failed: %s", s["name"], exc)
+                step_data["status"] = "failed"
+                step_data["desc"] = str(exc)[:120]
+            step_data["duration"] = time.time() - step_data["start"]
+            step_data["progress"] = 100
+        _pipeline_run["status"] = "completed" if all(st["status"] == "completed" for st in _pipeline_run["steps"]) else "warning"
+        return _render_pipeline_flow()
+
     # ------- event handlers -----------------------------------------------
 
     def _on_scenario_selected(name: str) -> Tuple[str, str]:
@@ -1848,14 +1957,44 @@ def create_dashboard(
                 if q_count:
                     logger.info("Queued %d actions for human approval in scenario %s", q_count, scenario_name)
 
+                # ── Build pipeline flow from agent timings ──
+                agent_timings = _perf_state.get("agent_timings", {})
+                _pipeline_run = {
+                    "name": f"Incident Analysis: {scenario_name}",
+                    "status": "completed",
+                    "steps": [
+                        {"name": "Anomaly Detection", "desc": f"{len(sc.get('anomalies',[]))} anomalies found", "status": "completed", "progress": 100, "duration": agent_timings.get("Triage Agent", 0)/1000, "start": 0},
+                        {"name": "Triage", "desc": f"Severity: {triage_out.get('severity','?')}", "status": "completed", "progress": 100, "duration": agent_timings.get("Triage Agent", 0)/1000, "start": 0},
+                        {"name": "Root Cause Analysis", "desc": f"Confidence: {rca_out.get('confidence_score',0):.0%}", "status": "completed", "progress": 100, "duration": agent_timings.get("RCA Agent", 0)/1000, "start": 0},
+                        {"name": "Remediation Planning", "desc": f"{len(remed_out.get('recommended_actions',[]))} actions generated", "status": "completed", "progress": 100, "duration": agent_timings.get("Remediation Agent", 0)/1000, "start": 0},
+                        {"name": "Report Generation", "desc": f"Total: {_perf_state.get('total_tokens',0)} tokens", "status": "completed", "progress": 100, "duration": agent_timings.get("Reporting Agent", 0)/1000, "start": 0},
+                    ],
+                    "start_time": start,
+                    "elapsed": elapsed,
+                }
+                if q_count:
+                    _pipeline_run["steps"].append({"name": "Human Approval", "desc": f"{q_count} actions queued", "status": "warning", "progress": 100, "duration": 0, "start": 0})
+                pipeline_html = _render_pipeline_flow()
+                triage_html = pipeline_html + triage_html
+
                 return triage_html, rca_html, remed_html, report_html, reasoning_html, \
                        _chat_update_status()[0], _chat_update_status()[1], _chat_refresh_risk()
 
             except Exception as exc:
                 logger.error("Orchestrator failed: %s", exc, exc_info=True)
-                error_html = (
+                _pipeline_run = {
+                    "name": f"Incident Analysis: {scenario_name}",
+                    "status": "failed",
+                    "steps": [
+                        {"name": "Pipeline Execution", "desc": f"Failed: {exc}", "status": "failed", "progress": 100, "duration": 0, "start": 0},
+                    ],
+                    "start_time": time.time(),
+                    "elapsed": 0,
+                }
+                pipeline_html = _render_pipeline_flow()
+                error_html = pipeline_html + (
                     f'<div class="glass-card" style="border-left:3px solid {_C["red"]};">'
-                    f'<div style="color:{_C["red"]};font-weight:700;margin-bottom:8px;">⚠️ Analysis Error</div>'
+                    f'<div style="color:{_C["red"]};font-weight:700;margin-bottom:8px;">Analysis Error</div>'
                     f'<div style="color:#e2e8f0;font-size:0.88rem;">{exc}</div>'
                     f'<div style="color:#64748b;font-size:0.78rem;margin-top:8px;">'
                     f'Ensure vLLM server is running at {VLLM_BASE_URL}</div>'
@@ -1963,6 +2102,23 @@ def create_dashboard(
             "critique": {"confirmed": True},
             "anomalies": sc.get("logs", []),
         })
+
+        # ── Build demo pipeline flow ──
+        _pipeline_run = {
+            "name": f"Incident Analysis: {scenario_name}",
+            "status": "completed",
+            "steps": [
+                {"name": "Anomaly Detection", "desc": f"{len(sc.get('logs',[]))} log entries", "status": "completed", "progress": 100, "duration": 1.2, "start": 0},
+                {"name": "Triage", "desc": f"Severity: {sc.get('severity','P3')}", "status": "completed", "progress": 100, "duration": 0.8, "start": 0},
+                {"name": "Root Cause Analysis", "desc": "Confidence: 87%", "status": "completed", "progress": 100, "duration": 1.3, "start": 0},
+                {"name": "Remediation Planning", "desc": "4 actions generated", "status": "completed", "progress": 100, "duration": 1.2, "start": 0},
+                {"name": "Report Generation", "desc": "3,847 tokens", "status": "completed", "progress": 100, "duration": 0.9, "start": 0},
+            ],
+            "start_time": time.time() - 5.4,
+            "elapsed": 5.4,
+        }
+        pipeline_html = _render_pipeline_flow()
+        demo_triage = pipeline_html + demo_triage
 
         return demo_triage, demo_rca, demo_remed, demo_report, demo_reasoning, \
                _chat_update_status()[0], _chat_update_status()[1], _chat_refresh_risk()
@@ -2476,7 +2632,25 @@ def create_dashboard(
             "agent_tokens": agg_tokens_per_agent,
         })
 
-        return (
+        # ── Build pipeline flow for batch processing ──
+        _pipeline_run = {
+            "name": "Process All Incidents",
+            "status": "completed" if failures == 0 else "warning",
+            "start_time": time.time(),
+            "elapsed": agg_time,
+            "steps": [
+                {"name": "Batch Analysis", "desc": f"{processed} scenarios", "status": "completed", "progress": 100, "duration": agg_time, "start": 0},
+                {"name": "Anomaly Detection", "desc": f"{total_anomalies} anomalies found", "status": "completed", "progress": 100, "duration": agg_time * 0.3, "start": 0},
+                {"name": "Agent Pipeline", "desc": f"{agg_calls} LLM calls", "status": "completed", "progress": 100, "duration": agg_time * 0.5, "start": 0},
+                {"name": "Action Queue", "desc": f"{total_actions} actions generated", "status": "completed" if not failures else "warning", "progress": 100, "duration": agg_time * 0.1, "start": 0},
+                {"name": "Report Compilation", "desc": f"{agg_tokens} total tokens", "status": "completed", "progress": 100, "duration": agg_time * 0.1, "start": 0},
+            ],
+        }
+        if failures:
+            _pipeline_run["steps"].append({"name": f"Failures", "desc": f"{failures} scenarios failed", "status": "failed", "progress": 100, "duration": 0, "start": 0})
+        pipeline_html = _render_pipeline_flow()
+
+        return pipeline_html + (
             f'<div class="glass-card">'
             f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">'
             f'<span style="font-size:1.05rem;font-weight:700;color:#e2e8f0;">InfraHeal AI — Process All Incidents</span>'
@@ -2488,7 +2662,7 @@ def create_dashboard(
             f'</table>'
             f'<div style="margin-top:18px;padding:14px;background:rgba(0,255,136,0.04);'
             f'border:1px solid rgba(0,255,136,0.15);border-radius:10px;">'
-            f'<div style="font-size:0.82rem;color:{_C["green"]};font-weight:600;">{status_icon} Pipeline Complete</div>'
+            f'<div style="font-size:0.82rem;color:{_C["green"]};font-weight:600;">{"✅ Pipeline Complete" if not failures else "⚠️ Pipeline Complete"}</div>'
             f'<div style="font-size:0.78rem;color:#64748b;margin-top:4px;">'
             f'{processed} scenarios processed · {total_anomalies} anomalies · {total_actions} actions generated · '
             f'{failures} failures · Model: {MODEL_NAME.split("/")[-1]}</div>'
@@ -2670,16 +2844,21 @@ def create_dashboard(
         logger.info("Continuous monitoring started")
         try:
             result = _process_all_incidents()
-            return (
-                result + '<div style="margin-top:12px;padding:10px;background:rgba(0,255,136,0.04);'
-                f'border:1px solid rgba(0,255,136,0.15);border-radius:8px;">'
-                f'<span style="color:{_C["green"]};">Continuous monitoring loop complete.</span> '
-                f'<span style="color:#8b949e;font-size:0.78rem;">'
-                f'Pending approvals: {len([a for a in _pending_approvals if a.get("status")=="pending"])}</span></div>'
-            )
+            pending = len([a for a in _pending_approvals if a.get("status")=="pending"])
+            _pipeline_run["status"] = "completed"
+            _pipeline_run["steps"].append({"name": "Monitoring Cycle", "desc": f"{pending} approvals pending", "status": "warning" if pending else "completed", "progress": 100, "duration": 0, "start": 0})
+            pipeline_html = _render_pipeline_flow()
+            return pipeline_html + result
         except Exception as exc:
             logger.error("Continuous monitoring failed: %s", exc)
-            return f'<div style="color:{_C["red"]};">Monitoring failed: {exc}</div>'
+            _pipeline_run = {
+                "name": "Continuous Monitoring",
+                "status": "failed",
+                "steps": [{"name": "Monitoring Cycle", "desc": f"Failed: {exc}", "status": "failed", "progress": 100, "duration": 0, "start": 0}],
+                "start_time": time.time(),
+                "elapsed": 0,
+            }
+            return _render_pipeline_flow() + f'<div style="color:{_C["red"]};">Monitoring failed: {exc}</div>'
         finally:
             _monitoring_active = False
 
