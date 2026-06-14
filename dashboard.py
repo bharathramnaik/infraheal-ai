@@ -824,6 +824,32 @@ label { color: var(--text-muted) !important; font-weight: 500 !important; }
 .gr-check-radio label { color: var(--text) !important; }
 footer { display: none !important; }
 
+/* ── Rerun Buttons ──────────────────────────────────────────────── */
+.rerun-btn {
+  min-width: 32px !important;
+  width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  font-size: 1.1rem !important;
+  border-radius: 6px !important;
+  border: 1px solid #30363d !important;
+  background: transparent !important;
+  color: #8b949e !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.15s ease !important;
+}
+.rerun-btn:hover {
+  background: #21262d !important;
+  border-color: #58a6ff !important;
+  color: #58a6ff !important;
+}
+.rerun-btn:active {
+  transform: rotate(90deg);
+}
+
 /* ── Pipeline Flow ──────────────────────────────────────────────── */
 .pipeline-flow { margin-bottom:20px; }
 .pipeline-header { display:flex; align-items:center; gap:12px; padding:14px 16px; background:#161b22; border:1px solid #30363d; border-radius:10px; margin-bottom:12px; flex-wrap:wrap; }
@@ -1714,6 +1740,7 @@ def create_dashboard(
     # state holders
     _perf_state: Dict[str, Any] = {}
     _last_pipeline_state: Dict[str, Any] = {}
+    _result_cache: Dict[str, Any] = {}
 
     # ── Pipeline flow state ────────────────────────────────────────
     _pipeline_run: Dict[str, Any] = {"name": "", "status": "idle", "steps": [], "start_time": 0, "elapsed": 0}
@@ -1772,7 +1799,7 @@ def create_dashboard(
         """Execute a list of step dicts with timing and return pipeline-flow HTML.
         Each step dict: {"name": ..., "desc": ..., "fn": callable}
         """
-        global _pipeline_run
+        nonlocal _pipeline_run
         _pipeline_run = {"name": name, "status": "running", "steps": [], "start_time": time.time(), "elapsed": 0}
         for s in steps:
             step_data = {"name": s["name"], "desc": s.get("desc", ""), "status": "running", "progress": 0, "duration": 0, "start": time.time()}
@@ -2864,7 +2891,7 @@ def create_dashboard(
 
     def _continuous_monitor():
         """Run continuous monitoring loop: process all incidents, queue approvals, report."""
-        global _monitoring_active, _pipeline_run
+        global _monitoring_active
         _monitoring_active = True
         logger.info("Continuous monitoring started")
 
@@ -3379,14 +3406,19 @@ function copyChatMsg(btn) {
                 live_timer.tick(fn=_render_live_logs, inputs=[], outputs=[log_stream])
 
                 gr.HTML('<div style="height:12px;"></div>')
+                # ── Action buttons with rerun ──
                 with gr.Row():
                     btn_scan = gr.Button("Run Anomaly Scan", variant="primary", scale=1)
+                    btn_scan_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-scan")
                     btn_process = gr.Button("Process All Incidents", variant="secondary", scale=1)
+                    btn_process_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-process")
                     btn_report = gr.Button("Generate Report", variant="secondary", scale=1)
-
+                    btn_report_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-report")
                 with gr.Row():
                     btn_monitor = gr.Button("Start Continuous Monitoring", variant="secondary", scale=1)
+                    btn_monitor_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-monitor")
                     btn_optimize = gr.Button("Optimize Agent (LoRA)", variant="secondary", scale=1)
+                    btn_optimize_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-optimize")
 
                 scan_accordion = gr.Accordion("Scan & Pipeline Output", open=False)
                 with scan_accordion:
@@ -3395,22 +3427,103 @@ function copyChatMsg(btn) {
                                            "Click 'Run Anomaly Scan' to start.")
                     )
 
-                btn_scan.click(fn=_run_anomaly_scan, inputs=[], outputs=[scan_output])
-                btn_scan.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
-                btn_report.click(fn=_generate_report, inputs=[], outputs=[scan_output])
-                btn_report.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
-                btn_process.click(fn=_process_all_incidents, inputs=[], outputs=[scan_output])
-                btn_process.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
-                btn_process.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[approval_accordion])
-                btn_process.click(fn=_render_approval_panel, inputs=[], outputs=[approval_panel])
-                btn_process.click(fn=_render_approval_history, inputs=[], outputs=[approval_history_panel])
-                btn_monitor.click(fn=_continuous_monitor, inputs=[], outputs=[scan_output])
-                btn_monitor.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
-                btn_monitor.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[approval_accordion])
-                btn_monitor.click(fn=_render_approval_panel, inputs=[], outputs=[approval_panel])
-                btn_monitor.click(fn=_render_approval_history, inputs=[], outputs=[approval_history_panel])
-                btn_optimize.click(fn=_run_optimize, inputs=[], outputs=[scan_output])
-                btn_optimize.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
+                # ── Rerun-aware wrappers ──
+                def _cached_scan():
+                    if "anomaly_scan" in _result_cache:
+                        return _result_cache["anomaly_scan"]
+                    r = _run_anomaly_scan()
+                    _result_cache["anomaly_scan"] = r
+                    return r
+
+                def _rerun_scan():
+                    r = _run_anomaly_scan()
+                    _result_cache["anomaly_scan"] = r
+                    return r
+
+                def _cached_report():
+                    if "report" in _result_cache:
+                        return _result_cache["report"]
+                    r = _generate_report()
+                    _result_cache["report"] = r
+                    return r
+
+                def _rerun_report():
+                    r = _generate_report()
+                    _result_cache["report"] = r
+                    return r
+
+                def _cached_optimize():
+                    if "optimize" in _result_cache:
+                        return _result_cache["optimize"]
+                    r = _run_optimize()
+                    _result_cache["optimize"] = r
+                    return r
+
+                def _rerun_optimize():
+                    r = _run_optimize()
+                    _result_cache["optimize"] = r
+                    return r
+
+                def _cached_process():
+                    key = "process_all"
+                    if key in _result_cache:
+                        yield _result_cache[key]
+                        return
+                    last = ""
+                    for partial in _process_all_incidents():
+                        last = partial
+                        yield partial
+                    _result_cache[key] = last
+
+                def _rerun_process():
+                    key = "process_all"
+                    last = ""
+                    for partial in _process_all_incidents():
+                        last = partial
+                        yield partial
+                    _result_cache[key] = last
+
+                def _cached_monitor():
+                    key = "monitor"
+                    if key in _result_cache:
+                        yield _result_cache[key]
+                        return
+                    last = ""
+                    for partial in _continuous_monitor():
+                        last = partial
+                        yield partial
+                    _result_cache[key] = last
+
+                def _rerun_monitor():
+                    key = "monitor"
+                    last = ""
+                    for partial in _continuous_monitor():
+                        last = partial
+                        yield partial
+                    _result_cache[key] = last
+
+                # ── Wire main buttons (show cached) and rerun buttons (force fresh) ──
+                for btn, fn in [(btn_scan, _cached_scan), (btn_report, _cached_report), (btn_optimize, _cached_optimize)]:
+                    btn.click(fn=fn, inputs=[], outputs=[scan_output])
+                    btn.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
+                for btn, fn in [(btn_scan_rerun, _rerun_scan), (btn_report_rerun, _rerun_report), (btn_optimize_rerun, _rerun_optimize)]:
+                    btn.click(fn=fn, inputs=[], outputs=[scan_output])
+                    btn.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
+
+                for btn, fn in [(btn_process, _cached_process), (btn_monitor, _cached_monitor)]:
+                    btn.click(fn=fn, inputs=[], outputs=[scan_output])
+                    btn.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
+                    btn.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[approval_accordion])
+                    btn.click(fn=_render_approval_panel, inputs=[], outputs=[approval_panel])
+                    btn.click(fn=_render_approval_history, inputs=[], outputs=[approval_history_panel])
+                    btn.click(fn=_render_audit_log, inputs=[], outputs=[audit_log_panel])
+                for btn, fn in [(btn_process_rerun, _rerun_process), (btn_monitor_rerun, _rerun_monitor)]:
+                    btn.click(fn=fn, inputs=[], outputs=[scan_output])
+                    btn.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
+                    btn.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[approval_accordion])
+                    btn.click(fn=_render_approval_panel, inputs=[], outputs=[approval_panel])
+                    btn.click(fn=_render_approval_history, inputs=[], outputs=[approval_history_panel])
+                    btn.click(fn=_render_audit_log, inputs=[], outputs=[audit_log_panel])
 
                 # ── Approval JS bridge (hidden off-screen) ──
                 approval_cmd = gr.Textbox(
@@ -3454,10 +3567,6 @@ function copyChatMsg(btn) {
                 approval_cmd.change(fn=_on_approval_cmd, inputs=[approval_cmd], outputs=[approval_panel, approval_history_panel, approval_status, audit_log_panel])
                 approval_cmd.submit(fn=_on_approval_cmd, inputs=[approval_cmd], outputs=[approval_panel, approval_history_panel, approval_status, audit_log_panel])
                 approval_trigger.click(fn=_on_approval_cmd, inputs=[approval_cmd], outputs=[approval_panel, approval_history_panel, approval_status, audit_log_panel])
-                btn_process.click(fn=_render_approval_panel, inputs=[], outputs=[approval_panel])
-                btn_process.click(fn=_render_approval_history, inputs=[], outputs=[approval_history_panel])
-                btn_process.click(fn=_render_audit_log, inputs=[], outputs=[audit_log_panel])
-                btn_monitor.click(fn=_render_audit_log, inputs=[], outputs=[audit_log_panel])
 
                 # Approval history
                 gr.HTML('<div style="margin-top:12px;"></div>')
