@@ -1803,6 +1803,24 @@ def create_dashboard(
         elapsed_str = f"{int(elapsed//60):02d}:{int(elapsed%60):02d}"
         timer_color = "#58a6ff" if status == "running" else ("#00FF88" if status == "completed" else status_color)
         timer_icon = "\u23F1" if status == "running" else "\u23F0"
+        start_ts = pr.get("start_time", now)
+        js = (
+            '<script>(function(){'
+            'var e=document.querySelector(".pipeline-timer");'
+            'if(!e||e.dataset.active)return;'
+            'e.dataset.active="1";'
+            'var s=parseFloat(e.dataset.start);'
+            'if(!s)return;'
+            'function t(){'
+            'var n=Date.now()/1e3;'
+            'var d=Math.max(0,Math.floor(n-s));'
+            'var m=Math.floor(d/60);'
+            'var sec=d%60;'
+            'e.textContent="\\u23F1 "+String(m).padStart(2,"0")+":"+String(sec).padStart(2,"0");'
+            '}'
+            't();setInterval(t,1000);'
+            '})();</script>'
+        )
         return (
             f'<div class="pipeline-flow">'
             f'<div class="pipeline-header">'
@@ -1810,10 +1828,10 @@ def create_dashboard(
             f'<div class="pipeline-progress" style="flex:1;max-width:160px;height:6px;background:#21262d;border-radius:3px;overflow:hidden;">'
             f'<div style="width:{pct}%;height:100%;background:#{status_color};border-radius:3px;transition:width 0.5s;"></div></div>'
             f'<div class="pipeline-status {status}" style="color:#{status_color};">{status_label} — {pct}%</div>'
-            f'<div class="pipeline-elapsed" style="color:#{timer_color};font-weight:600;font-size:0.95rem;font-variant-numeric:tabular-nums;">{timer_icon} {elapsed_str}</div>'
+            f'<span class="pipeline-timer" data-start="{start_ts}" style="color:#{timer_color};font-weight:600;font-size:0.95rem;font-variant-numeric:tabular-nums;">{timer_icon} {elapsed_str}</span>'
             f'</div>'
             f'<div class="pipeline-steps">{step_html}</div>'
-            f'</div>'
+            f'{js}</div>'
         )
 
     def _with_pipeline(name: str, steps: list) -> str:
@@ -2946,11 +2964,18 @@ def create_dashboard(
             yield _render_pipeline_flow()
             if anomaly_detector is not None:
                 try:
-                    logs = _generate_live_logs()
+                    from concurrent.futures import ThreadPoolExecutor, TimeoutError as _TimeoutError
+                    with ThreadPoolExecutor(max_workers=1) as _pool:
+                        _fut = _pool.submit(_generate_live_logs)
+                        logs = _fut.result(timeout=30)
                     if logs:
-                        detected = anomaly_detector.detect(logs=logs, metrics=[])
+                        with ThreadPoolExecutor(max_workers=1) as _pool2:
+                            _fut2 = _pool2.submit(anomaly_detector.detect, logs=logs, metrics=[])
+                            detected = _fut2.result(timeout=60)
                         if detected:
                             logger.info("Monitor detected %d anomalies", len(detected))
+                except _TimeoutError:
+                    logger.warning("Log stream scan timed out")
                 except Exception as exc:
                     logger.warning("Log stream scan issue: %s", exc)
             _complete_step(_pipeline_run["steps"][-1])
