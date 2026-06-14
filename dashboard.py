@@ -662,7 +662,7 @@ button.secondary:active {
   margin-top: 6px !important;
   padding: 2px 2px !important;
   gap: 2px !important;
-  align-items: center !important;
+  align-items: stretch !important;
   flex-wrap: nowrap !important;
   min-height: 38px !important;
 }
@@ -683,12 +683,12 @@ button.secondary:active {
 .chat-input-row input[type="text"] {
   border: none !important;
   background: transparent !important;
-  padding: 4px 8px !important;
+  padding: 8px 8px !important;
   font-family: 'JetBrains Mono', monospace !important;
   font-size: 0.82rem !important;
   color: #c9d1d9 !important;
-  min-height: 30px !important;
-  max-height: 80px !important;
+  min-height: 40px !important;
+  max-height: 100px !important;
   resize: none !important;
   outline: none !important;
   box-shadow: none !important;
@@ -696,9 +696,9 @@ button.secondary:active {
 }
 .chat-send-btn, .chat-clear-btn {
   min-width: 32px !important;
-  height: 30px !important;
-  padding: 2px 6px !important;
-  font-size: 1rem !important;
+  height: 34px !important;
+  padding: 0 !important;
+  font-size: 1.1rem !important;
   border-radius: 4px !important;
   border: 1px solid transparent !important;
   background: transparent !important;
@@ -707,6 +707,15 @@ button.secondary:active {
   transition: all 0.15s ease !important;
   position: relative !important;
   overflow: visible !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+.chat-send-btn *,
+.chat-clear-btn * {
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: 1 !important;
 }
 .chat-send-btn {
   color: #1a6cff !important;
@@ -2002,10 +2011,9 @@ def create_dashboard(
                 if q_count:
                     _pipeline_run["steps"].append({"name": "Human Approval", "desc": f"{q_count} actions queued", "status": "warning", "progress": 100, "duration": 0, "start": 0})
                 pipeline_html = _render_pipeline_flow()
-                triage_html = pipeline_html + triage_html
 
                 return triage_html, rca_html, remed_html, report_html, reasoning_html, \
-                       _chat_update_status()[0], _chat_update_status()[1], _chat_refresh_risk(), pipeline_html
+                       _chat_update_status()[0], _chat_update_status()[1], _chat_refresh_risk()
 
             except Exception as exc:
                 logger.error("Orchestrator failed: %s", exc, exc_info=True)
@@ -2019,7 +2027,7 @@ def create_dashboard(
                     "elapsed": 0,
                 }
                 pipeline_html = _render_pipeline_flow()
-                error_html = pipeline_html + (
+                error_html = (
                     f'<div class="glass-card" style="border-left:3px solid {_C["red"]};">'
                     f'<div style="color:{_C["red"]};font-weight:700;margin-bottom:8px;">Analysis Error</div>'
                     f'<div style="color:#e2e8f0;font-size:0.88rem;">{exc}</div>'
@@ -2028,7 +2036,7 @@ def create_dashboard(
                     f'</div>'
                 )
                 return error_html, error_html, error_html, error_html, error_html, \
-                       _chat_update_status()[0], _chat_update_status()[1], _chat_refresh_risk(), pipeline_html
+                       _chat_update_status()[0], _chat_update_status()[1], _chat_refresh_risk()
 
         # ---- Demo mode (no orchestrator) ----
         demo_triage = format_agent_output("Triage", {
@@ -2145,10 +2153,9 @@ def create_dashboard(
             "elapsed": 5.4,
         }
         pipeline_html = _render_pipeline_flow()
-        demo_triage = pipeline_html + demo_triage
 
         return demo_triage, demo_rca, demo_remed, demo_report, demo_reasoning, \
-               _chat_update_status()[0], _chat_update_status()[1], _chat_refresh_risk(), pipeline_html
+               _chat_update_status()[0], _chat_update_status()[1], _chat_refresh_risk()
 
     def _run_error_level_resolution(scenario_name: str, level_filter: str) -> str:
         """Run error-level specific resolution analysis with progress timing."""
@@ -4272,7 +4279,7 @@ function copyChatMsg(btn) {
                     fn=_run_analysis,
                     inputs=[scenario_dropdown],
                     outputs=[triage_panel, rca_panel, remed_panel, report_panel, reasoning_panel,
-                             status_dot, status_text, risk_panel, scan_output],
+                             status_dot, status_text, risk_panel],
                 )
 
         # On first load, auto-select the first scenario in the Incident Analysis tab
