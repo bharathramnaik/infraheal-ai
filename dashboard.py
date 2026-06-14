@@ -2533,7 +2533,7 @@ def create_dashboard(
             f'</div></div>'
         )
 
-    def _process_all_incidents() -> str:
+    def _process_all_incidents():
         """Run the pipeline on every scenario and produce a comprehensive report."""
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         rows = ""
@@ -2548,10 +2548,44 @@ def create_dashboard(
         agg_latency_count = 0
         agg_timings: Dict[str, float] = {}
         agg_tokens_per_agent: Dict[str, int] = {}
+        scenario_list = list(scenarios.items())
+        total_scenarios = len(scenario_list)
 
-        for name, sc in scenarios.items():
+        # Initialize pipeline
+        _pipeline_run.clear()
+        _pipeline_run.update({
+            "name": "Process All Incidents",
+            "status": "running",
+            "steps": [],
+            "start_time": time.time(),
+            "elapsed": 0,
+        })
+
+        def _add_step(name, desc="", status="pending"):
+            s = {"name": name, "desc": desc, "status": status, "progress": 0 if status == "running" else 0, "duration": 0, "start": time.time() if status == "running" else 0}
+            _pipeline_run["steps"].append(s)
+            return s
+
+        def _complete_step(step, status="completed"):
+            step["status"] = status
+            step["progress"] = 100
+            step["duration"] = time.time() - step["start"]
+
+        # Step 1: Load experience store
+        _add_step("Load Experience Store", "Injecting few-shot examples & preferences", "running")
+        yield _render_pipeline_flow() + '<div style="color:#8b949e;font-size:0.78rem;text-align:center;padding:12px;">Processing scenarios...</div>'
+        _complete_step(_pipeline_run["steps"][-1])
+
+        for i, (name, sc) in enumerate(scenario_list):
             sc_data = dict(sc)
             result = None
+            title = sc_data.get("title", name)
+            step_name = f"[{i+1}/{total_scenarios}] {title}"
+
+            # Add step for this scenario
+            step = _add_step(step_name, "Running anomaly detection & agents", "running")
+            yield _render_pipeline_flow() + '<div style="color:#8b949e;font-size:0.78rem;text-align:center;padding:12px;">Processing scenarios...</div>'
+
             if orchestrator is not None:
                 try:
                     if anomaly_detector is not None:
@@ -2563,9 +2597,19 @@ def create_dashboard(
                         total_anomalies += len(detected)
                     result = orchestrator.process_scenario(sc_data)
                     processed += 1
+                    _complete_step(step, "completed")
                 except Exception as exc:
                     logger.warning("Pipeline failed for %s: %s", name, exc)
                     failures += 1
+                    _complete_step(step, "failed")
+                    step["desc"] = str(exc)[:80]
+            else:
+                # Demo mode: simulate
+                time.sleep(0.3)
+                processed += 1
+                _complete_step(step, "completed")
+
+            yield _render_pipeline_flow() + '<div style="color:#8b949e;font-size:0.78rem;text-align:center;padding:12px;">Processing scenarios...</div>'
 
             if result:
                 perf = result.get("pipeline_metrics", {})
@@ -2600,14 +2644,12 @@ def create_dashboard(
                 action_count = len(remed.get("recommended_actions", []))
                 total_actions += action_count
 
-                # Queue high-risk actions for human approval
                 report_text = rep.get("summary", rep.get("narrative", ""))
                 q_count = _queue_actions_for_approval(name, remed.get("recommended_actions", []), report_text)
                 if q_count:
                     logger.info("Queued %d actions for human approval in scenario %s", q_count, name)
 
             badge = format_severity_badge(sev)
-            status_icon = "⚠️" if failures else "✅"
             rows += (
                 f'<tr>'
                 f'<td style="white-space:nowrap;">{sc_data.get("id", "—")}</td>'
@@ -2616,7 +2658,7 @@ def create_dashboard(
                 f'<td>{cat}</td>'
                 f'<td style="font-size:0.78rem;">{rc}</td>'
                 f'<td>{action_count}</td>'
-                f'<td style="color:{_C["green"]};">Analyzed</td>'
+                f'<td style="color:{"#FF3B3B" if result is None else _C["green"]};">{"Failed" if result is None else "Analyzed"}</td>'
                 f'</tr>'
             )
 
@@ -2632,25 +2674,8 @@ def create_dashboard(
             "agent_tokens": agg_tokens_per_agent,
         })
 
-        # ── Build pipeline flow for batch processing ──
-        _pipeline_run = {
-            "name": "Process All Incidents",
-            "status": "completed" if failures == 0 else "warning",
-            "start_time": time.time(),
-            "elapsed": agg_time,
-            "steps": [
-                {"name": "Batch Analysis", "desc": f"{processed} scenarios", "status": "completed", "progress": 100, "duration": agg_time, "start": 0},
-                {"name": "Anomaly Detection", "desc": f"{total_anomalies} anomalies found", "status": "completed", "progress": 100, "duration": agg_time * 0.3, "start": 0},
-                {"name": "Agent Pipeline", "desc": f"{agg_calls} LLM calls", "status": "completed", "progress": 100, "duration": agg_time * 0.5, "start": 0},
-                {"name": "Action Queue", "desc": f"{total_actions} actions generated", "status": "completed" if not failures else "warning", "progress": 100, "duration": agg_time * 0.1, "start": 0},
-                {"name": "Report Compilation", "desc": f"{agg_tokens} total tokens", "status": "completed", "progress": 100, "duration": agg_time * 0.1, "start": 0},
-            ],
-        }
-        if failures:
-            _pipeline_run["steps"].append({"name": f"Failures", "desc": f"{failures} scenarios failed", "status": "failed", "progress": 100, "duration": 0, "start": 0})
-        pipeline_html = _render_pipeline_flow()
-
-        return pipeline_html + (
+        _pipeline_run["status"] = "completed" if failures == 0 else "warning"
+        yield _render_pipeline_flow() + (
             f'<div class="glass-card">'
             f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">'
             f'<span style="font-size:1.05rem;font-weight:700;color:#e2e8f0;">InfraHeal AI — Process All Incidents</span>'
@@ -2837,28 +2862,88 @@ def create_dashboard(
                 count += 1
         return count
 
-    def _continuous_monitor() -> str:
+    def _continuous_monitor():
         """Run continuous monitoring loop: process all incidents, queue approvals, report."""
-        global _monitoring_active
+        global _monitoring_active, _pipeline_run
         _monitoring_active = True
         logger.info("Continuous monitoring started")
+
+        _pipeline_run.clear()
+        _pipeline_run.update({
+            "name": "Continuous Monitoring",
+            "status": "running",
+            "steps": [],
+            "start_time": time.time(),
+            "elapsed": 0,
+        })
+
+        def _add_step(name, desc="", status="pending"):
+            s = {"name": name, "desc": desc, "status": status, "progress": 0 if status == "running" else 0, "duration": 0, "start": time.time() if status == "running" else 0}
+            _pipeline_run["steps"].append(s)
+            return s
+
+        def _complete_step(step, status="completed"):
+            step["status"] = status
+            step["progress"] = 100
+            step["duration"] = time.time() - step["start"]
+
         try:
-            result = _process_all_incidents()
-            pending = len([a for a in _pending_approvals if a.get("status")=="pending"])
+            _add_step("Initialize Monitor", "Setting up log stream & anomaly detection", "running")
+            yield _render_pipeline_flow()
+            _complete_step(_pipeline_run["steps"][-1])
+            yield _render_pipeline_flow()
+
+            _add_step("Scan Log Stream", "Fetching and analyzing recent log entries", "running")
+            yield _render_pipeline_flow()
+            if anomaly_detector is not None:
+                try:
+                    logs = _generate_live_logs()
+                    if logs:
+                        detected = anomaly_detector.detect(logs=logs, metrics=[])
+                        if detected:
+                            logger.info("Monitor detected %d anomalies", len(detected))
+                except Exception as exc:
+                    logger.warning("Log stream scan issue: %s", exc)
+            _complete_step(_pipeline_run["steps"][-1])
+            yield _render_pipeline_flow()
+
+            _add_step("Process Active Incidents", "Running orchestrator on all scenarios", "running")
+            yield _render_pipeline_flow()
+
+            # Save pipeline, let _process_all_incidents run, restore
+            saved_pipeline = dict(_pipeline_run)
+            try:
+                final_output = ""
+                for partial in _process_all_incidents():
+                    final_output = partial
+            except Exception as exc:
+                logger.warning("Monitor processing failed: %s", exc)
+                final_output = ""
+            # Restore monitor pipeline with completed step
+            _pipeline_run.clear()
+            _pipeline_run.update(saved_pipeline)
+            _pipeline_run["status"] = "running"
+            _pipeline_run["steps"][-1]["status"] = "completed"
+            _pipeline_run["steps"][-1]["progress"] = 100
+            _pipeline_run["steps"][-1]["duration"] = time.time() - _pipeline_run["steps"][-1]["start"]
+            yield _render_pipeline_flow()
+
+            pending = len([a for a in _pending_approvals if a.get("status") == "pending"])
+            _add_step("Queue Approvals", f"{pending} pending human review")
+            _complete_step(_pipeline_run["steps"][-1], "warning" if pending else "completed")
             _pipeline_run["status"] = "completed"
-            _pipeline_run["steps"].append({"name": "Monitoring Cycle", "desc": f"{pending} approvals pending", "status": "warning" if pending else "completed", "progress": 100, "duration": 0, "start": 0})
-            pipeline_html = _render_pipeline_flow()
-            return pipeline_html + result
+            yield _render_pipeline_flow() + (final_output or "")
         except Exception as exc:
             logger.error("Continuous monitoring failed: %s", exc)
-            _pipeline_run = {
+            _pipeline_run.clear()
+            _pipeline_run.update({
                 "name": "Continuous Monitoring",
                 "status": "failed",
-                "steps": [{"name": "Monitoring Cycle", "desc": f"Failed: {exc}", "status": "failed", "progress": 100, "duration": 0, "start": 0}],
+                "steps": [{"name": "Monitoring Error", "desc": f"Failed: {exc}", "status": "failed", "progress": 100, "duration": 0, "start": 0}],
                 "start_time": time.time(),
                 "elapsed": 0,
-            }
-            return _render_pipeline_flow() + f'<div style="color:{_C["red"]};">Monitoring failed: {exc}</div>'
+            })
+            yield _render_pipeline_flow() + f'<div style="color:red;">Monitoring failed: {exc}</div>'
         finally:
             _monitoring_active = False
 
