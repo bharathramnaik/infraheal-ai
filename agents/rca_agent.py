@@ -129,10 +129,22 @@ class RCAAgent(BaseAgent):
         """Ensure all required fields are present with sensible defaults."""
         # If parsing failed, preserve the error and provide defaults
         if "error" in result and "_partial" not in result:
-            defaults = RCAAgent._default_result()
-            defaults["error"] = result["error"]
-            defaults["raw"] = result.get("raw", "")
-            return defaults
+            return {
+                "root_cause": "No anomalies provided for analysis.",
+                "root_cause_category": "infrastructure",
+                "evidence_chain": [],
+                "confidence_score": 0.0,
+                "related_runbook_id": None,
+                "contributing_factors": [],
+                "timeline_of_events": [],
+                "affected_components": [],
+                "blast_radius": "None — no anomalies detected.",
+                "reasoning_summary": "RCA was invoked without anomaly data.",
+                "kb_consulted": False,
+                "kb_findings": "",
+                "error": result["error"],
+                "raw": result.get("raw", ""),
+            }
 
         timeline = result.get("timeline_of_events", [])
         validated_timeline: List[Dict[str, str]] = []

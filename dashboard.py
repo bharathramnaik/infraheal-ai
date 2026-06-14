@@ -1809,29 +1809,7 @@ def create_dashboard(
         elapsed_str = f"{int(elapsed//60):02d}:{int(elapsed%60):02d}"
         timer_color = "#58a6ff" if status == "running" else ("#00FF88" if status == "completed" else status_color)
         start_ts = pr.get("start_time", now)
-        js = (
-            '<script>(function(){'
-            'function tickTimer(e,start){'
-            'if(!e||!start||start<=0)return;'
-            'var n=Date.now()/1e3;'
-            'var d=Math.max(0,Math.floor(n-start));'
-            'var m=Math.floor(d/60);'
-            'var sc=d%60;'
-            'e.textContent=String(m).padStart(2,"0")+":"+String(sc).padStart(2,"0");'
-            '}'
-            'var pe=document.querySelector(".pipeline-timer");'
-            'var ps=pe?parseFloat(pe.dataset.start):0;'
-            'if(pe&&ps>0&&!pe.dataset.active){'
-            'pe.dataset.active="1";'
-            'function tp(){tickTimer(pe,ps);'
-            'document.querySelectorAll(".step-timer").forEach(function(st){'
-            'tickTimer(st,parseFloat(st.dataset.start));'
-            '});'
-            '}'
-            'tp();setInterval(tp,1000);'
-            '}'
-            '})();</script>'
-        )
+        js = ""
         return (
             f'<div class="pipeline-flow">'
             f'<div class="pipeline-header">'
@@ -3460,6 +3438,35 @@ function copyChatMsg(btn) {
     navigator.clipboard.writeText(txt).catch(function(){});
   }
 }
+function startPipelineTimers() {
+  if(window._pipeTimerActive) return;
+  window._pipeTimerActive = true;
+  function tick(e,s){if(!e||!s||s<=0)return;var n=Date.now()/1e3,d=Math.max(0,Math.floor(n-s)),m=Math.floor(d/60),sc=d%60;e.textContent=String(m).padStart(2,"0")+":"+String(sc).padStart(2,"0");}
+  function poll(){
+    var pe=document.querySelector(".pipeline-timer");
+    if(pe){var ps=parseFloat(pe.dataset.start);tick(pe,ps);}
+    document.querySelectorAll(".step-timer").forEach(function(e){tick(e,parseFloat(e.dataset.start));});
+  }
+  setInterval(poll,1000);
+  poll();
+}
+document.addEventListener("DOMContentLoaded", startPipelineTimers);
+// Re-tick after Gradio DOM updates (no new interval, just force refresh)
+var _obs = new MutationObserver(function(){
+  var pe=document.querySelector(".pipeline-timer");
+  if(!pe) return;
+  var ps=parseFloat(pe.dataset.start);
+  if(!ps||ps<=0) return;
+  var n=Date.now()/1e3,d=Math.max(0,Math.floor(n-ps)),m=Math.floor(d/60),sc=d%60;
+  pe.textContent=String(m).padStart(2,"0")+":"+String(sc).padStart(2,"0");
+  document.querySelectorAll(".step-timer").forEach(function(e){
+    var s=parseFloat(e.dataset.start);
+    if(!s||s<=0)return;
+    var d2=Math.max(0,Math.floor(n-s)),m2=Math.floor(d2/60),sc2=d2%60;
+    e.textContent=String(m2).padStart(2,"0")+":"+String(sc2).padStart(2,"0");
+  });
+});
+_obs.observe(document.body,{childList:true,subtree:true,attributes:false});
 </script>''') as demo:
 
         # ──────────────────────────────────────────────────────────

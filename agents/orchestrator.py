@@ -132,8 +132,18 @@ class InfraHealOrchestrator:
             })
         except Exception as exc:
             logger.error("Triage failed: %s", exc)
-            triage_result = TriageAgent._default_result()
-            triage_result["error"] = str(exc)
+            triage_result = {
+                "severity": "P4",
+                "severity_label": "Low",
+                "category": "infrastructure",
+                "impact_assessment": "Triage agent failure — defaulting to low severity.",
+                "affected_services": [],
+                "urgency_reasoning": f"Triage error: {exc}",
+                "confidence": 0.0,
+                "escalation_needed": False,
+                "sla_minutes": 1440,
+                "error": str(exc),
+            }
 
         result["triage_result"] = triage_result
         result["triage_latency"] = round(time.time() - step_start, 2)
@@ -180,8 +190,21 @@ class InfraHealOrchestrator:
             })
         except Exception as exc:
             logger.error("RCA failed: %s", exc)
-            rca_result = RCAAgent._default_result()
-            rca_result["error"] = str(exc)
+            rca_result = {
+                "root_cause": f"RCA agent failure: {exc}",
+                "root_cause_category": "infrastructure",
+                "evidence_chain": [],
+                "confidence_score": 0.0,
+                "related_runbook_id": None,
+                "contributing_factors": [],
+                "timeline_of_events": [],
+                "affected_components": [],
+                "blast_radius": "Unknown — RCA agent failed.",
+                "reasoning_summary": f"RCA error: {exc}",
+                "kb_consulted": False,
+                "kb_findings": "",
+                "error": str(exc),
+            }
 
         result["rca_result"] = rca_result
         result["rca_latency"] = round(time.time() - step_start, 2)
@@ -227,8 +250,15 @@ class InfraHealOrchestrator:
             remediation_result = self.remediation_agent.run(remediation_context)
         except Exception as exc:
             logger.error("Remediation failed: %s", exc)
-            remediation_result = RemediationAgent._default_result()
-            remediation_result["error"] = str(exc)
+            remediation_result = {
+                "recommended_actions": [],
+                "execution_order": "sequential",
+                "rollback_plan": "No actions to roll back.",
+                "estimated_resolution_time": "N/A",
+                "warnings": [f"Remediation agent failed: {exc}"],
+                "confidence": 0.0,
+                "error": str(exc),
+            }
 
         result["remediation_result"] = remediation_result
         result["remediation_latency"] = round(time.time() - step_start, 2)

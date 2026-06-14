@@ -263,10 +263,16 @@ class RemediationAgent(BaseAgent):
     def _validate_result(self, result: dict) -> dict:
         """Ensure all fields are present and actions reference valid tools."""
         if "error" in result and "_partial" not in result:
-            defaults = RemediationAgent._default_result()
-            defaults["error"] = result["error"]
-            defaults["raw"] = result.get("raw", "")
-            return defaults
+            return {
+                "recommended_actions": [],
+                "execution_order": "sequential",
+                "rollback_plan": "No actions to roll back.",
+                "estimated_resolution_time": "N/A",
+                "warnings": ["No root cause was identified — cannot generate remediation plan."],
+                "confidence": 0.0,
+                "error": result["error"],
+                "raw": result.get("raw", ""),
+            }
 
         valid_tools = {t["name"] for t in self._tool_registry}
         raw_actions = result.get("recommended_actions", [])

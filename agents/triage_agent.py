@@ -122,10 +122,19 @@ class TriageAgent(BaseAgent):
     def _validate_result(self, result: dict) -> dict:
         """Ensure all required fields exist with valid values."""
         if "error" in result and "_partial" not in result:
-            defaults = TriageAgent._default_result()
-            defaults["error"] = result["error"]
-            defaults["raw"] = result.get("raw", "")
-            return defaults
+            return {
+                "severity": "P4",
+                "severity_label": "Low",
+                "category": "infrastructure",
+                "impact_assessment": "No anomalies detected. System appears healthy.",
+                "affected_services": [],
+                "urgency_reasoning": "No anomalies were provided for analysis.",
+                "confidence": 1.0,
+                "escalation_needed": False,
+                "sla_minutes": 1440,
+                "error": result["error"],
+                "raw": result.get("raw", ""),
+            }
 
         severity = result.get("severity", "P3")
         if severity not in SEVERITY_LEVELS:
