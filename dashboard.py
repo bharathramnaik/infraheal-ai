@@ -654,31 +654,6 @@ button.secondary:active {
   padding: 4px 12px !important;
 }
 
-/* ── Approval command input (container=False, elem_id on input) ── */
-#approval-cmd-input {
-  font-family: 'JetBrains Mono', monospace !important;
-  font-size: 0.75rem !important;
-  background: #0d1117 !important;
-  border: 1px solid #30363d !important;
-  border-radius: 6px !important;
-  color: #8b949e !important;
-  padding: 6px 10px !important;
-  margin-top: 8px !important;
-  width: 100% !important;
-}
-#approval-cmd-input:focus {
-  border-color: #60A5FA !important;
-  color: #e2e8f0 !important;
-}
-/* Trigger button: off-screen but in DOM for Svelte binding */
-#approval-trigger-btn {
-  position: absolute !important;
-  left: -9999px !important;
-  top: -9999px !important;
-  width: 1px !important;
-  height: 1px !important;
-  opacity: 0 !important;
-}
 /* Chat input: buttons overlaid inside textbox at right bottom */
 .chat-input-col {
   position: relative !important;
@@ -714,6 +689,8 @@ button.secondary:active {
   border: none !important;
   background: transparent !important;
   box-shadow: none !important;
+  overflow: visible !important;
+  z-index: 50 !important;
 }
 .chat-send-btn, .chat-clear-btn {
   min-width: 32px !important;
@@ -727,6 +704,7 @@ button.secondary:active {
   cursor: pointer !important;
   transition: all 0.15s ease !important;
   position: relative !important;
+  overflow: visible !important;
 }
 .chat-send-btn {
   color: #1a6cff !important;
@@ -744,32 +722,36 @@ button.secondary:active {
 #chat-send-btn:hover:not(:disabled)::after {
   content: "Send";
   position: absolute;
-  bottom: calc(100% + 6px);
+  bottom: calc(100% + 8px);
   right: 0;
   background: #161b22;
   border: 1px solid #30363d;
   color: #c9d1d9;
-  padding: 3px 8px;
+  padding: 4px 10px;
   border-radius: 4px;
   font-size: 0.7rem;
   white-space: nowrap;
   font-family: 'JetBrains Mono', monospace;
-  z-index: 100;
+  z-index: 9999;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
 }
 #chat-clear-btn:hover::after {
   content: "Clear";
   position: absolute;
-  bottom: calc(100% + 6px);
+  bottom: calc(100% + 8px);
   right: 0;
   background: #161b22;
   border: 1px solid #30363d;
   color: #c9d1d9;
-  padding: 3px 8px;
+  padding: 4px 10px;
   border-radius: 4px;
   font-size: 0.7rem;
   white-space: nowrap;
   font-family: 'JetBrains Mono', monospace;
-  z-index: 100;
+  z-index: 9999;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
 }
 /* Model selector: black & white */
 #agent-chat-tab select,
@@ -818,8 +800,7 @@ button.secondary:active {
   top: 0 !important;
   width: 1px !important;
   height: 1px !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
+  opacity: 0.01 !important;
 }
 #approval-trigger-btn {
   position: absolute !important;
@@ -827,8 +808,11 @@ button.secondary:active {
   top: 0 !important;
   width: 1px !important;
   height: 1px !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
+  opacity: 0.01 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  overflow: hidden !important;
 }
 /* ── Misc ─────────────────────────────────────────────────────── */
 .gr-group { border: none !important; }
@@ -2965,6 +2949,8 @@ def create_dashboard(
         """Convert _mhl-style markers to HTML (bold, italic, code, newlines)."""
         import re as _re
         t = _mhl(text)
+        # Strip markdown/code fences: ```markdown ... ```, ```code ... ```, triple backticks
+        t = _re.sub(r'```(?:markdown|code|)\s*\n?(.*?)\n?```', r'\1', t, flags=_re.DOTALL)
         t = _re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', t)
         t = _re.sub(r'\*(.+?)\*', r'<em>\1</em>', t)
         t = _re.sub(r'`(.+?)`', r'<code>\1</code>', t)
@@ -3063,15 +3049,32 @@ function denyAction(aid) {
   };
 }
 function trigger_approval(val) {
-  // With container=False, elem_id is directly on the <input> element
-  var ta = document.querySelector("#approval-cmd-input");
-  var btn = document.getElementById("approval-trigger-btn");
-  console.log("trigger_approval: " + val + " ta=" + (!!ta) + " btn=" + (!!btn));
-  if (ta && btn) {
-    ta.value = val;
-    ta.dispatchEvent(new Event("input", { bubbles: true }));
-    ta.dispatchEvent(new Event("change", { bubbles: true }));
-    setTimeout(function() { btn.click(); }, 150);
+  console.log("trigger_approval:", val);
+  // Try Gradio's internal API client (Gradio 5+)
+  var app = document.querySelector("gradio-app");
+  if (app && app.submit) {
+    // Gradio 5+ client API
+    var fnId = "process_approval";
+    app.submit("approval-cmd-input", val, fnId).catch(function(e) {
+      console.warn("Gradio submit failed, falling back to DOM bridge", e);
+      _trigger_approval_dom(val);
+    });
+    return;
+  }
+  _trigger_approval_dom(val);
+}
+function _trigger_approval_dom(val) {
+  var ta = document.getElementById("approval-cmd-input");
+  var btnWrapper = document.getElementById("approval-trigger-btn");
+  var input = ta ? (ta.tagName === "INPUT" || ta.tagName === "TEXTAREA" ? ta : ta.querySelector("input, textarea")) : null;
+  var btn = btnWrapper ? (btnWrapper.tagName === "BUTTON" ? btnWrapper : btnWrapper.querySelector("button")) : null;
+  console.log("DOM bridge: input=" + (!!input) + " btn=" + (!!btn));
+  if (input && btn) {
+    var nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+    nativeInputValueSetter.call(input, val);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    setTimeout(function() { btn.click(); }, 500);
   }
 }
 function copyChatMsg(btn) {
@@ -3165,12 +3168,18 @@ function copyChatMsg(btn) {
                         reason = html.escape(parts[2].strip()) if len(parts) > 2 else ""
                         ts = datetime.now().strftime("%H:%M:%S")
                         logger.info("Approval cmd received: %s | %s", action, aid)
+                        # Find the action title for display
+                        action_title = aid
+                        for a in _pending_approvals:
+                            if a.get("id") == aid:
+                                action_title = a.get("title", aid)
+                                break
                         if action == "approve":
                             _approve_action(aid)
-                            status = f'<div style="padding:8px 12px;margin:4px 0;background:rgba(0,255,136,0.06);border-left:3px solid #00FF88;border-radius:0 6px 6px 0;font-size:0.8rem;"><span style="color:#00FF88;">Approved</span> <span style="color:#8b949e;">{aid} at {ts}</span></div>'
+                            status = f'<div style="padding:12px 16px;margin:8px 0;background:rgba(0,255,136,0.08);border:1px solid rgba(0,255,136,0.3);border-radius:8px;font-size:0.85rem;"><span style="color:#00FF88;font-weight:700;">&#10003; Approved</span> <span style="color:#c9d1d9;">{html.escape(action_title)}</span><br><span style="color:#8b949e;font-size:0.75rem;">{aid} at {ts}</span></div>'
                         elif action == "deny":
                             _deny_action(aid, reason)
-                            status = f'<div style="padding:8px 12px;margin:4px 0;background:rgba(255,59,59,0.06);border-left:3px solid #FF3B3B;border-radius:0 6px 6px 0;font-size:0.8rem;"><span style="color:#FF3B3B;">Denied</span> <span style="color:#8b949e;">{aid} at {ts} — {reason[:80]}</span></div>'
+                            status = f'<div style="padding:12px 16px;margin:8px 0;background:rgba(255,59,59,0.08);border:1px solid rgba(255,59,59,0.3);border-radius:8px;font-size:0.85rem;"><span style="color:#FF3B3B;font-weight:700;">&#10007; Denied</span> <span style="color:#c9d1d9;">{html.escape(action_title)}</span><br><span style="color:#8b949e;font-size:0.75rem;">{aid} at {ts} — {reason[:120]}</span></div>'
                         else:
                             status = ""
                         return _render_approval_panel(), _render_approval_history(), status, _render_audit_log()
