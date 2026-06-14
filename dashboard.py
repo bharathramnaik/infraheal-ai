@@ -849,6 +849,15 @@ footer { display: none !important; }
   align-items: center !important;
   justify-content: center !important;
   transition: all 0.15s ease !important;
+  line-height: 1 !important;
+}
+.rerun-btn * {
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 .rerun-btn:hover {
   background: #21262d !important;
@@ -3436,7 +3445,7 @@ function copyChatMsg(btn) {
                 gr.HTML('<div style="height:12px;"></div>')
                 # ── Action buttons with rerun ──
                 with gr.Row():
-                    btn_scan = gr.Button("Run Anomaly Scan", variant="primary", scale=1)
+                    btn_scan = gr.Button("Run Anomaly Scan", variant="secondary", scale=1)
                     btn_scan_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-scan")
                     btn_process = gr.Button("Process All Incidents", variant="secondary", scale=1)
                     btn_process_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-process")
