@@ -40,6 +40,8 @@ _pending_approvals: List[Dict[str, Any]] = []
 _approval_history: List[Dict[str, Any]] = []
 _approval_id_counter = 0
 _monitoring_active = False
+_stop_monitoring_requested = False
+MONITOR_POLL_SECONDS = 30
 
 # Approval audit log (persistent)
 APPROVAL_AUDIT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "approval_audit.json")
@@ -1308,7 +1310,11 @@ def _format_anomalies_html(anomalies: List[Dict[str, Any]]) -> str:
         atype = a.get("type", "unknown")
         source = a.get("source", "—")
         conf = a.get("confidence", 0)
-        conf_pct = conf * 100 if isinstance(conf, float) and conf <= 1 else conf
+        if isinstance(conf, (int, float)):
+            conf_pct = conf * 100 if conf <= 1 else conf
+            conf_str = f"{conf_pct:.0f}%"
+        else:
+            conf_str = str(conf)
         ts = a.get("timestamp", "")
 
         evidence_html = ""
@@ -1323,7 +1329,7 @@ def _format_anomalies_html(anomalies: List[Dict[str, Any]]) -> str:
             f'    <span style="color:#64748b;font-size:0.75rem;">{ts}</span>'
             f'  </div>'
             f'  <div style="font-size:0.92rem;color:#e2e8f0;margin-bottom:8px;">{desc}</div>'
-            f'  <div style="font-size:0.78rem;color:#64748b;">Source: {source} · Confidence: {conf_pct:.0f}%</div>'
+            f'  <div style="font-size:0.78rem;color:#64748b;">Source: {source} · Confidence: {conf_str}</div>'
             f'  {evidence_html}'
             f'</div>'
         )
@@ -2924,9 +2930,15 @@ def create_dashboard(
         return count
 
     def _continuous_monitor():
-        """Run continuous monitoring loop: process all incidents, queue approvals, report."""
-        global _monitoring_active
+        """Run continuous monitoring loop: process incidents, poll for new anomalies, report.
+        Loops every MONITOR_POLL_SECONDS until _stop_monitoring_requested is True.
+        """
+        global _monitoring_active, _stop_monitoring_requested
+        if _monitoring_active:
+            yield _render_pipeline_flow() + '<div style="color:orange;">Monitoring already active</div>'
+            return
         _monitoring_active = True
+        _stop_monitoring_requested = False
         logger.info("Continuous monitoring started")
 
         _pipeline_run.clear()
@@ -2954,21 +2966,6 @@ def create_dashboard(
             _complete_step(_pipeline_run["steps"][-1])
             yield _render_pipeline_flow()
 
-            _add_step("Scan Log Stream", "Fetching and analyzing recent log entries", "running")
-            yield _render_pipeline_flow()
-            if anomaly_detector is not None:
-                try:
-                    logs = _generate_live_logs()
-                    if logs:
-                        detected = anomaly_detector.detect(logs=logs, metrics=[])
-                        if detected:
-                            logger.info("Monitor detected %d anomalies", len(detected))
-                except Exception as exc:
-                    logger.warning("Log stream scan issue: %s", exc)
-            _complete_step(_pipeline_run["steps"][-1])
-            yield _render_pipeline_flow()
-
-            # Process each scenario inline with visible per-scenario steps
             scenario_list = list(scenarios.items())
             total_scenarios = len(scenario_list)
             summary_rows = ""
@@ -2976,17 +2973,20 @@ def create_dashboard(
             total_actions = 0
             processed = 0
             failures = 0
+            poll_cycle = 0
 
+            # Process all known scenarios on the first pass
             parent_step = _add_step("Process Active Incidents", f"0/{total_scenarios} scenarios", "running")
             yield _render_pipeline_flow()
 
             for i, (name, sc) in enumerate(scenario_list):
+                if _stop_monitoring_requested:
+                    break
                 sc_data = dict(sc)
                 result = None
                 detected_list = []
                 title = sc_data.get("title", name)
-                step_name = f"  [{i+1}/{total_scenarios}] {title}"
-                sub = _add_step(step_name, "Anomaly detection & agents", "running")
+                sub = _add_step(f"  [{i+1}/{total_scenarios}] {title}", "Anomaly detection & agents", "running")
                 yield _render_pipeline_flow()
 
                 if orchestrator is not None:
@@ -3033,11 +3033,9 @@ def create_dashboard(
                     if rca_out:
                         rcs = rca_out.get("root_causes", []) if isinstance(rca_out, dict) else []
                         rc_text = html.escape(rcs[0][:80] if rcs else "—")
-
                     report_text = report_out.get("summary", report_out.get("narrative", "")) if report_out else ""
                     if actions:
                         _queue_actions_for_approval(name, actions, report_text)
-
                     summary_rows += (
                         f'<tr><td style="padding:4px 8px;border-bottom:1px solid #21262d;color:#e2e8f0;">{html.escape(title)}</td>'
                         f'<td style="padding:4px 8px;border-bottom:1px solid #21262d;"><span class="severity-{severity}">{severity}</span></td>'
@@ -3049,6 +3047,32 @@ def create_dashboard(
             _complete_step(parent_step)
             yield _render_pipeline_flow()
 
+            # Polling loop: re-scan for new anomalies every MONITOR_POLL_SECONDS
+            while not _stop_monitoring_requested:
+                poll_cycle += 1
+                poll_step = _add_step(f"Poll Cycle #{poll_cycle}", f"Re-scanning every {MONITOR_POLL_SECONDS}s", "running")
+                yield _render_pipeline_flow()
+
+                if anomaly_detector is not None:
+                    try:
+                        logs = _generate_live_logs()
+                        if logs:
+                            detected = anomaly_detector.detect(logs=logs, metrics=[])
+                            if detected:
+                                logger.info("Poll cycle %d: detected %d new anomalies", poll_cycle, len(detected))
+                    except Exception as exc:
+                        logger.warning("Poll scan issue: %s", exc)
+
+                _complete_step(poll_step, "completed")
+                yield _render_pipeline_flow()
+
+                # Sleep checking stop flag every 2s
+                for _ in range(max(1, MONITOR_POLL_SECONDS // 2)):
+                    if _stop_monitoring_requested:
+                        break
+                    time.sleep(2)
+
+            # Final report
             pending = len([a for a in _pending_approvals if a.get("status") == "pending"])
             _add_step("Queue Approvals", f"{pending} pending human review", "running")
             _complete_step(_pipeline_run["steps"][-1], "warning" if pending else "completed")
@@ -3056,7 +3080,10 @@ def create_dashboard(
             now_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             final_output = (
                 f'<div class="glass-card" style="margin-top:16px;">'
-                f'<div style="font-size:1.05rem;font-weight:700;color:#e2e8f0;margin-bottom:12px;">Continuous Monitoring Report</div>'
+                f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">'
+                f'<span style="font-size:1.05rem;font-weight:700;color:#e2e8f0;">Continuous Monitoring Report</span>'
+                f'<span style="font-size:0.75rem;color:#64748b;">({poll_cycle} poll cycles)</span>'
+                f'</div>'
                 f'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px;">'
                 f'<div class="metric-card"><div class="metric-value">{total_scenarios}</div><div class="metric-label">Scenarios</div></div>'
                 f'<div class="metric-card"><div class="metric-value">{processed}</div><div class="metric-label">Processed</div></div>'
@@ -3072,7 +3099,7 @@ def create_dashboard(
                 f'<th style="padding:6px 8px;text-align:center;color:#8b949e;">Anomalies</th>'
                 f'<th style="padding:6px 8px;text-align:center;color:#8b949e;">Actions</th>'
                 f'</tr></thead><tbody>{summary_rows}</tbody></table>'
-                f'<div style="color:#8b949e;font-size:0.72rem;margin-top:12px;text-align:right;">Report generated at {now_ts}</div>'
+                f'<div style="color:#8b949e;font-size:0.72rem;margin-top:12px;text-align:right;">Monitoring stopped at {now_ts}</div>'
                 f'</div>'
             )
 
@@ -3091,6 +3118,7 @@ def create_dashboard(
             yield _render_pipeline_flow() + f'<div style="color:red;">Monitoring failed: {exc}</div>'
         finally:
             _monitoring_active = False
+            _stop_monitoring_requested = False
 
     def _run_optimize() -> str:
         """Run LoRA fine-tuning on approved experiences."""
@@ -3598,6 +3626,7 @@ _obs.observe(_timerRoot,{childList:true,subtree:true,attributes:false});
                 with gr.Row():
                     btn_monitor = gr.Button("Start Continuous Monitoring", variant="secondary", scale=1)
                     btn_monitor_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-monitor")
+                    btn_stop_monitor = gr.Button("Stop Monitoring", variant="stop", scale=1, visible=True)
                     btn_optimize = gr.Button("Optimize Agent (LoRA)", variant="secondary", scale=1)
                     btn_optimize_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-optimize")
 
@@ -3683,6 +3712,11 @@ _obs.observe(_timerRoot,{childList:true,subtree:true,attributes:false});
                         yield partial
                     _result_cache[key] = last
 
+                def _stop_monitoring():
+                    global _stop_monitoring_requested
+                    _stop_monitoring_requested = True
+                    return '<div style="color:orange;">Stop requested — waiting for current cycle to finish...</div>'
+
                 # ── Wire main buttons (show cached) and rerun buttons (force fresh) ──
                 for btn, fn in [(btn_scan, _cached_scan), (btn_report, _cached_report), (btn_optimize, _cached_optimize)]:
                     btn.click(fn=fn, inputs=[], outputs=[scan_output])
@@ -3705,6 +3739,9 @@ _obs.observe(_timerRoot,{childList:true,subtree:true,attributes:false});
                     btn.click(fn=_render_approval_panel, inputs=[], outputs=[approval_panel])
                     btn.click(fn=_render_approval_history, inputs=[], outputs=[approval_history_panel])
                     btn.click(fn=_render_audit_log, inputs=[], outputs=[audit_log_panel])
+
+                btn_stop_monitor.click(fn=_stop_monitoring, inputs=[], outputs=[scan_output])
+                btn_stop_monitor.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
 
                 def _on_approval_cmd(cmd: str):
                     try:
