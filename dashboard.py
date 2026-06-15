@@ -1883,7 +1883,7 @@ def create_dashboard(
             f'<div class="pipeline-progress" style="flex:1;max-width:160px;height:6px;background:#21262d;border-radius:3px;overflow:hidden;">'
             f'<div style="width:{pct}%;height:100%;background:#{status_color};border-radius:3px;transition:width 0.5s;"></div></div>'
             f'<div class="pipeline-status {status}" style="color:#{status_color};">{status_label} — {pct}%</div>'
-            f'<span class="pipeline-timer" data-start="{start_ts}" style="color:#{timer_color};font-weight:600;font-size:0.95rem;font-variant-numeric:tabular-nums;">{elapsed_str}</span>'
+            f'<span class="pipeline-timer" data-start="{start_ts}" data-status="{status}" style="color:#{timer_color};font-weight:600;font-size:0.95rem;font-variant-numeric:tabular-nums;">{elapsed_str}</span>'
             f'</div>'
             f'<div class="pipeline-steps">{step_html}</div>'
             f'{js}</div>'
@@ -3114,8 +3114,10 @@ def create_dashboard(
                 sub = _add_step(f"  [{i+1}/{total_scenarios}] {title}", "Anomaly detection & agents", "running")
                 yield _render_pipeline_flow()
 
+                print(f"[MONITOR] orchestrator={orchestrator}, anomaly_detector={anomaly_detector}", flush=True)
                 if orchestrator is not None:
                     try:
+                        print(f"[MONITOR] Calling orchestrator for {name}", flush=True)
                         if anomaly_detector is not None:
                             detected_list = anomaly_detector.detect_all(
                                 logs=sc_data.get("logs", []),
@@ -3123,6 +3125,7 @@ def create_dashboard(
                             )
                             sc_data["anomalies"] = detected_list
                             total_anomalies += len(detected_list)
+                            print(f"[MONITOR] Detected {len(detected_list)} anomalies", flush=True)
                         from concurrent.futures import ThreadPoolExecutor
                         pool = ThreadPoolExecutor(max_workers=1)
                         fut = pool.submit(orchestrator.process_scenario, sc_data)
@@ -3132,14 +3135,18 @@ def create_dashboard(
                             pool.shutdown(wait=False)
                             if not fut.done():
                                 fut.cancel()
+                        print(f"[MONITOR] orchestrator returned result={result is not None}, actions={len(result.get('remediation',{}).get('recommended_actions',[])) if result else 0}", flush=True)
                         processed += 1
                         _complete_step(sub, "completed")
                     except Exception as exc:
                         logger.warning("Monitor scenario failed for %s: %s", name, exc)
+                        print(f"[MONITOR] Exception: {exc}", flush=True)
+                        import traceback; traceback.print_exc()
                         failures += 1
                         _complete_step(sub, "failed")
                         sub["desc"] = f"Timeout or error: {str(exc)[:70]}"
                 else:
+                    print(f"[MONITOR] No orchestrator (demo mode), sleeping 0.3s", flush=True)
                     time.sleep(0.3)
                     processed += 1
                     _complete_step(sub, "completed")
