@@ -42,6 +42,7 @@ _approval_id_counter = 0
 _monitoring_active = False
 _stop_monitoring_requested = False
 MONITOR_POLL_SECONDS = 30
+MONITOR_POLL_INTERVAL = 30  # mutable; updated by dropdown in UI
 
 # Live pipeline output: background thread writes, gr.Timer polls
 _live_html: str = ""
@@ -3197,7 +3198,7 @@ def create_dashboard(
 
                 _complete_step(poll_step, "completed")
                 # Update description to show countdown — renders inline in the pipeline flow
-                remaining = MONITOR_POLL_SECONDS
+                remaining = MONITOR_POLL_INTERVAL
                 while remaining > 0 and not _stop_monitoring_requested:
                     poll_step["desc"] = f"Next scan in {remaining}s"
                     yield _render_pipeline_flow()
@@ -3632,6 +3633,11 @@ def create_dashboard(
                     btn_monitor = gr.Button("Start Continuous Monitoring", variant="secondary", scale=1)
                     btn_monitor_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-monitor")
                     btn_stop_monitor = gr.Button("\u25a0", scale=0, elem_classes="stop-btn", elem_id="stop-monitor", visible=True)
+                    drp_poll_interval = gr.Dropdown(
+                        choices=[("30s", 30), ("1min", 60), ("2min", 120), ("3min", 180),
+                                 ("5min", 300), ("10min", 600), ("30min", 1800), ("1hr", 3600)],
+                        value=30, label="Poll Interval", scale=1,
+                    )
                     btn_optimize = gr.Button("Optimize Agent (LoRA)", variant="secondary", scale=1)
                     btn_optimize_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-optimize")
 
@@ -3714,6 +3720,11 @@ setInterval(function(){
                 btn_process_rerun.click(fn=_start_process, inputs=[], outputs=[scan_output])
                 btn_monitor_rerun.click(fn=_start_monitor, inputs=[], outputs=[scan_output])
                 btn_stop_monitor.click(fn=_stop_monitoring, inputs=[], outputs=[scan_output])
+                def _set_poll_interval(v):
+                    global MONITOR_POLL_INTERVAL
+                    MONITOR_POLL_INTERVAL = v
+                    print(f"[POLL] Interval set to {v}s", flush=True)
+                drp_poll_interval.change(fn=_set_poll_interval, inputs=[drp_poll_interval], outputs=[])
 
             # ──────────────────────────────────────────────────────
             #  TAB 2 — INCIDENT ANALYSIS
