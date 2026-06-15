@@ -17,6 +17,23 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+# ── Diagnostic logger (writes structured JSON lines to infraheal/diagnostics.log) ──
+_DIAG_LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "diagnostics.log")
+_diag_handler = logging.FileHandler(_DIAG_LOG, mode="a", encoding="utf-8")
+_diag_handler.setFormatter(logging.Formatter('%(message)s'))
+_diag_logger = logging.getLogger("infraheal.diag")
+_diag_logger.setLevel(logging.DEBUG)
+_diag_logger.handlers.clear()
+_diag_logger.addHandler(_diag_handler)
+_diag_logger.propagate = False
+
+def _diag(event: str, **kw):
+    """Write a structured JSON line to diagnostics.log."""
+    record = {"t": datetime.now().strftime("%H:%M:%S.%f")[:-3], "e": event, **kw}
+    _diag_logger.debug(json.dumps(record))
+
+_diag("init", file=_DIAG_LOG)
+
 warnings.filterwarnings("ignore", message=".*422.*")
 import gradio as gr
 import plotly.graph_objects as go
@@ -2656,6 +2673,7 @@ def create_dashboard(
 
     def _generate_report() -> str:
         """Generate a summary report of all incidents."""
+        _diag("generate_report_enter", scenarios=len(scenarios), scenario_results=len(_scenario_results))
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         incident_rows = ""
         for name, sc in scenarios.items():
@@ -2684,7 +2702,7 @@ def create_dashboard(
                 f'</tr>'
             )
 
-        return (
+        html_out = (
             f'<div class="glass-card">'
             f'<div style="margin-bottom:18px;">'
             f'<div style="font-size:1.05rem;font-weight:700;color:#e2e8f0;">InfraHeal AI — Summary Report</div>'
@@ -2701,19 +2719,28 @@ def create_dashboard(
             f'{len(scenarios)} incidents catalogued · AMD GPU accelerated inference · Model: {MODEL_NAME.split("/")[-1]}</div>'
             f'</div></div>'
         )
+        _diag("generate_report_exit", html_len=len(html_out), has_rows=bool(incident_rows))
+        return html_out
 
     def _run_pipeline_thread(gen_func: Callable):
         global _live_html, _process_completed, _monitoring_completed, _static_output_active
         import sys
+        fn_name = gen_func.__name__
+        _diag("pipeline_thread_start", fn=fn_name, static=_static_output_active)
         print("[THREAD] Starting pipeline thread", flush=True)
-        is_monitor = (gen_func.__name__ == '_continuous_monitor')
+        is_monitor = (fn_name == '_continuous_monitor')
+        writes = 0
+        skips = 0
         try:
             for partial in gen_func():
                 # Skip _live_html updates while static output (report/scan/optimize) is displayed
                 if not _static_output_active:
                     with _live_html_lock:
                         _live_html = partial
+                        writes += 1
                         print(f"[THREAD] Wrote {len(partial)} bytes to _live_html", flush=True)
+                else:
+                    skips += 1
         except Exception:
             import traceback
             traceback.print_exc()
@@ -2722,16 +2749,17 @@ def create_dashboard(
             _monitoring_completed = True
         else:
             _process_completed = True
+        _diag("pipeline_thread_exit", fn=fn_name, writes=writes, skips=skips, completed=True)
         # Keep _live_html for cached pipeline viewing via _start_process().
-        # /live-html endpoint stops serving it once thread is dead,
-        # so iframe poll no longer overwrites -> Generate Report survives.
         print("[THREAD] Pipeline thread exiting", flush=True)
 
     def _start_process():
         global _process_thread, _live_html, _process_completed, _scenario_results, _static_output_active
         import sys
+        t_alive = (_process_thread and _process_thread.is_alive()) or (_monitor_thread and _monitor_thread.is_alive())
+        _diag("start_process_click", thread_alive=t_alive, completed=_process_completed, static=_static_output_active)
         print("[START_PROCESS] Button clicked!", flush=True)
-        if (_process_thread and _process_thread.is_alive()) or (_monitor_thread and _monitor_thread.is_alive()):
+        if t_alive:
             _static_output_active = False  # un-freeze live view
             with _live_html_lock:
                 print("[START_PROCESS] Already running, returning existing HTML", flush=True)
@@ -2754,8 +2782,10 @@ def create_dashboard(
         global _monitor_thread, _live_html, _scenario_results
         global _stop_monitoring_requested, _monitoring_active, _monitoring_completed, _static_output_active
         import sys
+        t_alive = (_process_thread and _process_thread.is_alive()) or (_monitor_thread and _monitor_thread.is_alive())
+        _diag("start_monitor_click", thread_alive=t_alive, completed=_monitoring_completed, static=_static_output_active)
         print("[START_MONITOR] Button clicked!", flush=True)
-        if (_process_thread and _process_thread.is_alive()) or (_monitor_thread and _monitor_thread.is_alive()):
+        if t_alive:
             _static_output_active = False  # un-freeze live view
             with _live_html_lock:
                 print("[START_MONITOR] Already running, returning existing HTML", flush=True)
@@ -3751,6 +3781,7 @@ setInterval(function(){
                 # ── Rerun-aware wrappers ──
                 def _cached_scan():
                     global _static_output_active
+                    _diag("cached_scan", cached="report" in _result_cache, static=_static_output_active)
                     _static_output_active = True
                     if "anomaly_scan" in _result_cache:
                         return _result_cache["anomaly_scan"]
@@ -3760,6 +3791,7 @@ setInterval(function(){
 
                 def _rerun_scan():
                     global _static_output_active
+                    _diag("rerun_scan", static=_static_output_active)
                     _static_output_active = True
                     r = _run_anomaly_scan()
                     _result_cache["anomaly_scan"] = r
@@ -3767,6 +3799,7 @@ setInterval(function(){
 
                 def _cached_report():
                     global _static_output_active
+                    _diag("cached_report", cached="report" in _result_cache, static=_static_output_active)
                     _static_output_active = True
                     if "report" in _result_cache:
                         return _result_cache["report"]
@@ -3776,6 +3809,7 @@ setInterval(function(){
 
                 def _rerun_report():
                     global _static_output_active
+                    _diag("rerun_report", static=_static_output_active)
                     _static_output_active = True
                     r = _generate_report()
                     _result_cache["report"] = r
@@ -3783,6 +3817,7 @@ setInterval(function(){
 
                 def _cached_optimize():
                     global _static_output_active
+                    _diag("cached_optimize", cached="optimize" in _result_cache, static=_static_output_active)
                     _static_output_active = True
                     if "optimize" in _result_cache:
                         return _result_cache["optimize"]
@@ -3792,6 +3827,7 @@ setInterval(function(){
 
                 def _rerun_optimize():
                     global _static_output_active
+                    _diag("rerun_optimize", static=_static_output_active)
                     _static_output_active = True
                     r = _run_optimize()
                     _result_cache["optimize"] = r
@@ -3799,6 +3835,7 @@ setInterval(function(){
 
                 def _stop_monitoring():
                     global _stop_monitoring_requested
+                    _diag("stop_monitoring")
                     _stop_monitoring_requested = True
                     return '<div style="color:orange;">Stop requested — waiting for current cycle to finish...</div>'
 
@@ -3815,6 +3852,7 @@ setInterval(function(){
 
                 def _rerun_process():
                     global _process_completed, _live_html, _scenario_results, _static_output_active
+                    _diag("rerun_process", completed=_process_completed, static=_static_output_active)
                     _process_completed = False
                     _live_html = ""
                     _result_cache.pop("report", None)
@@ -3823,6 +3861,7 @@ setInterval(function(){
                     return _start_process()
                 def _rerun_monitor():
                     global _monitoring_completed, _stop_monitoring_requested, _live_html, _scenario_results, _static_output_active
+                    _diag("rerun_monitor", completed=_monitoring_completed, static=_static_output_active)
                     _stop_monitoring_requested = True
                     _monitoring_completed = False
                     _live_html = ""

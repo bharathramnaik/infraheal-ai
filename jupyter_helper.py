@@ -140,10 +140,13 @@ def launch_dashboard(
         @demo.app.get("/live-html")
         def _serve_live_html():
             alive = (_dash_mod._process_thread is not None and _dash_mod._process_thread.is_alive()) or (_dash_mod._monitor_thread is not None and _dash_mod._monitor_thread.is_alive())
-            if alive and not _dash_mod._static_output_active:
+            serve = alive and not _dash_mod._static_output_active
+            if serve:
                 with _dash_mod._live_html_lock:
                     html = _dash_mod._live_html or ""
+                    _dash_mod._diag("live_html_serve", alive=alive, static=_dash_mod._static_output_active, html_len=len(html))
                     return PlainTextResponse(html)
+            _dash_mod._diag("live_html_empty", alive=alive, static=_dash_mod._static_output_active)
             return PlainTextResponse("")
         import sys; print("[LIVE-HTML] Endpoint registered on live app", flush=True)
     except Exception as ex:
