@@ -3613,12 +3613,10 @@ _obs.observe(_timerRoot,{childList:true,subtree:true,attributes:false});
                     btn_optimize = gr.Button("Optimize Agent (LoRA)", variant="secondary", scale=1)
                     btn_optimize_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-optimize")
 
-                scan_accordion = gr.Accordion("Scan & Pipeline Output", open=False)
-                with scan_accordion:
-                    scan_output = gr.HTML(
-                        value=_empty_state("Anomaly scan results will appear here",
-                                           "Click 'Run Anomaly Scan' to start.")
-                    )
+                scan_output = gr.HTML(
+                    value=_empty_state("Anomaly scan results will appear here",
+                                       "Click 'Run Anomaly Scan' to start.")
+                )
 
                 # ── Rerun-aware wrappers ──
                 def _cached_scan():
@@ -3701,20 +3699,15 @@ _obs.observe(_timerRoot,{childList:true,subtree:true,attributes:false});
                     return '<div style="color:orange;">Stop requested — waiting for current cycle to finish...</div>'
 
                 # ── Wire main buttons (show cached) and rerun buttons (force fresh) ──
-                # IMPORTANT: accordion open handler MUST come BEFORE the generator so accordion shows immediately
                 for btn, fn in [(btn_scan, _cached_scan), (btn_report, _cached_report), (btn_optimize, _cached_optimize)]:
                     btn.click(fn=fn, inputs=[], outputs=[scan_output])
-                    btn.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
                 for btn, fn in [(btn_scan_rerun, _rerun_scan), (btn_report_rerun, _rerun_report), (btn_optimize_rerun, _rerun_optimize)]:
                     btn.click(fn=fn, inputs=[], outputs=[scan_output])
-                    btn.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
 
                 for btn, fn in [(btn_process, _cached_process), (btn_monitor, _cached_monitor), (btn_process_rerun, _rerun_process), (btn_monitor_rerun, _rerun_monitor)]:
-                    btn.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
                     btn.click(fn=fn, inputs=[], outputs=[scan_output])
 
                 btn_stop_monitor.click(fn=_stop_monitoring, inputs=[], outputs=[scan_output])
-                btn_stop_monitor.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
 
             # ──────────────────────────────────────────────────────
             #  TAB 2 — INCIDENT ANALYSIS
