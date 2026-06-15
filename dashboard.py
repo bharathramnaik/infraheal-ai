@@ -990,9 +990,10 @@ footer { display: none !important; }
   line-height:26px !important;
 }
 
-/* ── Optimize button smaller ─────────────────────────────────── */
+/* ── Optimize button slightly wider ──────────────────────────── */
 #rerun-optimize { min-width:0 !important; }
 button:has(> #rerun-optimize) { padding:0 !important; }
+#btn-optimize { min-width:140px !important; }
 
 /* ── Collapsible pipeline steps ──────────────────────────────── */
 .pipeline-step { cursor:pointer; }
@@ -3701,7 +3702,7 @@ def create_dashboard(
                     btn_report = gr.Button("Generate Report", variant="secondary", scale=1)
                     btn_report_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-report")
                 with gr.Row():
-                    btn_monitor = gr.Button("Start Continuous Process", variant="secondary", scale=1)
+                    btn_monitor = gr.Button("Start Continuous Process", variant="secondary", scale=0)
                     btn_monitor_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-monitor")
                     btn_stop_monitor = gr.Button("\u25a0", scale=0, elem_classes="stop-btn", elem_id="stop-monitor", visible=True)
                     drp_poll_interval = gr.Dropdown(
@@ -3710,7 +3711,7 @@ def create_dashboard(
                         value=60, label="", scale=0, min_width=70,
                         elem_id="poll-interval", show_label=False,
                     )
-                    btn_optimize = gr.Button("Optimize Agent", variant="secondary", scale=0)
+                    btn_optimize = gr.Button("Optimize Agent", variant="secondary", scale=0, elem_id="btn-optimize")
                     btn_optimize_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-optimize")
 
                 scan_output = gr.HTML(
