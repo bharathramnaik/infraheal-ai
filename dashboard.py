@@ -2650,19 +2650,28 @@ def create_dashboard(
 
     def _run_pipeline_thread(gen_func: Callable):
         global _live_html
+        import sys
+        print("[THREAD] Starting pipeline thread", flush=True)
         try:
             for partial in gen_func():
                 with _live_html_lock:
                     _live_html = partial
+                    print(f"[THREAD] Wrote {len(partial)} bytes to _live_html", flush=True)
         except Exception:
-            logger.exception("Pipeline thread failed")
+            import traceback
+            traceback.print_exc()
+            print("[THREAD] Pipeline thread FAILED with exception above", flush=True)
 
     def _start_process():
         global _process_thread, _live_html
+        import sys
+        print("[START_PROCESS] Button clicked!", flush=True)
         if (_process_thread and _process_thread.is_alive()) or (_monitor_thread and _monitor_thread.is_alive()):
             with _live_html_lock:
+                print("[START_PROCESS] Already running, returning existing HTML", flush=True)
                 return _live_html
         _live_html = '<div style="color:#8b949e;text-align:center;padding:12px;">Starting... </div>'
+        print("[START_PROCESS] Starting thread...", flush=True)
         _process_thread = threading.Thread(target=_run_pipeline_thread, args=(_process_all_incidents,), daemon=True)
         _process_thread.start()
         return _live_html
@@ -2670,12 +2679,16 @@ def create_dashboard(
     def _start_monitor():
         global _monitor_thread, _live_html
         global _stop_monitoring_requested, _monitoring_active
+        import sys
+        print("[START_MONITOR] Button clicked!", flush=True)
         if (_process_thread and _process_thread.is_alive()) or (_monitor_thread and _monitor_thread.is_alive()):
             with _live_html_lock:
+                print("[START_MONITOR] Already running, returning existing HTML", flush=True)
                 return _live_html
         _stop_monitoring_requested = False
         _monitoring_active = True
         _live_html = '<div style="color:#8b949e;text-align:center;padding:12px;">Starting continuous monitoring...</div>'
+        print("[START_MONITOR] Starting thread...", flush=True)
         _monitor_thread = threading.Thread(target=_run_pipeline_thread, args=(_continuous_monitor,), daemon=True)
         _monitor_thread.start()
         return _live_html
@@ -2683,11 +2696,15 @@ def create_dashboard(
     def _poll_live_html():
         """Called by gr.Timer to poll pipeline thread progress."""
         global _process_thread, _monitor_thread, _live_html
+        import sys
         alive = (_process_thread and _process_thread.is_alive()) or (_monitor_thread and _monitor_thread.is_alive())
         if not alive:
+            print("[POLL] No thread alive, skipping", flush=True)
             return gr.skip()
         with _live_html_lock:
-            return _live_html or gr.skip()
+            result = _live_html or gr.skip()
+            print(f"[POLL] Thread alive, returning {len(_live_html)} bytes" if _live_html else "[POLL] Thread alive, _live_html empty", flush=True)
+            return result
 
     def _process_all_incidents():
         """Run the pipeline on every scenario and produce a comprehensive report."""
@@ -3720,15 +3737,22 @@ _obs.observe(_timerRoot,{childList:true,subtree:true,attributes:false});
                     btn.click(fn=fn, inputs=[], outputs=[scan_output])
 
                 # Process / Monitor buttons use background thread + timer polling
+                # Timer polls background thread progress (keep above click wiring)
+                _pipeline_timer = gr.Timer(value=1, active=True)
+                _pipeline_timer.tick(fn=_poll_live_html, inputs=[], outputs=[scan_output])
+
                 btn_process.click(fn=_start_process, inputs=[], outputs=[scan_output])
                 btn_monitor.click(fn=_start_monitor, inputs=[], outputs=[scan_output])
                 btn_process_rerun.click(fn=_start_process, inputs=[], outputs=[scan_output])
                 btn_monitor_rerun.click(fn=_start_monitor, inputs=[], outputs=[scan_output])
                 btn_stop_monitor.click(fn=_stop_monitoring, inputs=[], outputs=[scan_output])
 
-                # Timer polls background thread progress
-                _pipeline_timer = gr.Timer(value=1, active=True)
-                _pipeline_timer.tick(fn=_poll_live_html, inputs=[], outputs=[scan_output])
+                # ── DEBUG: test if ANY click updates scan_output ──
+                def _test_update():
+                    import time
+                    return f'<div style="padding:20px;color:lime;font-size:2rem;">TEST {time.time()}</div>'
+                btn_debug = gr.Button("TEST UPDATE", elem_id="btn-test-update", visible=True)
+                btn_debug.click(fn=_test_update, inputs=[], outputs=[scan_output])
 
             # ──────────────────────────────────────────────────────
             #  TAB 2 — INCIDENT ANALYSIS
