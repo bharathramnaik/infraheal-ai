@@ -3581,6 +3581,10 @@ var _obs=new MutationObserver(function(){
 });
 _obs.observe(_timerRoot,{childList:true,subtree:true,attributes:false});
 </script>''') as demo:
+        try:
+            demo.queue()
+        except Exception:
+            pass
 
         # ──────────────────────────────────────────────────────────
         #  TAB 1 — COMMAND CENTER
@@ -3657,21 +3661,11 @@ _obs.observe(_timerRoot,{childList:true,subtree:true,attributes:false});
                     _result_cache["optimize"] = r
                     return r
 
-                def _cached_process():
-                    for partial in _process_all_incidents():
-                        yield partial
-
-                def _rerun_process():
-                    for partial in _process_all_incidents():
-                        yield partial
-
-                def _cached_monitor():
-                    for partial in _continuous_monitor():
-                        yield partial
-
-                def _rerun_monitor():
-                    for partial in _continuous_monitor():
-                        yield partial
+                # Direct generator references — no wrappers
+                _cached_process = _process_all_incidents
+                _rerun_process = _process_all_incidents
+                _cached_monitor = _continuous_monitor
+                _rerun_monitor = _continuous_monitor
 
                 def _stop_monitoring():
                     global _stop_monitoring_requested
