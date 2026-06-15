@@ -970,16 +970,24 @@ footer { display: none !important; }
 .pipeline-step-progress-bar.warning { background:#FFB800; }
 #refresh-btn{display:none!important}
 
-/* ── Poll Interval Dropdown (compact, black) ─────────────────── */
-#poll-interval { min-width:80px !important; max-width:110px !important; }
+/* ── Poll Interval Dropdown (compact, black, no extended box) ─── */
+#poll-interval { min-width:70px !important; max-width:90px !important; }
 #poll-interval label { display:none !important; }
-#poll-interval select, #poll-interval .gr-dropdown,
-#poll-interval .gr-box, #poll-interval .gr-dropdown-container,
-#poll-interval .gr-input, #poll-interval .gr-text-input {
+#poll-interval .gr-dropdown-container,
+#poll-interval .gr-box, #poll-interval .gr-dropdown,
+#poll-interval .gr-input, #poll-interval .gr-text-input,
+#poll-interval .wrap-inner, #poll-interval .choices-wrapper {
   background:#000 !important; border:1px solid #30363d !important;
-  color:#c9d1d9 !important; border-radius:6px !important;
-  font-size:0.75rem !important; padding:2px 6px !important;
-  min-height:28px !important; height:28px !important;
+  color:#c9d1d9 !important; border-radius:4px !important;
+  padding:0 !important; margin:0 !important;
+  box-shadow:none !important; outline:none !important;
+}
+#poll-interval select {
+  background:#000 !important; color:#c9d1d9 !important;
+  border:none !important; font-size:0.75rem !important;
+  padding:2px 4px !important; margin:0 !important;
+  min-height:26px !important; height:26px !important;
+  line-height:26px !important;
 }
 
 /* ── Optimize button smaller ─────────────────────────────────── */
@@ -3699,7 +3707,7 @@ def create_dashboard(
                     drp_poll_interval = gr.Dropdown(
                         choices=[("1min", 60), ("2min", 120), ("3min", 180),
                                  ("5min", 300), ("10min", 600), ("30min", 1800), ("1hr", 3600)],
-                        value=60, label="", scale=1, min_width=100,
+                        value=60, label="", scale=0, min_width=70,
                         elem_id="poll-interval", show_label=False,
                     )
                     btn_optimize = gr.Button("Optimize Agent", variant="secondary", scale=0)
