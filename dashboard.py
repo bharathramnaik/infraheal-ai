@@ -2756,10 +2756,10 @@ def create_dashboard(
     def _start_process():
         global _process_thread, _live_html, _process_completed, _scenario_results, _static_output_active
         import sys
-        t_alive = (_process_thread and _process_thread.is_alive()) or (_monitor_thread and _monitor_thread.is_alive())
-        _diag("start_process_click", thread_alive=t_alive, completed=_process_completed, static=_static_output_active)
+        p_alive = _process_thread and _process_thread.is_alive()
+        _diag("start_process_click", process_alive=p_alive, completed=_process_completed, static=_static_output_active)
         print("[START_PROCESS] Button clicked!", flush=True)
-        if t_alive:
+        if p_alive:
             _static_output_active = False  # un-freeze live view
             with _live_html_lock:
                 print("[START_PROCESS] Already running, returning existing HTML", flush=True)
@@ -2782,10 +2782,10 @@ def create_dashboard(
         global _monitor_thread, _live_html, _scenario_results
         global _stop_monitoring_requested, _monitoring_active, _monitoring_completed, _static_output_active
         import sys
-        t_alive = (_process_thread and _process_thread.is_alive()) or (_monitor_thread and _monitor_thread.is_alive())
-        _diag("start_monitor_click", thread_alive=t_alive, completed=_monitoring_completed, static=_static_output_active)
+        m_alive = _monitor_thread and _monitor_thread.is_alive()
+        _diag("start_monitor_click", monitor_alive=m_alive, completed=_monitoring_completed, static=_static_output_active)
         print("[START_MONITOR] Button clicked!", flush=True)
-        if t_alive:
+        if m_alive:
             _static_output_active = False  # un-freeze live view
             with _live_html_lock:
                 print("[START_MONITOR] Already running, returning existing HTML", flush=True)
