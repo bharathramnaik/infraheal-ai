@@ -968,10 +968,15 @@ footer { display: none !important; }
 #refresh-btn{display:none!important}
 
 /* ── Poll Interval Dropdown (black & white) ──────────────────── */
-#poll-interval label { color:#fff !important; }
-#poll-interval .gr-dropdown { background:#000 !important; border:1px solid #555 !important; color:#fff !important; }
-#poll-interval .gr-dropdown select { background:#000 !important; color:#fff !important; border:none !important; }
-#poll-interval .gr-dropdown-container { background:#000 !important; border:1px solid #555 !important; }
+#poll-interval { min-width:70px !important; max-width:90px !important; }
+#poll-interval label { color:#fff !important; display:none !important; }
+#poll-interval .gr-box, #poll-interval .gr-dropdown, #poll-interval .gr-dropdown select,
+#poll-interval select, #poll-interval .gr-input, #poll-interval .gr-text-input {
+  background:#000 !important; border:1px solid #555 !important; color:#fff !important;
+}
+#poll-interval .gr-dropdown-container {
+  background:#000 !important; border:1px solid #555 !important; color:#fff !important;
+}
 """
 
 
@@ -3190,8 +3195,8 @@ def create_dashboard(
                 yield _render_pipeline_flow()
 
             # First pass: process all known scenarios
-            for html in _process_scenarios_cycle(scenario_list, "Initial Scan"):
-                yield html
+            for chunk in _process_scenarios_cycle(scenario_list, "Initial Scan"):
+                yield chunk
 
             # Polling loop: run full scenario processing each cycle
             while not _stop_monitoring_requested:
@@ -3199,8 +3204,8 @@ def create_dashboard(
                 # Show a pending step that becomes "complete" after processing
                 poll_step = _add_step(f"Poll Cycle #{poll_cycle}", "Running...", "running")
                 yield _render_pipeline_flow()
-                for html in _process_scenarios_cycle(scenario_list, f"Cycle #{poll_cycle}"):
-                    yield html
+                for chunk in _process_scenarios_cycle(scenario_list, f"Cycle #{poll_cycle}"):
+                    yield chunk
                 _complete_step(poll_step, "completed")
                 yield _render_pipeline_flow()
 
@@ -3644,8 +3649,8 @@ def create_dashboard(
                     drp_poll_interval = gr.Dropdown(
                         choices=[("1min", 60), ("2min", 120), ("3min", 180),
                                  ("5min", 300), ("10min", 600), ("30min", 1800), ("1hr", 3600)],
-                        value=60, label="Poll Interval", scale=1, min_width=100,
-                        elem_id="poll-interval",
+                        value=60, label="", scale=0, min_width=80,
+                        elem_id="poll-interval", show_label=False,
                     )
                 with gr.Row():
                     btn_optimize = gr.Button("Optimize Agent (LoRA)", variant="secondary", scale=1)
