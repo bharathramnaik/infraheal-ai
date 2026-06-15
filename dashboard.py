@@ -875,11 +875,11 @@ footer { display: none !important; }
   width: 32px !important;
   height: 32px !important;
   padding: 0 !important;
-  font-size: 0 !important;
+  font-size: 22px !important;
   border-radius: 6px !important;
-  border: 1px solid #ff3b3b !important;
+  border: 1.5px solid #ff3b3b !important;
   background: #0d1117 !important;
-  color: transparent !important;
+  color: #ff3b3b !important;
   cursor: pointer !important;
   display: inline-flex !important;
   align-items: center !important;
@@ -889,14 +889,20 @@ footer { display: none !important; }
   box-shadow: none !important;
   position: relative !important;
 }
-.stop-btn::before {
-  content: "" !important;
-  display: block !important;
-  width: 14px !important;
-  height: 14px !important;
-  background: #ff3b3b !important;
-  border-radius: 3px !important;
-  flex-shrink: 0 !important;
+.stop-btn * {
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+.stop-btn:hover {
+  background: #21262d !important;
+  border-color: #ff6b6b !important;
 }
 .stop-btn:hover::after {
   content: "Stop" !important;
@@ -912,10 +918,7 @@ footer { display: none !important; }
   white-space: nowrap !important;
   border: 1px solid #484f58 !important;
   font-weight: 500 !important;
-}
-.stop-btn:hover {
-  background: #21262d !important;
-  border-color: #ff6b6b !important;
+  z-index: 100 !important;
 }
 
 /* ── Pipeline Flow ──────────────────────────────────────────────── */
@@ -3675,7 +3678,7 @@ _obs.observe(_timerRoot,{childList:true,subtree:true,attributes:false});
                 with gr.Row():
                     btn_monitor = gr.Button("Start Continuous Monitoring", variant="secondary", scale=1)
                     btn_monitor_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-monitor")
-                    btn_stop_monitor = gr.Button("\u2593", scale=0, elem_classes="stop-btn", elem_id="stop-monitor", visible=True)
+                    btn_stop_monitor = gr.Button("\u25a0", scale=0, elem_classes="stop-btn", elem_id="stop-monitor", visible=True)
                     btn_optimize = gr.Button("Optimize Agent (LoRA)", variant="secondary", scale=1)
                     btn_optimize_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-optimize")
 
