@@ -286,6 +286,9 @@ _C = {
     "green":        "#00FF88",
 }
 
+def _risk_color(risk: str) -> str:
+    return {"high": _C["red"], "medium": _C["amber"], "low": _C["green"]}.get(risk.lower(), _C["amber"])
+
 # ═══════════════════════════════════════════════════════════════════
 #  CUSTOM CSS  (~250 lines)
 # ═══════════════════════════════════════════════════════════════════
@@ -1020,10 +1023,11 @@ footer { display: none !important; }
 .pipeline-step:hover { background:rgba(255,255,255,0.03); }
 /* ── Per-cycle collapsible (monitoring) ──────────────────────── */
 .pipeline-cycle-group { }
-.pipeline-cycle-group > .pipeline-step.cycle-header { }
-.pipeline-cycle-group > .pipeline-step.cycle-header .pipeline-step-name::before { content:'\25bc '; font-size:0.6rem; color:#8b949e; }
+.pipeline-cycle-group > .pipeline-step.cycle-header { cursor:pointer; }
+.pipeline-cycle-group > .pipeline-step.cycle-header .pipeline-step-name::before { content:'\\25bc '; font-size:0.6rem; color:#8b949e; }
 .pipeline-cycle-group.collapsed > .pipeline-cycle-children { display:none !important; }
-.pipeline-cycle-group.collapsed > .pipeline-step.cycle-header .pipeline-step-name::before { content:'\25b6 '; }
+.pipeline-cycle-group.collapsed > .pipeline-step.cycle-header .pipeline-step-name::before { content:'\\25b6 '; }
+.pipeline-step.cycle-header { background:rgba(255,255,255,0.04); border-left:2px solid #8b949e; }
 /* ── Center table headers ────────────────────────────────────── */
 .styled-table th { text-align:center !important; }
 """
@@ -3058,7 +3062,7 @@ def create_dashboard(
             f'<div style="font-size:0.85rem;font-weight:600;color:#e2e8f0;">{a.get("title","Action")}</div>'
             f'<div style="font-size:0.75rem;color:#8b949e;margin:4px 0;">{a.get("id","")} — {a.get("scenario","?")}'
             f'{" | Cycle #"+str(a.get("cycle","")) if a.get("cycle") else ""} | '
-            f'Risk: <span style="color:{_C["red"]};">{a.get("risk","medium")}</span></div>'
+            f'Risk: <span style="color:{_risk_color(a.get("risk","medium"))};">{a.get("risk","medium")}</span></div>'
             f'<div style="font-size:0.78rem;color:#c9d1d9;white-space:pre-wrap;">{a.get("summary","")[:200]}</div>'
             f'</div></div>'
             f'</div>'
@@ -3097,6 +3101,8 @@ def create_dashboard(
                         exec_result = {"status": "failed", "error": str(exc)}
 
                 exec_msg = exec_result.get("message", exec_result.get("error", ""))
+                a["execution_status"] = exec_result.get("status", "unknown")
+                a["execution_detail"] = exec_msg[:200]
                 _approval_history.append({
                     "id": action_id,
                     "scenario": a.get("scenario", "?"),
@@ -3174,6 +3180,8 @@ def create_dashboard(
                     "timestamp": a["resolved_at"],
                 })
                 # Write audit log
+                a["execution_status"] = "skipped"
+                a["execution_detail"] = a["reason"]
                 _append_audit_log({
                     "action": "denied",
                     "id": action_id,
@@ -4233,24 +4241,40 @@ setInterval(function(){
                 appr_history_panel = gr.HTML(value=_render_approval_history())
                 appr_audit_panel = gr.HTML(value=_render_audit_log())
 
+                def _render_action_log(a: dict, action_label: str, color: str) -> str:
+                    log = (
+                        f'<div style="padding:12px 16px;margin:8px 0;border:1px solid rgba({color},0.3);border-radius:8px;'
+                        f'background:rgba({color},0.06);font-size:0.82rem;">'
+                        f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
+                        f'<span style="color:#{color};font-weight:700;">{html.escape(action_label)}</span>'
+                        f'<span style="color:#8b949e;font-size:0.75rem;">{a.get("id","")} at {datetime.now().strftime("%H:%M:%S")}</span>'
+                        f'</div>'
+                        f'<div style="color:#e2e8f0;font-weight:600;">{html.escape(a.get("title",""))}</div>'
+                        f'<div style="color:#8b949e;font-size:0.76rem;">Scenario: {html.escape(a.get("scenario","?"))}'
+                        f'{" | Cycle #"+str(a.get("cycle","")) if a.get("cycle") else ""}'
+                        f' | Risk: <span style="color:{_risk_color(a.get("risk","medium"))};">{a.get("risk","medium")}</span></div>'
+                        f'<div style="margin-top:6px;padding:6px 10px;background:rgba(255,255,255,0.03);border-radius:4px;'
+                        f'font-size:0.76rem;color:#c9d1d9;white-space:pre-wrap;">'
+                        f'<span style="color:#8b949e;">Reason:</span> {html.escape(a.get("reason",""))}'
+                        f'</div>'
+                        f'<div style="margin-top:4px;padding:6px 10px;background:rgba(255,255,255,0.03);border-radius:4px;'
+                        f'font-size:0.76rem;color:#c9d1d9;white-space:pre-wrap;">'
+                        f'<span style="color:#8b949e;">Execution:</span> '
+                        f'<span style="color:{"#00FF88" if a.get("execution_status")=="success" else "#FF3B3B" if a.get("execution_status")=="failed" else "#FFB800"};">'
+                        f'{html.escape(a.get("execution_status","—"))}</span>'
+                        f' — {html.escape(a.get("execution_detail","")[:200])}'
+                        f'</div>'
+                        f'</div>'
+                    )
+                    return log
+
                 def _on_approve_selected(aid: str, reason: str):
                     if not aid:
                         return _render_approval_panel(), _render_approval_history(), _render_audit_log(), _refresh_approval_selector(), ""
                     reason = reason.strip()
                     _approve_action(aid, reason)
-                    now = datetime.now().strftime("%H:%M:%S")
-                    action_title = aid
-                    for a in _pending_approvals:
-                        if a.get("id") == aid:
-                            action_title = a.get("title", aid)
-                            break
-                    status = (
-                        f'<div style="padding:12px 16px;margin:8px 0;background:rgba(0,255,136,0.08);'
-                        f'border:1px solid rgba(0,255,136,0.3);border-radius:8px;font-size:0.85rem;">'
-                        f'<span style="color:#00FF88;font-weight:700;">Approved</span> '
-                        f'<span style="color:#c9d1d9;">{html.escape(action_title)}</span><br>'
-                        f'<span style="color:#8b949e;font-size:0.75rem;">{aid} at {now}</span></div>'
-                    )
+                    a = next((x for x in _pending_approvals if x.get("id") == aid), None)
+                    status = _render_action_log(a, "Approved", "00FF88") if a else ""
                     return (
                         _render_approval_panel(), _render_approval_history(), _render_audit_log(),
                         _refresh_approval_selector(), status,
@@ -4261,19 +4285,8 @@ setInterval(function(){
                         return _render_approval_panel(), _render_approval_history(), _render_audit_log(), _refresh_approval_selector(), ""
                     reason = reason.strip() or "No reason provided"
                     _deny_action(aid, reason)
-                    now = datetime.now().strftime("%H:%M:%S")
-                    action_title = aid
-                    for a in _pending_approvals:
-                        if a.get("id") == aid:
-                            action_title = a.get("title", aid)
-                            break
-                    status = (
-                        f'<div style="padding:12px 16px;margin:8px 0;background:rgba(255,59,59,0.08);'
-                        f'border:1px solid rgba(255,59,59,0.3);border-radius:8px;font-size:0.85rem;">'
-                        f'<span style="color:#FF3B3B;font-weight:700;">Denied</span> '
-                        f'<span style="color:#c9d1d9;">{html.escape(action_title)}</span><br>'
-                        f'<span style="color:#8b949e;font-size:0.75rem;">{aid} at {now} — {html.escape(reason)[:120]}</span></div>'
-                    )
+                    a = next((x for x in _pending_approvals if x.get("id") == aid), None)
+                    status = _render_action_log(a, "Denied", "FF3B3B") if a else ""
                     return (
                         _render_approval_panel(), _render_approval_history(), _render_audit_log(),
                         _refresh_approval_selector(), status,
@@ -4282,39 +4295,41 @@ setInterval(function(){
                 def _on_approve_all(reason: str = ""):
                     count = 0
                     reason = reason.strip() or "Bulk approved"
+                    logs_html = ""
                     for a in _pending_approvals:
                         if a.get("status") == "pending":
                             _approve_action(a["id"], reason)
+                            logs_html += _render_action_log(a, "Approved", "00FF88")
                             count += 1
-                    now = datetime.now().strftime("%H:%M:%S")
-                    status = (
-                        f'<div style="padding:12px 16px;margin:8px 0;background:rgba(0,255,136,0.08);'
-                        f'border:1px solid rgba(0,255,136,0.3);border-radius:8px;font-size:0.85rem;">'
-                        f'<span style="color:#00FF88;font-weight:700;">Approved {count} action(s)</span><br>'
-                        f'<span style="color:#8b949e;font-size:0.75rem;">at {now}</span></div>'
+                    summary = (
+                        f'<div style="padding:8px 12px;margin:4px 0;background:rgba(0,255,136,0.04);'
+                        f'border:1px solid rgba(0,255,136,0.2);border-radius:6px;font-size:0.82rem;">'
+                        f'<span style="color:#00FF88;font-weight:700;">Approved {count} action(s)</span>'
+                        f'</div>'
                     )
                     return (
                         _render_approval_panel(), _render_approval_history(), _render_audit_log(),
-                        _refresh_approval_selector(), status,
+                        _refresh_approval_selector(), summary + logs_html,
                     )
 
                 def _on_deny_all(reason: str):
                     reason = reason.strip() or "No reason provided"
                     count = 0
+                    logs_html = ""
                     for a in _pending_approvals:
                         if a.get("status") == "pending":
                             _deny_action(a["id"], reason)
+                            logs_html += _render_action_log(a, "Denied", "FF3B3B")
                             count += 1
-                    now = datetime.now().strftime("%H:%M:%S")
-                    status = (
-                        f'<div style="padding:12px 16px;margin:8px 0;background:rgba(255,59,59,0.08);'
-                        f'border:1px solid rgba(255,59,59,0.3);border-radius:8px;font-size:0.85rem;">'
-                        f'<span style="color:#FF3B3B;font-weight:700;">Denied {count} action(s)</span><br>'
-                        f'<span style="color:#8b949e;font-size:0.75rem;">at {now}</span></div>'
+                    summary = (
+                        f'<div style="padding:8px 12px;margin:4px 0;background:rgba(255,59,59,0.04);'
+                        f'border:1px solid rgba(255,59,59,0.2);border-radius:6px;font-size:0.82rem;">'
+                        f'<span style="color:#FF3B3B;font-weight:700;">Denied {count} action(s)</span>'
+                        f'</div>'
                     )
                     return (
                         _render_approval_panel(), _render_approval_history(), _render_audit_log(),
-                        _refresh_approval_selector(), status,
+                        _refresh_approval_selector(), summary + logs_html,
                     )
 
                 outputs_approval = [
