@@ -2862,14 +2862,21 @@ def create_dashboard(
         yield _render_pipeline_flow() + '<div style="color:#8b949e;font-size:0.78rem;text-align:center;padding:12px;">Processing scenarios...</div>'
         _complete_step(_pipeline_run["steps"][-1])
 
+        # Pre-populate all scenario steps as "pending" so progress starts at 0% not 50%
+        _scenario_steps = []
+        for si, (name, sc) in enumerate(scenario_list):
+            title = sc.get("title", name)
+            _scenario_steps.append(_add_step(f"[{si+1}/{total_scenarios}] {title}", "Waiting...", "pending"))
+        yield _render_pipeline_flow() + '<div style="color:#8b949e;font-size:0.78rem;text-align:center;padding:12px;">Processing scenarios...</div>'
+
         for i, (name, sc) in enumerate(scenario_list):
             sc_data = dict(sc)
             result = None
             title = sc_data.get("title", name)
-            step_name = f"[{i+1}/{total_scenarios}] {title}"
-
-            # Add step for this scenario
-            step = _add_step(step_name, "Running anomaly detection & agents", "running")
+            step = _scenario_steps[i]
+            step["status"] = "running"
+            step["start"] = time.time()
+            step["desc"] = "Running anomaly detection & agents"
             yield _render_pipeline_flow() + '<div style="color:#8b949e;font-size:0.78rem;text-align:center;padding:12px;">Processing scenarios...</div>'
 
             if orchestrator is not None:
@@ -3273,11 +3280,12 @@ def create_dashboard(
                         total_actions += len(actions)
                         report_out = result.get("report", {})
                         severity = sc_data.get("severity", "P3")
-                        rc_text = ""
+                        rc_text = html.escape(sc_data.get("description", "—")[:60] + "...") if sc_data.get("description") else "—"
                         rca_out = result.get("rca", result.get("rca_result", {}))
                         if rca_out:
                             rcs = rca_out.get("root_causes", []) if isinstance(rca_out, dict) else []
-                            rc_text = html.escape(rcs[0][:80] if rcs else "—")
+                            if rcs:
+                                rc_text = html.escape(rcs[0][:80])
                         report_text = report_out.get("summary", report_out.get("narrative", "")) if report_out else ""
                         if result:
                             _scenario_results[name] = result
@@ -3313,8 +3321,8 @@ def create_dashboard(
                 while remaining > 0 and not _stop_monitoring_requested:
                     poll_step["desc"] = f"Next scan in {remaining}s"
                     yield _render_pipeline_flow()
-                    time.sleep(2)
-                    remaining -= 2
+                    time.sleep(1)
+                    remaining -= 1
                 poll_step["desc"] = f"Next scan in 0s"
                 yield _render_pipeline_flow()
 
@@ -3778,6 +3786,7 @@ setInterval(function(){
   var d=parent.document,pt=d.querySelector('.pipeline-timer');
   if(pt&&pt.dataset.status!=='completed'&&pt.dataset.start){var n=Date.now()/1e3,e=Math.max(0,Math.floor(n-parseFloat(pt.dataset.start)));pt.textContent=String(Math.floor(e/60)).padStart(2,'0')+':'+String(e%60).padStart(2,'0');}
   d.querySelectorAll('.step-timer').forEach(function(e){if(e.dataset.status==='completed'||!e.dataset.start)return;var n=Date.now()/1e3,t=Math.max(0,Math.floor(n-parseFloat(e.dataset.start)));e.textContent=String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0');});
+  d.querySelectorAll('.pipeline-step').forEach(function(s){s.onclick=function(){this.classList.toggle('collapsed');};});
 },1000);
 """ + "</scri" + "pt>"
                 gr.HTML(value='<iframe srcdoc="' + _TIMER_JS.replace('"', '&quot;') + '" style="width:0;height:0;border:none;display:none"></iframe>')
