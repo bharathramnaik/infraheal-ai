@@ -3697,8 +3697,8 @@ def create_dashboard(
                     btn_report_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-report")
                 with gr.Row(variant="compact", equal_height=True):
                     btn_monitor = gr.Button("Start Continuous Process", variant="secondary", scale=4)
-                    btn_monitor_rerun = gr.Button("\u21bb", scale=1, elem_classes="rerun-btn", elem_id="rerun-monitor")
-                    btn_stop_monitor = gr.Button("\u25a0", scale=1, elem_classes="stop-btn", elem_id="stop-monitor", visible=True)
+                    btn_monitor_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-monitor")
+                    btn_stop_monitor = gr.Button("\u25a0", scale=0, elem_classes="stop-btn", elem_id="stop-monitor", visible=True)
                     drp_poll_interval = gr.Dropdown(
                         choices=[("1 min", 60), ("2 min", 120), ("3 min", 180),
                                  ("5 min", 300), ("10 min", 600), ("30 min", 1800), ("1 hr", 3600)],
