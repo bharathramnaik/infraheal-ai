@@ -2810,7 +2810,9 @@ def create_dashboard(
         """Called by gr.Timer to poll pipeline thread progress."""
         global _process_thread, _monitor_thread, _live_html, _static_output_active
         alive = (_process_thread and _process_thread.is_alive()) or (_monitor_thread and _monitor_thread.is_alive())
-        if not alive or _static_output_active:
+        if _static_output_active:
+            return gr.skip()
+        if not alive and not _live_html:
             return gr.skip()
         with _live_html_lock:
             result = _live_html or gr.skip()
@@ -3759,12 +3761,26 @@ def create_dashboard(
                 )
 
                 # ── Gradio-native timer: polls pipeline progress every 1s ──
-                # Replaces the prior iframe+srcdoc hack (browser JS was unreliable
-                # with Gradio 6.18.0's event system).  The timer fires a server-side
-                # event that calls _poll_live_html and updates scan_output through
-                # Gradio's normal event queue, eliminating race conditions.
+                # The timer fires a server-side event that calls _poll_live_html
+                # and updates scan_output through Gradio's normal event queue.
+                # Combined with a lightweight iframe JS that only updates timer
+                # displays (.pipeline-timer / .step-timer) — no /live-html fetch,
+                # no scan-output alteration, eliminating the race condition that
+                # plagued the old full-HTML-replacement iframe.
                 _live_poll_timer = gr.Timer(value=1.0, active=True)
                 _live_poll_timer.tick(fn=_poll_live_html, inputs=[], outputs=[scan_output])
+
+                # ── Minimal iframe: real-time timer display only ──
+                # No fetch('/live-html'), no scan-output.innerHTML modification.
+                # Safely co-exists with the Gradio-native timer above.
+                _TIMER_JS = "<scri" + "pt>\n" + """
+setInterval(function(){
+  var d=parent.document,pt=d.querySelector('.pipeline-timer');
+  if(pt&&pt.dataset.status!=='completed'&&pt.dataset.start){var n=Date.now()/1e3,e=Math.max(0,Math.floor(n-parseFloat(pt.dataset.start)));pt.textContent=String(Math.floor(e/60)).padStart(2,'0')+':'+String(e%60).padStart(2,'0');}
+  d.querySelectorAll('.step-timer').forEach(function(e){if(e.dataset.status==='completed'||!e.dataset.start)return;var n=Date.now()/1e3,t=Math.max(0,Math.floor(n-parseFloat(e.dataset.start)));e.textContent=String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0');});
+},1000);
+""" + "</scri" + "pt>"
+                gr.HTML(value='<iframe srcdoc="' + _TIMER_JS.replace('"', '&quot;') + '" style="width:0;height:0;border:none;display:none"></iframe>')
 
                 # ── Rerun-aware wrappers ──
                 def _cached_scan():
