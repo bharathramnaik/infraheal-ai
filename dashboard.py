@@ -3503,7 +3503,7 @@ def create_dashboard(
         rows = "".join(
             f'<tr>'
             f'<td style="white-space:nowrap;font-size:0.78rem;color:#8b949e;">{h.get("id","")}</td>'
-            f'<td style="white-space:nowrap;font-size:0.78rem;color:#8b949e;">{"C"+str(h.get("cycle","")) if h.get("cycle") else "—"}</td>'
+            f'<td style="white-space:nowrap;font-size:0.78rem;color:#8b949e;">C{str(h.get("cycle",0))}</td>'
             f'<td style="white-space:nowrap;font-size:0.78rem;">{h.get("scenario","")[:20]}</td>'
             f'<td style="font-size:0.78rem;">{h.get("title","")}</td>'
             f'<td style="font-size:0.78rem;"><span style="color:{"#00FF88" if h.get("action")=="approved" else "#FF3B3B"};">{h.get("action","")}</span></td>'
@@ -4251,7 +4251,7 @@ setInterval(function(){
                         f'</div>'
                         f'<div style="color:#e2e8f0;font-weight:600;">{html.escape(a.get("title",""))}</div>'
                         f'<div style="color:#8b949e;font-size:0.76rem;">Scenario: {html.escape(a.get("scenario","?"))}'
-                        f'{" | Cycle #"+str(a.get("cycle","")) if a.get("cycle") else ""}'
+                        f' | Cycle #{a.get("cycle",0)}'
                         f' | Risk: <span style="color:{_risk_color(a.get("risk","medium"))};">{a.get("risk","medium")}</span></div>'
                         f'<div style="margin-top:6px;padding:6px 10px;background:rgba(255,255,255,0.03);border-radius:4px;'
                         f'font-size:0.76rem;color:#c9d1d9;white-space:pre-wrap;">'
@@ -4341,7 +4341,6 @@ setInterval(function(){
                 appr_btn_approve_all.click(fn=_on_approve_all, inputs=[appr_reason], outputs=outputs_approval)
                 appr_btn_deny_all.click(fn=_on_deny_all, inputs=[appr_reason], outputs=outputs_approval)
                 appr_refresh_btn.click(fn=_refresh_approvals, inputs=[], outputs=[appr_panel, appr_history_panel, appr_audit_panel, appr_approval_selector])
-                appr_approval_selector.change(fn=lambda: gr.update(value=""), inputs=[], outputs=[appr_status])
 
             # ──────────────────────────────────────────────────────
             #  TAB 5 — VISUALIZATION
