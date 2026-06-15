@@ -870,6 +870,53 @@ footer { display: none !important; }
 .rerun-btn:active {
   transform: rotate(90deg);
 }
+.stop-btn {
+  min-width: 32px !important;
+  width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  font-size: 0 !important;
+  border-radius: 6px !important;
+  border: 1px solid #ff3b3b !important;
+  background: #0d1117 !important;
+  color: transparent !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.15s ease !important;
+  line-height: 1 !important;
+  box-shadow: none !important;
+  position: relative !important;
+}
+.stop-btn::before {
+  content: "" !important;
+  display: block !important;
+  width: 14px !important;
+  height: 14px !important;
+  background: #ff3b3b !important;
+  border-radius: 3px !important;
+  flex-shrink: 0 !important;
+}
+.stop-btn:hover::after {
+  content: "Stop" !important;
+  position: absolute !important;
+  top: -28px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  font-size: 0.72rem !important;
+  background: #21262d !important;
+  color: #e2e8f0 !important;
+  padding: 2px 8px !important;
+  border-radius: 4px !important;
+  white-space: nowrap !important;
+  border: 1px solid #484f58 !important;
+  font-weight: 500 !important;
+}
+.stop-btn:hover {
+  background: #21262d !important;
+  border-color: #ff6b6b !important;
+}
 
 /* ── Pipeline Flow ──────────────────────────────────────────────── */
 .pipeline-flow { margin-bottom:20px; }
@@ -3050,7 +3097,7 @@ def create_dashboard(
             # Polling loop: re-scan for new anomalies every MONITOR_POLL_SECONDS
             while not _stop_monitoring_requested:
                 poll_cycle += 1
-                poll_step = _add_step(f"Poll Cycle #{poll_cycle}", f"Re-scanning every {MONITOR_POLL_SECONDS}s", "running")
+                poll_step = _add_step(f"Poll Cycle #{poll_cycle}", "Scanning...", "running")
                 yield _render_pipeline_flow()
 
                 if anomaly_detector is not None:
@@ -3064,13 +3111,15 @@ def create_dashboard(
                         logger.warning("Poll scan issue: %s", exc)
 
                 _complete_step(poll_step, "completed")
-                yield _render_pipeline_flow()
-
-                # Sleep checking stop flag every 2s
-                for _ in range(max(1, MONITOR_POLL_SECONDS // 2)):
-                    if _stop_monitoring_requested:
-                        break
+                # Update description to show countdown — renders inline in the pipeline flow
+                remaining = MONITOR_POLL_SECONDS
+                while remaining > 0 and not _stop_monitoring_requested:
+                    poll_step["desc"] = f"Next scan in {remaining}s"
+                    yield _render_pipeline_flow()
                     time.sleep(2)
+                    remaining -= 2
+                poll_step["desc"] = f"Next scan in 0s"
+                yield _render_pipeline_flow()
 
             # Final report
             pending = len([a for a in _pending_approvals if a.get("status") == "pending"])
@@ -3626,7 +3675,7 @@ _obs.observe(_timerRoot,{childList:true,subtree:true,attributes:false});
                 with gr.Row():
                     btn_monitor = gr.Button("Start Continuous Monitoring", variant="secondary", scale=1)
                     btn_monitor_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-monitor")
-                    btn_stop_monitor = gr.Button("Stop Monitoring", variant="stop", scale=1, visible=True)
+                    btn_stop_monitor = gr.Button("\u2593", scale=0, elem_classes="stop-btn", elem_id="stop-monitor", visible=True)
                     btn_optimize = gr.Button("Optimize Agent (LoRA)", variant="secondary", scale=1)
                     btn_optimize_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-optimize")
 
