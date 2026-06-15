@@ -133,12 +133,15 @@ def launch_dashboard(
     )
 
     # ── Register /live-html AFTER launch (launch replaces demo.app) ──
+    # Only serves content while a pipeline/monitor thread is alive.
+    # Once the thread dies, returns empty so iframe polling stops and
+    # static content (Generate Report, Run Anomaly Scan) persists.
     try:
         from fastapi.responses import PlainTextResponse
         @demo.app.get("/live-html")
         def _serve_live_html():
             alive = (_dash_mod._process_thread is not None and _dash_mod._process_thread.is_alive()) or (_dash_mod._monitor_thread is not None and _dash_mod._monitor_thread.is_alive())
-            if alive or _dash_mod._live_html:
+            if alive:
                 with _dash_mod._live_html_lock:
                     html = _dash_mod._live_html or ""
                     return PlainTextResponse(html)
