@@ -2715,17 +2715,17 @@ def create_dashboard(
             import traceback
             traceback.print_exc()
             print("[THREAD] Pipeline thread FAILED with exception above", flush=True)
-        # Clear _live_html immediately so iframe polling doesn't overwrite
-        # Generate Report / other static content after pipeline finishes
-        with _live_html_lock:
-            _live_html = ""
         if is_monitor:
             _monitoring_completed = True
         else:
             _process_completed = True
-        # Brief pause so any in-flight /live-html fetch completes
+        # Keep _live_html alive briefly so iframe JS can fetch the final state,
+        # then clear it. The iframe JS stops overwriting once data-status
+        # transitions to completed/failed, so Generate Report output survives.
         import time
-        time.sleep(1)
+        time.sleep(4)
+        with _live_html_lock:
+            _live_html = ""
         print("[THREAD] Pipeline thread exiting", flush=True)
 
     def _start_process():
@@ -3730,17 +3730,24 @@ def create_dashboard(
 
                 # ── Invisible iframe: runs timer + fetch polling JS ──
                 _POLL_JS = """<script>
+(function(){
+var _lastCompleted=null;
 setInterval(function(){
   var doc=parent.document;
-  /* fetch pipeline HTML first, then update timers (in case DOM was just rewritten) */
   fetch('/live-html').then(function(r){if(!r.ok)return'';return r.text()}).then(function(html){
-    if(html&&html.length>50&&html.indexOf('<div class="pipeline-flow">')===0){var el=doc.querySelector('#scan-output');if(el&&el.innerHTML!==html){el.innerHTML=html;doc.querySelectorAll('.pipeline-step').forEach(function(s){s.onclick=function(){this.classList.toggle('collapsed');}});}}
-    /* update timers right after potential DOM rewrite */
+    if(html&&html.length>50&&html.indexOf('<div class="pipeline-flow">')===0){
+      var done=html.indexOf('data-status="completed"')>=0||html.indexOf('data-status="failed"')>=0||html.indexOf('data-status="warning"')>=0;
+      if(done){if(_lastCompleted&&_lastCompleted===html)return;_lastCompleted=html;}
+      else _lastCompleted=null;
+      var el=doc.querySelector('#scan-output');
+      if(el&&el.innerHTML!==html){el.innerHTML=html;doc.querySelectorAll('.pipeline-step').forEach(function(s){s.onclick=function(){this.classList.toggle('collapsed');}});}
+    }
     var pt=doc.querySelector('.pipeline-timer');
     if(pt&&pt.dataset.status!=='completed'&&pt.dataset.start){var n=Date.now()/1e3,d=Math.max(0,Math.floor(n-parseFloat(pt.dataset.start)));pt.textContent=String(Math.floor(d/60)).padStart(2,'0')+':'+String(d%60).padStart(2,'0');}
     doc.querySelectorAll('.step-timer').forEach(function(e){if(e.dataset.status==='completed'||!e.dataset.start)return;var n=Date.now()/1e3,d=Math.max(0,Math.floor(n-parseFloat(e.dataset.start)));e.textContent=String(Math.floor(d/60)).padStart(2,'0')+':'+String(d%60).padStart(2,'0');});
   }).catch(function(){});
 },1000);
+})();
 </script>"""
                 gr.HTML(value='<iframe srcdoc="' + _POLL_JS.replace('"', '&quot;') + '" style="width:0;height:0;border:none;display:none"></iframe>')
 
