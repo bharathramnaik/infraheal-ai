@@ -2644,8 +2644,7 @@ def create_dashboard(
 
     def _process_all_incidents():
         """Run the pipeline on every scenario and produce a comprehensive report."""
-        import sys
-        print("[INFRAHEAL] _process_all_incidents generator started", flush=True)
+        logger.info("=== _process_all_incidents generator started ===")
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         rows = ""
         total_anomalies = 0
@@ -2990,6 +2989,7 @@ def create_dashboard(
         """Run continuous monitoring loop: process incidents, poll for new anomalies, report.
         Loops every MONITOR_POLL_SECONDS until _stop_monitoring_requested is True.
         """
+        logger.info("=== _continuous_monitor generator started ===")
         global _monitoring_active, _stop_monitoring_requested
         if _monitoring_active:
             yield _render_pipeline_flow() + '<div style="color:orange;">Monitoring already active</div>'
