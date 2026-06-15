@@ -3698,9 +3698,6 @@ def create_dashboard(
                     elem_id="scan-output"
                 )
 
-                # ── Invisible iframe: runs polling JS for pipeline updates ──
-                gr.HTML(value='<iframe srcdoc="<script>setInterval(function(){fetch(\'/live-html\').then(function(r){return r.text()}).then(function(html){if(html&&html.length>0&&html.indexOf(\'__type__\')===-1){var el=parent.document.querySelector(\'#scan-output\');if(el)el.innerHTML=html;}}).catch(function(){})},1000)</script>" style="width:0;height:0;border:none;display:none;"></iframe>')
-
                 # ── Rerun-aware wrappers ──
                 def _cached_scan():
                     if "anomaly_scan" in _result_cache:

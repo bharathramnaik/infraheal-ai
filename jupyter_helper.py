@@ -123,26 +123,7 @@ def launch_dashboard(
 
     import dashboard as _dash_mod
 
-    # ── Add live-html endpoint for pipeline progress polling ──
-    try:
-        from fastapi.responses import PlainTextResponse
-        import sys
-        print(f"[LIVE-HTML] demo.app type: {type(demo.app)}", flush=True)
-        @demo.app.get("/live-html")
-        def _serve_live_html():
-            alive = (_dash_mod._process_thread is not None and _dash_mod._process_thread.is_alive()) or (_dash_mod._monitor_thread is not None and _dash_mod._monitor_thread.is_alive())
-            if alive or _dash_mod._live_html:
-                with _dash_mod._live_html_lock:
-                    html = _dash_mod._live_html or ""
-                    if alive:
-                        print(f"[LIVE-HTML] Returning {len(html)} bytes (alive={alive})", flush=True)
-                    return PlainTextResponse(html)
-            return PlainTextResponse("")
-        print("[LIVE-HTML] Endpoint registered successfully", flush=True)
-    except Exception as ex:
-        logger.warning("live-html endpoint failed: %s", ex)
-
-    # Head HTML is passed via gr.Blocks() constructor; polling via iframe
+    # Head HTML is passed via gr.Blocks() constructor
     logger.info("Launching dashboard on port %d (share=%s)...", free_port, share)
     demo.launch(
         server_name=DASHBOARD_HOST,
@@ -150,6 +131,22 @@ def launch_dashboard(
         share=share,
         show_error=show_error,
     )
+
+    # ── Register /live-html AFTER launch (launch replaces demo.app) ──
+    try:
+        from fastapi.responses import PlainTextResponse
+        @demo.app.get("/live-html")
+        def _serve_live_html():
+            alive = (_dash_mod._process_thread is not None and _dash_mod._process_thread.is_alive()) or (_dash_mod._monitor_thread is not None and _dash_mod._monitor_thread.is_alive())
+            if alive or _dash_mod._live_html:
+                with _dash_mod._live_html_lock:
+                    html = _dash_mod._live_html or ""
+                    return PlainTextResponse(html)
+            return PlainTextResponse("")
+        import sys; print("[LIVE-HTML] Endpoint registered on live app", flush=True)
+    except Exception as ex:
+        logger.warning("live-html endpoint failed: %s", ex)
+
     return demo
 
 
