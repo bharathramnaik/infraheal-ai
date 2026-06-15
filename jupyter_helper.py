@@ -121,10 +121,11 @@ def launch_dashboard(
         data_gen_func=create_incident_scenarios,
     )
 
+    import dashboard as _dash_mod
+
     # ── Add live-html endpoint for pipeline progress polling ──
     try:
         from fastapi.responses import PlainTextResponse
-        import dashboard as _dash_mod
         import sys
         print(f"[LIVE-HTML] demo.app type: {type(demo.app)}", flush=True)
         @demo.app.get("/live-html")
@@ -141,12 +142,11 @@ def launch_dashboard(
     except Exception as ex:
         logger.warning("live-html endpoint failed: %s", ex)
 
-    # Polling JS is in dashboard.py head (deprecated but works)
-
     logger.info("Launching dashboard on port %d (share=%s)...", free_port, share)
     demo.launch(
         server_name=DASHBOARD_HOST,
         server_port=free_port,
+        head=_dash_mod.HEAD_HTML,
         share=share,
         show_error=show_error,
     )

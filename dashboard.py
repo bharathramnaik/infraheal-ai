@@ -52,6 +52,74 @@ _monitor_thread: Optional[threading.Thread] = None
 # Approval audit log (persistent)
 APPROVAL_AUDIT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "approval_audit.json")
 
+# Head HTML injected into Gradio page (must be passed to launch())
+HEAD_HTML = """<style>
+.agent-modal { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:9999; }
+.agent-modal-box { background:#161b22; border:1px solid #30363d; border-radius:12px; padding:24px; max-width:460px; width:90%; box-shadow:0 20px 60px rgba(0,0,0,0.5); }
+.agent-modal-title { font-size:1rem; font-weight:700; color:#e2e8f0; margin-bottom:12px; }
+.agent-modal-body { font-size:0.85rem; color:#8b949e; margin-bottom:20px; line-height:1.5; }
+.agent-modal-input { width:100%; padding:10px 12px; background:#0d1117; border:1px solid #30363d; border-radius:8px; color:#e2e8f0; font-size:0.85rem; outline:none; box-sizing:border-box; margin-bottom:16px; }
+.agent-modal-input:focus { border-color:#58a6ff; }
+.agent-modal-actions { display:flex; gap:10px; justify-content:flex-end; }
+.agent-modal-btn { padding:8px 20px; border-radius:8px; border:1px solid; font-size:0.82rem; font-weight:600; cursor:pointer; background:transparent; }
+.agent-modal-btn-primary { background:#00FF8822; border-color:#00FF88; color:#00FF88; }
+.agent-modal-btn-primary:hover { background:#00FF8833; }
+.agent-modal-btn-danger { background:#FF3B3B22; border-color:#FF3B3B; color:#FF3B3B; }
+.agent-modal-btn-danger:hover { background:#FF3B3B33; }
+.agent-modal-btn-cancel { border-color:#30363d; color:#8b949e; }
+.agent-modal-btn-cancel:hover { background:rgba(255,255,255,0.05); }
+#refresh-btn{display:none!important;}
+</style>
+<script>
+function showModal(title, bodyHtml, confirmCb) {
+  var existing = document.querySelector(".agent-modal");
+  if (existing) existing.remove();
+  var m = document.createElement("div");
+  m.className = "agent-modal";
+  m.innerHTML = '<div class="agent-modal-box"><div class="agent-modal-title">' + title + '</div><div class="agent-modal-body">' + bodyHtml + '</div><div class="agent-modal-actions" id="agent-modal-actions"></div></div>';
+  document.body.appendChild(m);
+  m.addEventListener("click", function(e) { if (e.target === m) m.remove(); });
+  return m;
+}
+function copyChatMsg(btn) {
+  var bubble = btn.parentElement.querySelector(".chat-bubble");
+  if (bubble) {
+    var txt = bubble.innerText || bubble.textContent || "";
+    navigator.clipboard.writeText(txt).catch(function(){});
+  }
+}
+function initPipelineTimers() {
+  if(window._pipeTimerActive) return;
+  window._pipeTimerActive = true;
+  function tick(e,s){if(!e||!s||s<=0)return;if(e.dataset.status==="completed")return;var n=Date.now()/1e3,d=Math.max(0,Math.floor(n-s)),m=Math.floor(d/60),sc=d%60;e.textContent=String(m).padStart(2,"0")+":"+String(sc).padStart(2,"0");}
+  function poll(){
+    var pe=document.querySelector(".pipeline-timer");if(pe)tick(pe,parseFloat(pe.dataset.start));
+    document.querySelectorAll(".step-timer").forEach(function(e){tick(e,parseFloat(e.dataset.start));});
+    console.log('[LIVE-HTML] Poll tick');
+    fetch('/live-html').then(function(r){console.log('[LIVE-HTML] Status:',r.status);return r.text();}).then(function(html){
+      if(html&&html.length>0&&html.indexOf('__type__')===-1){
+        var el=document.querySelector('#scan-output');
+        if(el){ console.log('[LIVE-HTML] Updating DOM'); el.innerHTML=html; }
+      }
+    }).catch(function(e){ console.log('[LIVE-HTML] Fetch error:', e); });
+  }
+  setInterval(poll,1000);poll();
+}
+document.addEventListener("DOMContentLoaded", initPipelineTimers);
+var _timerRoot=document.querySelector("gradio-app")||document.querySelector(".gradio-container")||document.body;
+var _obs=new MutationObserver(function(){
+  var found=document.querySelector(".pipeline-timer");
+  if(!found)return;
+  var n=Date.now()/1e3,ts=parseFloat(found.dataset.start);
+  if(ts>0)found.textContent=String(Math.floor(Math.max(0,(n-ts))/60)).padStart(2,"0")+":"+String(Math.floor(Math.max(0,(n-ts)))%60).padStart(2,"0");
+  document.querySelectorAll(".step-timer").forEach(function(e){
+    var s=parseFloat(e.dataset.start);if(!s||s<=0||e.dataset.status==="completed")return;
+    e.textContent=String(Math.floor(Math.max(0,(n-s))/60)).padStart(2,"0")+":"+String(Math.floor(Math.max(0,(n-s)))%60).padStart(2,"0");
+  });
+});
+_obs.observe(_timerRoot,{childList:true,subtree:true,attributes:false});
+</script>"""
+
 def _append_audit_log(entry: dict):
     """Append to persistent approval audit log."""
     try:
@@ -3585,74 +3653,7 @@ def create_dashboard(
         font=gr.themes.GoogleFont("Inter"),
         font_mono=gr.themes.GoogleFont("JetBrains Mono"),
     )
-    with gr.Blocks(title="InfraHeal AI — Autonomous Incident Resolution", css=CUSTOM_CSS, theme=_theme,
-                    head='''<style>
-.agent-modal { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:9999; }
-.agent-modal-box { background:#161b22; border:1px solid #30363d; border-radius:12px; padding:24px; max-width:460px; width:90%; box-shadow:0 20px 60px rgba(0,0,0,0.5); }
-.agent-modal-title { font-size:1rem; font-weight:700; color:#e2e8f0; margin-bottom:12px; }
-.agent-modal-body { font-size:0.85rem; color:#8b949e; margin-bottom:20px; line-height:1.5; }
-.agent-modal-input { width:100%; padding:10px 12px; background:#0d1117; border:1px solid #30363d; border-radius:8px; color:#e2e8f0; font-size:0.85rem; outline:none; box-sizing:border-box; margin-bottom:16px; }
-.agent-modal-input:focus { border-color:#58a6ff; }
-.agent-modal-actions { display:flex; gap:10px; justify-content:flex-end; }
-.agent-modal-btn { padding:8px 20px; border-radius:8px; border:1px solid; font-size:0.82rem; font-weight:600; cursor:pointer; background:transparent; }
-.agent-modal-btn-primary { background:#00FF8822; border-color:#00FF88; color:#00FF88; }
-.agent-modal-btn-primary:hover { background:#00FF8833; }
-.agent-modal-btn-danger { background:#FF3B3B22; border-color:#FF3B3B; color:#FF3B3B; }
-.agent-modal-btn-danger:hover { background:#FF3B3B33; }
-.agent-modal-btn-cancel { border-color:#30363d; color:#8b949e; }
-.agent-modal-btn-cancel:hover { background:rgba(255,255,255,0.05); }
-#refresh-btn{display:none!important;}
-</style>
-<script>
-function showModal(title, bodyHtml, confirmCb) {
-  var existing = document.querySelector(".agent-modal");
-  if (existing) existing.remove();
-  var m = document.createElement("div");
-  m.className = "agent-modal";
-  m.innerHTML = '<div class="agent-modal-box"><div class="agent-modal-title">' + title + '</div><div class="agent-modal-body">' + bodyHtml + '</div><div class="agent-modal-actions" id="agent-modal-actions"></div></div>';
-  document.body.appendChild(m);
-  m.addEventListener("click", function(e) { if (e.target === m) m.remove(); });
-  return m;
-}
-function copyChatMsg(btn) {
-  var bubble = btn.parentElement.querySelector(".chat-bubble");
-  if (bubble) {
-    var txt = bubble.innerText || bubble.textContent || "";
-    navigator.clipboard.writeText(txt).catch(function(){});
-  }
-}
-function initPipelineTimers() {
-  if(window._pipeTimerActive) return;
-  window._pipeTimerActive = true;
-  function tick(e,s){if(!e||!s||s<=0)return;if(e.dataset.status==="completed")return;var n=Date.now()/1e3,d=Math.max(0,Math.floor(n-s)),m=Math.floor(d/60),sc=d%60;e.textContent=String(m).padStart(2,"0")+":"+String(sc).padStart(2,"0");}
-  function poll(){
-    var pe=document.querySelector(".pipeline-timer");if(pe)tick(pe,parseFloat(pe.dataset.start));
-    document.querySelectorAll(".step-timer").forEach(function(e){tick(e,parseFloat(e.dataset.start));});
-    // Pipeline output polling via /live-html
-    fetch('/live-html').then(function(r){return r.text()}).then(function(html){
-      if(html&&html.length>0&&html.indexOf('__type__')===-1&&html.indexOf('__gradio')===-1){
-        var el=document.querySelector('#scan-output');
-        if(el) el.innerHTML=html;
-      }
-    }).catch(function(){});
-  }
-  setInterval(poll,1000);poll();
-}
-document.addEventListener("DOMContentLoaded", initPipelineTimers);
-// Watch for Gradio DOM swaps — target the Gradio app container
-var _timerRoot=document.querySelector("gradio-app")||document.querySelector(".gradio-container")||document.body;
-var _obs=new MutationObserver(function(){
-  var found=document.querySelector(".pipeline-timer");
-  if(!found)return;
-  var n=Date.now()/1e3,ts=parseFloat(found.dataset.start);
-  if(ts>0)found.textContent=String(Math.floor(Math.max(0,(n-ts))/60)).padStart(2,"0")+":"+String(Math.floor(Math.max(0,(n-ts)))%60).padStart(2,"0");
-  document.querySelectorAll(".step-timer").forEach(function(e){
-    var s=parseFloat(e.dataset.start);if(!s||s<=0||e.dataset.status==="completed")return;
-    e.textContent=String(Math.floor(Math.max(0,(n-s))/60)).padStart(2,"0")+":"+String(Math.floor(Math.max(0,(n-s)))%60).padStart(2,"0");
-  });
-});
-_obs.observe(_timerRoot,{childList:true,subtree:true,attributes:false});
-</script>''') as demo:
+    with gr.Blocks(title="InfraHeal AI — Autonomous Incident Resolution", css=CUSTOM_CSS, theme=_theme) as demo:
         try:
             demo.queue()
         except Exception:
