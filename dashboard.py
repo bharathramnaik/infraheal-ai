@@ -971,16 +971,19 @@ footer { display: none !important; }
 #refresh-btn{display:none!important}
 
 /* ── Poll Interval Dropdown (compact, black, no box) ─────────── */
-#poll-interval { min-width:70px !important; }
-#poll-interval label { display:none !important; }
+#poll-interval { 
+  min-width: 90px !important; 
+  max-width: 120px !important; 
+}
 #poll-interval .gr-dropdown-container,
-#poll-interval .gr-box, #poll-interval .gr-dropdown,
-#poll-interval .gr-input,
-#poll-interval .wrap-inner {
-  background:#000 !important; border:1px solid #30363d !important;
-  color:#c9d1d9 !important; border-radius:4px !important;
-  padding:0 !important; margin:0 !important;
-  box-shadow:none !important;
+#poll-interval .gr-box, 
+#poll-interval .gr-dropdown,
+#poll-interval .choices-wrapper {
+  background: #000 !important; 
+  border: 1px solid #30363d !important;
+  color: #c9d1d9 !important; 
+  border-radius: 6px !important;
+  height: 32px !important;
 }
 #poll-interval select {
   background:#000 !important; color:#c9d1d9 !important;
@@ -3702,11 +3705,11 @@ def create_dashboard(
                     drp_poll_interval = gr.Dropdown(
                         choices=[("1 min", 60), ("2 min", 120), ("3 min", 180),
                                  ("5 min", 300), ("10 min", 600), ("30 min", 1800), ("1 hr", 3600)],
-                        value=60, label="Interval", scale=2, min_width=90,
-                        elem_id="poll-interval", show_label=False, container=False,
+                        value=60, label="", scale=2, min_width=100,
+                        elem_id="poll-interval", show_label=False, container=False
                     )
                     btn_optimize = gr.Button("Optimize Agent", variant="secondary", scale=4, elem_id="btn-optimize")
-                    btn_optimize_rerun = gr.Button("\u21bb", scale=1, elem_classes="rerun-btn", elem_id="rerun-optimize")
+                    btn_optimize_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-optimize")
 
                 scan_output = gr.HTML(
                     value=_empty_state("Anomaly scan results will appear here",
