@@ -52,6 +52,7 @@ _monitor_thread: Optional[threading.Thread] = None
 _process_completed: bool = False
 _monitoring_completed: bool = False
 _scenario_results: Dict[str, Dict[str, Any]] = {}  # latest result per scenario name
+_static_output_active: bool = False  # True when user clicked report/scan/optimize; suppresses iframe overwrite
 
 # Approval audit log (persistent)
 APPROVAL_AUDIT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "approval_audit.json")
@@ -2702,15 +2703,17 @@ def create_dashboard(
         )
 
     def _run_pipeline_thread(gen_func: Callable):
-        global _live_html, _process_completed, _monitoring_completed
+        global _live_html, _process_completed, _monitoring_completed, _static_output_active
         import sys
         print("[THREAD] Starting pipeline thread", flush=True)
         is_monitor = (gen_func.__name__ == '_continuous_monitor')
         try:
             for partial in gen_func():
-                with _live_html_lock:
-                    _live_html = partial
-                    print(f"[THREAD] Wrote {len(partial)} bytes to _live_html", flush=True)
+                # Skip _live_html updates while static output (report/scan/optimize) is displayed
+                if not _static_output_active:
+                    with _live_html_lock:
+                        _live_html = partial
+                        print(f"[THREAD] Wrote {len(partial)} bytes to _live_html", flush=True)
         except Exception:
             import traceback
             traceback.print_exc()
@@ -2725,10 +2728,11 @@ def create_dashboard(
         print("[THREAD] Pipeline thread exiting", flush=True)
 
     def _start_process():
-        global _process_thread, _live_html, _process_completed, _scenario_results
+        global _process_thread, _live_html, _process_completed, _scenario_results, _static_output_active
         import sys
         print("[START_PROCESS] Button clicked!", flush=True)
         if (_process_thread and _process_thread.is_alive()) or (_monitor_thread and _monitor_thread.is_alive()):
+            _static_output_active = False  # un-freeze live view
             with _live_html_lock:
                 print("[START_PROCESS] Already running, returning existing HTML", flush=True)
                 return _live_html
@@ -2736,6 +2740,7 @@ def create_dashboard(
             print("[START_PROCESS] Already completed, showing cached result", flush=True)
             with _live_html_lock:
                 return _live_html
+        _static_output_active = False
         _process_completed = False
         _result_cache.pop("report", None)
         _scenario_results.clear()
@@ -2747,10 +2752,11 @@ def create_dashboard(
 
     def _start_monitor():
         global _monitor_thread, _live_html, _scenario_results
-        global _stop_monitoring_requested, _monitoring_active, _monitoring_completed
+        global _stop_monitoring_requested, _monitoring_active, _monitoring_completed, _static_output_active
         import sys
         print("[START_MONITOR] Button clicked!", flush=True)
         if (_process_thread and _process_thread.is_alive()) or (_monitor_thread and _monitor_thread.is_alive()):
+            _static_output_active = False  # un-freeze live view
             with _live_html_lock:
                 print("[START_MONITOR] Already running, returning existing HTML", flush=True)
                 return _live_html
@@ -2758,6 +2764,7 @@ def create_dashboard(
             print("[START_MONITOR] Already completed, showing cached result", flush=True)
             with _live_html_lock:
                 return _live_html
+        _static_output_active = False
         _monitoring_completed = False
         _stop_monitoring_requested = False
         _monitoring_active = False  # generator will set True when it starts the loop
@@ -3743,6 +3750,8 @@ setInterval(function(){
 
                 # ── Rerun-aware wrappers ──
                 def _cached_scan():
+                    global _static_output_active
+                    _static_output_active = True
                     if "anomaly_scan" in _result_cache:
                         return _result_cache["anomaly_scan"]
                     r = _run_anomaly_scan()
@@ -3750,11 +3759,15 @@ setInterval(function(){
                     return r
 
                 def _rerun_scan():
+                    global _static_output_active
+                    _static_output_active = True
                     r = _run_anomaly_scan()
                     _result_cache["anomaly_scan"] = r
                     return r
 
                 def _cached_report():
+                    global _static_output_active
+                    _static_output_active = True
                     if "report" in _result_cache:
                         return _result_cache["report"]
                     r = _generate_report()
@@ -3762,11 +3775,15 @@ setInterval(function(){
                     return r
 
                 def _rerun_report():
+                    global _static_output_active
+                    _static_output_active = True
                     r = _generate_report()
                     _result_cache["report"] = r
                     return r
 
                 def _cached_optimize():
+                    global _static_output_active
+                    _static_output_active = True
                     if "optimize" in _result_cache:
                         return _result_cache["optimize"]
                     r = _run_optimize()
@@ -3774,6 +3791,8 @@ setInterval(function(){
                     return r
 
                 def _rerun_optimize():
+                    global _static_output_active
+                    _static_output_active = True
                     r = _run_optimize()
                     _result_cache["optimize"] = r
                     return r
@@ -3795,19 +3814,21 @@ setInterval(function(){
                 _refresh_btn.click(fn=_poll_live_html, inputs=[], outputs=[scan_output], api_name="poll_live")
 
                 def _rerun_process():
-                    global _process_completed, _live_html, _scenario_results
+                    global _process_completed, _live_html, _scenario_results, _static_output_active
                     _process_completed = False
                     _live_html = ""
                     _result_cache.pop("report", None)
                     _scenario_results.clear()
+                    _static_output_active = False
                     return _start_process()
                 def _rerun_monitor():
-                    global _monitoring_completed, _stop_monitoring_requested, _live_html, _scenario_results
+                    global _monitoring_completed, _stop_monitoring_requested, _live_html, _scenario_results, _static_output_active
                     _stop_monitoring_requested = True
                     _monitoring_completed = False
                     _live_html = ""
                     _result_cache.pop("report", None)
                     _scenario_results.clear()
+                    _static_output_active = False
                     return _start_monitor()
                 btn_process.click(fn=_start_process, inputs=[], outputs=[scan_output])
                 btn_monitor.click(fn=_start_monitor, inputs=[], outputs=[scan_output])
