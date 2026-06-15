@@ -2715,16 +2715,17 @@ def create_dashboard(
             import traceback
             traceback.print_exc()
             print("[THREAD] Pipeline thread FAILED with exception above", flush=True)
+        # Clear _live_html immediately so iframe polling doesn't overwrite
+        # Generate Report / other static content after pipeline finishes
+        with _live_html_lock:
+            _live_html = ""
         if is_monitor:
             _monitoring_completed = True
         else:
             _process_completed = True
-        # Brief pause so /live-html fetch can retrieve final report
+        # Brief pause so any in-flight /live-html fetch completes
         import time
-        time.sleep(4)
-        # Clear the active HTML after final report window so Generate Report etc. work
-        with _live_html_lock:
-            _live_html = ""
+        time.sleep(1)
         print("[THREAD] Pipeline thread exiting", flush=True)
 
     def _start_process():
