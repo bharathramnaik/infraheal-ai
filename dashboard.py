@@ -2825,7 +2825,7 @@ def create_dashboard(
             )
         items = "".join(
             f'<div style="padding:12px;margin:8px 0;border:1px solid rgba(255,255,255,0.08);border-radius:8px;'
-            f'background:rgba(255,184,0,0.04);border-left:3px solid {_C["amber"]};">'
+            f'background:rgba(255,255,255,0.02);border-left:3px solid #8b949e;">'
             f'<div style="display:flex;justify-content:space-between;align-items:start;">'
             f'<div style="flex:1;">'
             f'<div style="font-size:0.85rem;font-weight:600;color:#e2e8f0;">{a.get("title","Action")}</div>'
@@ -3975,11 +3975,11 @@ _obs.observe(_timerRoot,{childList:true,subtree:true,attributes:false});
                         scale=3, container=True,
                     )
                 with gr.Row():
-                    appr_btn_approve = gr.Button("Approve Selected", variant="primary", scale=1)
-                    appr_btn_deny = gr.Button("Deny Selected", variant="stop", scale=1)
+                    appr_btn_approve = gr.Button("Approve Selected", variant="secondary", scale=1)
+                    appr_btn_deny = gr.Button("Deny Selected", variant="secondary", scale=1)
                 with gr.Row():
-                    appr_btn_approve_all = gr.Button("Approve All Pending", variant="primary", scale=1)
-                    appr_btn_deny_all = gr.Button("Deny All Pending", variant="stop", scale=1)
+                    appr_btn_approve_all = gr.Button("Approve All Pending", variant="secondary", scale=1)
+                    appr_btn_deny_all = gr.Button("Deny All Pending", variant="secondary", scale=1)
 
                 appr_status = gr.HTML(value="")
                 appr_history_panel = gr.HTML(value=_render_approval_history)
@@ -4554,6 +4554,7 @@ _obs.observe(_timerRoot,{childList:true,subtree:true,attributes:false});
 
     logger.info("InfraHeal AI dashboard created successfully")
 
+    demo.queue()
     return demo
 
 
