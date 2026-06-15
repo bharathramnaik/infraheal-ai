@@ -3050,7 +3050,7 @@ def create_dashboard(
             yield _render_pipeline_flow()
 
             pending = len([a for a in _pending_approvals if a.get("status") == "pending"])
-            _add_step("Queue Approvals", f"{pending} pending human review")
+            _add_step("Queue Approvals", f"{pending} pending human review", "running")
             _complete_step(_pipeline_run["steps"][-1], "warning" if pending else "completed")
 
             now_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
