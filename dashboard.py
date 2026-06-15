@@ -2690,7 +2690,7 @@ def create_dashboard(
                 print("[START_MONITOR] Already running, returning existing HTML", flush=True)
                 return _live_html
         _stop_monitoring_requested = False
-        _monitoring_active = True
+        _monitoring_active = False  # generator will set True when it starts the loop
         _live_html = '<div style="color:#8b949e;text-align:center;padding:12px;">Starting continuous monitoring...</div>'
         print("[START_MONITOR] Starting thread...", flush=True)
         _monitor_thread = threading.Thread(target=_run_pipeline_thread, args=(_continuous_monitor,), daemon=True)
@@ -3644,7 +3644,7 @@ setInterval(function(){
   /* update step timers */
   doc.querySelectorAll('.step-timer').forEach(function(e){if(e.dataset.status==='completed'||!e.dataset.start)return;var n=Date.now()/1e3,d=Math.max(0,Math.floor(n-parseFloat(e.dataset.start)));e.textContent=String(Math.floor(d/60)).padStart(2,'0')+':'+String(d%60).padStart(2,'0');});
   /* fetch pipeline HTML */
-  fetch('/live-html').then(function(r){if(!r.ok)return'';return r.text()}).then(function(html){if(html&&html.length>50){var el=doc.querySelector('#scan-output');if(el){el.innerHTML=html;}}}).catch(function(){});
+  fetch('/live-html').then(function(r){if(!r.ok)return'';return r.text()}).then(function(html){if(html&&html.length>50){var el=doc.querySelector('#scan-output');if(el&&el.innerHTML!==html){el.innerHTML=html;}}}).catch(function(){});
 },1000);
 </script>"""
                 gr.HTML(value='<iframe srcdoc="' + _POLL_JS.replace('"', '&quot;') + '" style="width:0;height:0;border:none;display:none"></iframe>')
@@ -3944,7 +3944,7 @@ setInterval(function(){
                     'Review, approve, or deny remediation actions queued by the agent pipeline.</div>'
                 )
 
-                appr_panel = gr.HTML(value=_render_approval_panel)
+                appr_panel = gr.HTML(value=_render_approval_panel())
 
                 def _refresh_approval_selector():
                     pending = [a for a in _pending_approvals if a.get("status") == "pending"]
@@ -3972,8 +3972,8 @@ setInterval(function(){
                     appr_btn_deny_all = gr.Button("Deny All Pending", variant="secondary", scale=1)
 
                 appr_status = gr.HTML(value="")
-                appr_history_panel = gr.HTML(value=_render_approval_history)
-                appr_audit_panel = gr.HTML(value=_render_audit_log)
+                appr_history_panel = gr.HTML(value=_render_approval_history())
+                appr_audit_panel = gr.HTML(value=_render_audit_log())
 
                 def _on_approve_selected(aid: str, reason: str):
                     if not aid:
@@ -4312,7 +4312,7 @@ setInterval(function(){
                     </style>
                     <div class="glass-card">{items}</div>'''
 
-                gr.HTML(value=_render_faq)
+                gr.HTML(value=_render_faq())
 
             # ──────────────────────────────────────────────────────
             #  TAB 7 — AGENT CHAT (CLI-style, multi-turn, multi-model)
