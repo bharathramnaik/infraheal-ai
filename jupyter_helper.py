@@ -77,12 +77,24 @@ def setup_environment() -> Dict[str, Any]:
     }
 
 
+def _find_free_port(start: int, max_attempts: int = 10) -> int:
+    """Find the first free port starting from *start*."""
+    import socket
+    for port in range(start, start + max_attempts):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            if s.connect_ex(("127.0.0.1", port)) != 0:
+                return port
+    raise RuntimeError(f"No free port found in range {start}-{start + max_attempts - 1}")
+
+
 def launch_dashboard(
     share: bool = True,
     port: int = 7860,
     show_error: bool = True,
 ) -> Any:
     """Launch the InfraHeal AI Gradio dashboard from Jupyter.
+
+    Tries *port* first; if busy, scans upward for a free port.
 
     Args:
         share: Create a public Gradio share link (requires internet).
@@ -97,6 +109,10 @@ def launch_dashboard(
     from data_generator import create_incident_scenarios
     from anomaly_detector import AnomalyDetector
 
+    free_port = _find_free_port(port)
+    if free_port != port:
+        logger.warning("Port %d is busy, using port %d instead", port, free_port)
+
     env = setup_environment()
 
     demo = create_dashboard(
@@ -105,10 +121,10 @@ def launch_dashboard(
         data_gen_func=create_incident_scenarios,
     )
 
-    logger.info("Launching dashboard on port %d (share=%s)...", port, share)
+    logger.info("Launching dashboard on port %d (share=%s)...", free_port, share)
     demo.launch(
         server_name=DASHBOARD_HOST,
-        server_port=port,
+        server_port=free_port,
         share=share,
         show_error=show_error,
     )
