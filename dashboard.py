@@ -1881,6 +1881,7 @@ def create_dashboard(
     _perf_state: Dict[str, Any] = {}
     _last_pipeline_state: Dict[str, Any] = {}
     _result_cache: Dict[str, Any] = {}
+    _last_pipeline: Optional[str] = None  # "process" or "monitor"; used by _poll_live_html fallback
 
     # ── Pipeline flow state ────────────────────────────────────────
     _pipeline_run: Dict[str, Any] = {"name": "", "status": "idle", "steps": [], "start_time": 0, "elapsed": 0}
@@ -2757,7 +2758,7 @@ def create_dashboard(
         print("[THREAD] Pipeline thread exiting", flush=True)
 
     def _start_process():
-        global _process_thread, _process_live_html, _process_completed, _scenario_results, _static_output_active
+        global _process_thread, _process_live_html, _process_completed, _scenario_results, _static_output_active, _last_pipeline
         p_alive = _process_thread and _process_thread.is_alive()
         _diag("start_process_click", process_alive=p_alive, completed=_process_completed, static=_static_output_active)
         print("[START_PROCESS] Button clicked!", flush=True)
@@ -2766,11 +2767,13 @@ def create_dashboard(
             with _live_html_lock:
                 return _process_live_html
         if _process_completed:
+            _last_pipeline = "process"
             print("[START_PROCESS] Already completed, showing cached result", flush=True)
             with _live_html_lock:
                 return _process_live_html
         _static_output_active = False
         _process_completed = False
+        _last_pipeline = "process"
         _result_cache.pop("report", None)
         _scenario_results.clear()
         _process_live_html = '<div style="color:#8b949e;text-align:center;padding:12px;">Starting... </div>'
@@ -2780,7 +2783,7 @@ def create_dashboard(
         return _process_live_html
 
     def _start_monitor():
-        global _monitor_thread, _monitor_live_html, _scenario_results
+        global _monitor_thread, _monitor_live_html, _scenario_results, _last_pipeline
         global _stop_monitoring_requested, _monitoring_active, _monitoring_completed, _static_output_active
         m_alive = _monitor_thread and _monitor_thread.is_alive()
         _diag("start_monitor_click", monitor_alive=m_alive, completed=_monitoring_completed, static=_static_output_active)
@@ -2790,6 +2793,7 @@ def create_dashboard(
             with _live_html_lock:
                 return _monitor_live_html
         if _monitoring_completed:
+            _last_pipeline = "monitor"
             print("[START_MONITOR] Already completed, showing cached result", flush=True)
             with _live_html_lock:
                 return _monitor_live_html
@@ -2797,6 +2801,7 @@ def create_dashboard(
         _monitoring_completed = False
         _stop_monitoring_requested = False
         _monitoring_active = False
+        _last_pipeline = "monitor"
         _result_cache.pop("report", None)
         _scenario_results.clear()
         _monitor_live_html = '<div style="color:#8b949e;text-align:center;padding:12px;">Starting continuous monitoring...</div>'
@@ -2809,8 +2814,9 @@ def create_dashboard(
         """Called by gr.Timer to poll pipeline thread progress.
         Always shows the currently ALIVE pipeline — never falls through
         to a stale completed pipeline if the other is still active.
+        Falls back to _last_pipeline's HTML when both threads are dead.
         """
-        global _process_thread, _monitor_thread, _process_live_html, _monitor_live_html, _static_output_active
+        global _process_thread, _monitor_thread, _process_live_html, _monitor_live_html, _static_output_active, _last_pipeline
         p_alive = _process_thread and _process_thread.is_alive()
         m_alive = _monitor_thread and _monitor_thread.is_alive()
         if _static_output_active:
@@ -2820,7 +2826,10 @@ def create_dashboard(
                 return _process_live_html or gr.skip()
             if m_alive:
                 return _monitor_live_html or gr.skip()
-            result = _process_live_html or _monitor_live_html
+            if _last_pipeline == "monitor":
+                result = _monitor_live_html or _process_live_html
+            else:
+                result = _process_live_html or _monitor_live_html
             return result or gr.skip()
 
     def _process_all_incidents():
