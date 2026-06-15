@@ -141,18 +141,7 @@ def launch_dashboard(
     except Exception as ex:
         logger.warning("live-html endpoint failed: %s", ex)
 
-    # ── Inject polling JS into head config ──
-    try:
-        poll_js = "<script>(function(){if(window._livePollActive)return;window._livePollActive=true;setInterval(function(){fetch('/live-html').then(function(r){return r.text()}).then(function(html){if(html&&html.length>0&&html.indexOf('__type__')===-1){var el=document.querySelector('#scan-output');if(el)el.innerHTML=html;}}).catch(function(){})},1000);})();</script>"
-        if hasattr(demo, "config") and isinstance(demo.config, dict):
-            existing = demo.config.get("head", "")
-            if poll_js not in existing:
-                demo.config["head"] = existing + poll_js
-                import sys
-                print("[LIVE-HTML] Polling JS injected into head config", flush=True)
-    except Exception as ex:
-        import sys
-        print(f"[LIVE-HTML] Polling JS injection failed: {ex}", flush=True)
+    # Polling JS is in dashboard.py head (deprecated but works)
 
     logger.info("Launching dashboard on port %d (share=%s)...", free_port, share)
     demo.launch(
