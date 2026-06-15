@@ -3959,13 +3959,13 @@ _obs.observe(_timerRoot,{childList:true,subtree:true,attributes:false});
                 def _refresh_approval_selector():
                     pending = [a for a in _pending_approvals if a.get("status") == "pending"]
                     if not pending:
-                        return gr.update(choices=[], value=None, interactive=False, placeholder="No pending approvals")
+                        return gr.update(choices=[], value=None, interactive=False)
                     choices = [(a["id"], f'{a["id"]} — {a.get("title","?")} ({a.get("risk","?")})') for a in pending]
-                    return gr.update(choices=choices, value=None, interactive=True, placeholder="Select an action...")
+                    return gr.update(choices=choices, value=None, interactive=True)
 
                 appr_approval_selector = gr.Dropdown(
                     choices=[], label="Select Action to Review",
-                    interactive=False, placeholder="No pending approvals",
+                    interactive=False,
                     scale=3,
                 )
                 with gr.Row():
