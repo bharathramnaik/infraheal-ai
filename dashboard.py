@@ -3701,6 +3701,7 @@ _obs.observe(_timerRoot,{childList:true,subtree:true,attributes:false});
                     return '<div style="color:orange;">Stop requested — waiting for current cycle to finish...</div>'
 
                 # ── Wire main buttons (show cached) and rerun buttons (force fresh) ──
+                # IMPORTANT: accordion open handler MUST come BEFORE the generator so accordion shows immediately
                 for btn, fn in [(btn_scan, _cached_scan), (btn_report, _cached_report), (btn_optimize, _cached_optimize)]:
                     btn.click(fn=fn, inputs=[], outputs=[scan_output])
                     btn.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
@@ -3708,12 +3709,9 @@ _obs.observe(_timerRoot,{childList:true,subtree:true,attributes:false});
                     btn.click(fn=fn, inputs=[], outputs=[scan_output])
                     btn.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
 
-                for btn, fn in [(btn_process, _cached_process), (btn_monitor, _cached_monitor)]:
-                    btn.click(fn=fn, inputs=[], outputs=[scan_output])
+                for btn, fn in [(btn_process, _cached_process), (btn_monitor, _cached_monitor), (btn_process_rerun, _rerun_process), (btn_monitor_rerun, _rerun_monitor)]:
                     btn.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
-                for btn, fn in [(btn_process_rerun, _rerun_process), (btn_monitor_rerun, _rerun_monitor)]:
                     btn.click(fn=fn, inputs=[], outputs=[scan_output])
-                    btn.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
 
                 btn_stop_monitor.click(fn=_stop_monitoring, inputs=[], outputs=[scan_output])
                 btn_stop_monitor.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
