@@ -967,15 +967,15 @@ footer { display: none !important; }
 .pipeline-step-progress-bar.warning { background:#FFB800; }
 #refresh-btn{display:none!important}
 
-/* ── Poll Interval Dropdown (black & white) ──────────────────── */
-#poll-interval { min-width:70px !important; max-width:90px !important; }
-#poll-interval label { color:#fff !important; display:none !important; }
-#poll-interval .gr-box, #poll-interval .gr-dropdown, #poll-interval .gr-dropdown select,
-#poll-interval select, #poll-interval .gr-input, #poll-interval .gr-text-input {
-  background:#000 !important; border:1px solid #555 !important; color:#fff !important;
-}
-#poll-interval .gr-dropdown-container {
-  background:#000 !important; border:1px solid #555 !important; color:#fff !important;
+/* ── Poll Interval Dropdown (compact, black) ─────────────────── */
+#poll-interval { min-width:60px !important; max-width:80px !important; }
+#poll-interval label { display:none !important; }
+#poll-interval select, #poll-interval .gr-dropdown,
+#poll-interval .gr-box, #poll-interval .gr-dropdown-container,
+#poll-interval .gr-input, #poll-interval .gr-text-input {
+  background:#000 !important; border:1px solid #30363d !important;
+  color:#c9d1d9 !important; border-radius:6px !important;
+  font-size:0.78rem !important;
 }
 """
 
