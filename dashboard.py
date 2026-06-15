@@ -56,6 +56,7 @@ _live_log_lock = threading.Lock()
 _pending_approvals: List[Dict[str, Any]] = []
 _approval_history: List[Dict[str, Any]] = []
 _approval_id_counter = 0
+_blocked_scenarios: Dict[str, bool] = {}
 _monitoring_active = False
 _stop_monitoring_requested = False
 MONITOR_POLL_SECONDS = 30
@@ -3048,29 +3049,44 @@ def create_dashboard(
 
     def _render_approval_panel() -> str:
         global _pending_approvals
+        blocked_banner = ""
+        if _blocked_scenarios:
+            blocked_banner = (
+                f'<div style="padding:10px 14px;margin:8px 0;border:2px solid #FF3B3B;border-radius:8px;'
+                f'background:rgba(255,59,59,0.08);font-size:0.82rem;">'
+                f'<div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">'
+                f'<span style="font-size:1rem;">🛑</span>'
+                f'<span style="color:#FF3B3B;font-weight:700;">Pipeline BLOCKED by high-risk action(s)</span></div>'
+                f'<div style="color:#e2e8f0;">Scenario(s): '
+                f'<span style="color:#FFB800;font-weight:600;">{", ".join(html.escape(s) for s in _blocked_scenarios)}</span></div>'
+                f'<div style="color:#8b949e;font-size:0.78rem;">The pipeline is paused until you approve or deny the high-risk action(s) below.</div>'
+                f'</div>'
+            )
         pending = [a for a in _pending_approvals if a.get("status") == "pending"]
         if not pending:
-            return (
+            return blocked_banner or (
                 '<div style="font-size:0.82rem;color:#64748b;text-align:center;padding:16px;">'
                 'No pending approvals.</div>'
             )
         items = "".join(
             f'<div style="padding:12px;margin:8px 0;border:1px solid rgba(255,255,255,0.08);border-radius:8px;'
-            f'background:rgba(255,255,255,0.02);border-left:3px solid #8b949e;">'
+            f'background:rgba(255,255,255,0.02);{"border-left:3px solid #FF3B3B;" if a.get("blocks_pipeline") else "border-left:3px solid #8b949e;"}">'
             f'<div style="display:flex;justify-content:space-between;align-items:start;">'
             f'<div style="flex:1;">'
-            f'<div style="font-size:0.85rem;font-weight:600;color:#e2e8f0;">{a.get("title","Action")}</div>'
+            f'<div style="font-size:0.85rem;font-weight:600;color:#e2e8f0;">'
+            f'{"🛑 " if a.get("blocks_pipeline") else ""}{a.get("title","Action")}</div>'
             f'<div style="font-size:0.75rem;color:#8b949e;margin:4px 0;">{a.get("id","")} — {a.get("scenario","?")}'
             f'{" | Cycle #"+str(a.get("cycle","")) if a.get("cycle") else ""} | '
-            f'Risk: <span style="color:{_risk_color(a.get("risk","medium"))};">{a.get("risk","medium")}</span></div>'
+            f'Risk: <span style="color:{_risk_color(a.get("risk","medium"))};">{a.get("risk","medium")}</span>'
+            f'{" | <span style=\"color:#FF3B3B;font-weight:600;\">BLOCKING</span>" if a.get("blocks_pipeline") else ""}</div>'
             f'<div style="font-size:0.78rem;color:#c9d1d9;white-space:pre-wrap;">{a.get("summary","")[:200]}</div>'
             f'</div></div>'
             f'</div>'
             for a in pending
         )
         if not items:
-            return ""
-        return (
+            return blocked_banner
+        return blocked_banner + (
             f'<div style="margin-top:12px;">'
             f'<div style="font-size:0.8rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">'
             f'Pending Approvals ({len(pending)})</div>{items}'
@@ -3078,6 +3094,17 @@ def create_dashboard(
             f'Go to the Approvals tab to review and act on these items.</div>'
             f'</div>'
         )
+
+    def _clear_scenario_block(scenario_name: str):
+        """Remove block flag for a scenario if no more blocking actions are pending."""
+        remaining = any(
+            x.get("scenario") == scenario_name
+            and x.get("status") == "pending"
+            and x.get("blocks_pipeline")
+            for x in _pending_approvals
+        )
+        if not remaining:
+            _blocked_scenarios.pop(scenario_name, None)
 
     def _approve_action(action_id: str, reason: str = "") -> str:
         """Approve a pending action and execute it."""
@@ -3103,6 +3130,7 @@ def create_dashboard(
                 exec_msg = exec_result.get("message", exec_result.get("error", ""))
                 a["execution_status"] = exec_result.get("status", "unknown")
                 a["execution_detail"] = exec_msg[:200]
+                a["execution_steps"] = exec_result.get("steps", [])
                 _approval_history.append({
                     "id": action_id,
                     "scenario": a.get("scenario", "?"),
@@ -3112,6 +3140,7 @@ def create_dashboard(
                     "timestamp": a["resolved_at"],
                     "execution": exec_result.get("status", "unknown"),
                     "execution_detail": exec_msg[:120],
+                    "execution_steps": exec_result.get("steps", []),
                     "reason": a["reason"],
                 })
                 # Log to experience store
@@ -3142,6 +3171,7 @@ def create_dashboard(
                     "timestamp": a["resolved_at"],
                 })
                 logger.info("Audit: approved %s (%s)", action_id, a.get("title", "?"))
+                _clear_scenario_block(a.get("scenario", ""))
                 return _render_approval_panel()
         return _render_approval_panel()
 
@@ -3193,6 +3223,7 @@ def create_dashboard(
                     "timestamp": a["resolved_at"],
                 })
                 logger.info("Audit: denied %s (%s) — %s", action_id, a.get("title", "?"), a["reason"])
+                _clear_scenario_block(a.get("scenario", ""))
                 return _render_approval_panel()
         return _render_approval_panel()
 
@@ -3203,16 +3234,19 @@ def create_dashboard(
         existing = {(a.get("scenario",""), a.get("title","")) for a in _pending_approvals if a.get("status") == "pending"}
         for step_idx, action in enumerate(actions):
             if action.get("requires_approval", False):
+                risk_level = action.get("risk_level", "medium")
                 key = (scenario_name, action.get("tool_name", "Unknown action"))
                 if key in existing:
                     logger.info("Skipping duplicate approval: %s", key)
                     continue
+                is_high_risk = risk_level == "high"
                 _approval_id_counter += 1
                 _pending_approvals.append({
                     "id": f"APP-{_approval_id_counter:04d}",
                     "scenario": scenario_name,
                     "title": action.get("tool_name", "Unknown action"),
-                    "risk": action.get("risk_level", "medium"),
+                    "risk": risk_level,
+                    "blocks_pipeline": is_high_risk,
                     "summary": report_summary[:200],
                     "timestamp": datetime.now().isoformat(),
                     "status": "pending",
@@ -3223,6 +3257,10 @@ def create_dashboard(
                 })
                 existing.add(key)
                 count += 1
+                if is_high_risk:
+                    _blocked_scenarios[scenario_name] = True
+                    logger.info("Pipeline BLOCKED by high-risk action %s in scenario %s",
+                                action.get("tool_name"), scenario_name)
         return count
 
     def _continuous_monitor():
@@ -3284,6 +3322,24 @@ def create_dashboard(
             for chunk in _prepopulate_initial_scan():
                 yield chunk
 
+            def _render_blocked_banner() -> str:
+                """Render a prominent banner when the pipeline is blocked."""
+                blocked_scenarios = list(_blocked_scenarios.keys())
+                if not blocked_scenarios:
+                    return ""
+                return (
+                    f'<div style="padding:12px 16px;margin:12px 0;border:2px solid #FF3B3B;border-radius:8px;'
+                    f'background:rgba(255,59,59,0.1);font-size:0.85rem;">'
+                    f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'
+                    f'<span style="font-size:1.2rem;">🛑</span>'
+                    f'<span style="color:#FF3B3B;font-weight:700;">Pipeline BLOCKED</span></div>'
+                    f'<div style="color:#e2e8f0;">High-risk action(s) pending approval in: '
+                    f'<span style="color:#FFB800;font-weight:600;">{", ".join(html.escape(s) for s in blocked_scenarios)}</span></div>'
+                    f'<div style="color:#8b949e;font-size:0.80rem;margin-top:4px;">'
+                    f'Approve or deny the high-risk action(s) in the Approvals tab to resume the pipeline.</div>'
+                    f'</div>'
+                )
+
             def _process_scenarios_cycle(slist, cycle_label, prebuilt_steps=None):
                 nonlocal summary_rows, total_anomalies, total_actions, processed, failures
                 if prebuilt_steps:
@@ -3297,6 +3353,18 @@ def create_dashboard(
                 for i, (name, sc) in enumerate(slist):
                     if _stop_monitoring_requested:
                         break
+
+                    # If pipeline is blocked by a high-risk action, stop processing
+                    if _blocked_scenarios:
+                        blocked_names = ", ".join(html.escape(s) for s in _blocked_scenarios)
+                        sub = _add_step(f"  🛑 Pipeline blocked by: {blocked_names}", "Awaiting approval...", "blocked") if not (prebuilt_steps and i < len(prebuilt_steps) - 1) else prebuilt_steps[i + 1]
+                        if prebuilt_steps and i < len(prebuilt_steps) - 1:
+                            sub = prebuilt_steps[i + 1]
+                            sub["status"] = "blocked"
+                            sub["desc"] = "BLOCKED — awaiting approval"
+                        yield _render_pipeline_flow() + _render_blocked_banner()
+                        break
+
                     sc_data = dict(sc)
                     result = None
                     dl = []
@@ -3367,6 +3435,12 @@ def create_dashboard(
                             _scenario_results[name] = result
                         if actions:
                             _queue_actions_for_approval(name, actions, report_text, cycle=poll_cycle)
+                        # Check if this scenario just became blocked by a high-risk action
+                        if _blocked_scenarios.get(name):
+                            _complete_step(sub, "blocked")
+                            sub["desc"] = "BLOCKED — high-risk action pending approval"
+                            yield _render_pipeline_flow() + _render_blocked_banner()
+                            break
                         summary_rows += (
                             f'<tr><td style="padding:4px 8px;border-bottom:1px solid #21262d;color:#e2e8f0;">{html.escape(title)}</td>'
                             f'<td style="padding:4px 8px;border-bottom:1px solid #21262d;"><span class="severity-{severity}">{severity}</span></td>'
@@ -3380,6 +3454,12 @@ def create_dashboard(
             # First pass: process all known scenarios (use pre-populated steps)
             for chunk in _process_scenarios_cycle(scenario_list, "Initial Scan", _prebuilt_steps):
                 yield chunk
+            # If pipeline is blocked after initial scan, wait
+            while _blocked_scenarios and not _stop_monitoring_requested:
+                yield _render_pipeline_flow() + _render_blocked_banner()
+                time.sleep(2)
+            if _stop_monitoring_requested:
+                return
 
             # Polling loop: run full scenario processing each cycle
             while not _stop_monitoring_requested:
@@ -3389,6 +3469,12 @@ def create_dashboard(
                 yield _render_pipeline_flow()
                 for chunk in _process_scenarios_cycle(scenario_list, f"Cycle #{poll_cycle}"):
                     yield chunk
+                # If pipeline is blocked, wait until all blocks are cleared
+                while _blocked_scenarios and not _stop_monitoring_requested:
+                    yield _render_pipeline_flow() + _render_blocked_banner()
+                    time.sleep(2)
+                if _stop_monitoring_requested:
+                    break
                 _complete_step(poll_step, "completed")
                 yield _render_pipeline_flow()
 
@@ -4242,6 +4328,27 @@ setInterval(function(){
                 appr_audit_panel = gr.HTML(value=_render_audit_log())
 
                 def _render_action_log(a: dict, action_label: str, color: str) -> str:
+                    # Build structured steps collapsible
+                    steps_html = ""
+                    steps = a.get("execution_steps", [])
+                    if steps:
+                        step_items = "".join(
+                            f'<div style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:0.76rem;">'
+                            f'<span style="color:{"#00FF88" if s.get("status")=="completed" or s.get("status")=="success" else "#FF3B3B" if s.get("status")=="failed" else "#FFB800"};">'
+                            f'{"✓" if s.get("status")=="completed" or s.get("status")=="success" else "✗" if s.get("status")=="failed" else "⏳"}</span>'
+                            f'<span style="color:#e2e8f0;">{html.escape(s.get("title","?"))}</span>'
+                            f'<span style="color:#8b949e;font-size:0.70rem;">({s.get("duration",0):.1f}s)</span>'
+                            f'<span style="color:#8b949e;font-size:0.72rem;margin-left:4px;">— {html.escape(s.get("description",""))}</span>'
+                            f'</div>'
+                            for s in steps
+                        )
+                        steps_html = (
+                            f'<details style="margin-top:6px;">'
+                            f'<summary style="cursor:pointer;font-size:0.76rem;color:#8b949e;padding:4px 0;">'
+                            f'▸ Agent Execution Steps ({len(steps)})</summary>'
+                            f'<div style="padding:4px 0 4px 8px;border-left:2px solid rgba(255,255,255,0.08);margin-top:2px;">'
+                            f'{step_items}</div></details>'
+                        )
                     log = (
                         f'<div style="padding:12px 16px;margin:8px 0;border:1px solid rgba({color},0.3);border-radius:8px;'
                         f'background:rgba({color},0.06);font-size:0.82rem;">'
@@ -4264,6 +4371,7 @@ setInterval(function(){
                         f'{html.escape(a.get("execution_status","—"))}</span>'
                         f' — {html.escape(a.get("execution_detail","")[:200])}'
                         f'</div>'
+                        f'{steps_html}'
                         f'</div>'
                     )
                     return log

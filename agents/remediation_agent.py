@@ -129,7 +129,8 @@ class RemediationAgent(BaseAgent):
             action: A single action dict from ``recommended_actions``.
 
         Returns:
-            Dict with execution status, duration, and details.
+            Dict with execution status, duration, details, and
+            structured ``steps`` list for the dashboard action log.
         """
         action_id = str(uuid.uuid4())[:8]
         tool_name = action.get("tool_name", "unknown")
@@ -151,12 +152,62 @@ class RemediationAgent(BaseAgent):
                 "error": f"Unknown tool '{tool_name}'. Available: {sorted(valid_tools)}",
                 "duration_seconds": 0.0,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
+                "steps": [
+                    {"step": "validate", "title": "Validate tool", "status": "failed",
+                     "description": f"Tool '{tool_name}' not found in registry", "duration": 0.0},
+                ],
             }
 
-        # Simulate execution with realistic timing
+        # Simulate execution with structured steps
+        steps = []
         start = time.time()
         sim_delay = {"low": 0.5, "medium": 1.0, "high": 1.5}.get(risk, 1.0)
+
+        # Step 1 — Analyze
+        t0 = time.time()
+        time.sleep(0.15)
+        steps.append({
+            "step": "analyze",
+            "title": "Analyze incident context",
+            "description": f"Reviewing logs and metrics, correlating anomalies for {tool_name}",
+            "status": "completed",
+            "duration": round(time.time() - t0, 2),
+        })
+
+        # Step 2 — Plan
+        t0 = time.time()
+        time.sleep(0.1)
+        steps.append({
+            "step": "plan",
+            "title": f"Prepare {tool_name}",
+            "description": f"Validating parameters {json.dumps(params)} and pre-flight checks for {risk}-risk action",
+            "status": "completed",
+            "duration": round(time.time() - t0, 2),
+        })
+
+        # Step 3 — Execute (the main simulated delay)
+        t0 = time.time()
+        exec_ok = True  # could flip based on simulation logic
         time.sleep(sim_delay)
+        steps.append({
+            "step": "execute",
+            "title": f"Execute {tool_name}",
+            "description": f"Running {tool_name} with parameters {json.dumps(params)}",
+            "status": "success" if exec_ok else "failed",
+            "duration": round(time.time() - t0, 2),
+        })
+
+        # Step 4 — Verify
+        t0 = time.time()
+        time.sleep(0.08)
+        steps.append({
+            "step": "verify",
+            "title": "Verify execution result",
+            "description": f"Confirming {tool_name} completed successfully, checking post-conditions",
+            "status": "completed",
+            "duration": round(time.time() - t0, 2),
+        })
+
         elapsed = round(time.time() - start, 2)
 
         return {
@@ -167,6 +218,7 @@ class RemediationAgent(BaseAgent):
             "message": f"[SIMULATED] {tool_name} executed successfully with params {json.dumps(params)}",
             "duration_seconds": elapsed,
             "timestamp": datetime.now(timezone.utc).isoformat(),
+            "steps": steps,
         }
 
     def execute_plan(
