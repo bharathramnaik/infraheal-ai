@@ -2644,6 +2644,8 @@ def create_dashboard(
 
     def _process_all_incidents():
         """Run the pipeline on every scenario and produce a comprehensive report."""
+        import sys
+        print("[INFRAHEAL] _process_all_incidents generator started", flush=True)
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         rows = ""
         total_anomalies = 0
@@ -3656,42 +3658,20 @@ _obs.observe(_timerRoot,{childList:true,subtree:true,attributes:false});
                     return r
 
                 def _cached_process():
-                    key = "process_all"
-                    if key in _result_cache:
-                        yield _result_cache[key]
-                        return
-                    last = ""
                     for partial in _process_all_incidents():
-                        last = partial
                         yield partial
-                    _result_cache[key] = last
 
                 def _rerun_process():
-                    key = "process_all"
-                    last = ""
                     for partial in _process_all_incidents():
-                        last = partial
                         yield partial
-                    _result_cache[key] = last
 
                 def _cached_monitor():
-                    key = "monitor"
-                    if key in _result_cache:
-                        yield _result_cache[key]
-                        return
-                    last = ""
                     for partial in _continuous_monitor():
-                        last = partial
                         yield partial
-                    _result_cache[key] = last
 
                 def _rerun_monitor():
-                    key = "monitor"
-                    last = ""
                     for partial in _continuous_monitor():
-                        last = partial
                         yield partial
-                    _result_cache[key] = last
 
                 def _stop_monitoring():
                     global _stop_monitoring_requested
@@ -4545,7 +4525,6 @@ _obs.observe(_timerRoot,{childList:true,subtree:true,attributes:false});
 
     logger.info("InfraHeal AI dashboard created successfully")
 
-    demo.queue()
     return demo
 
 
