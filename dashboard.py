@@ -970,30 +970,24 @@ footer { display: none !important; }
 .pipeline-step-progress-bar.warning { background:#FFB800; }
 #refresh-btn{display:none!important}
 
-/* ── Poll Interval Dropdown (compact, black, no extended box) ─── */
-#poll-interval { min-width:70px !important; max-width:90px !important; }
+/* ── Poll Interval Dropdown (compact, black, no box) ─────────── */
+#poll-interval { min-width:70px !important; }
 #poll-interval label { display:none !important; }
 #poll-interval .gr-dropdown-container,
 #poll-interval .gr-box, #poll-interval .gr-dropdown,
-#poll-interval .gr-input, #poll-interval .gr-text-input,
-#poll-interval .wrap-inner, #poll-interval .choices-wrapper {
+#poll-interval .gr-input,
+#poll-interval .wrap-inner {
   background:#000 !important; border:1px solid #30363d !important;
   color:#c9d1d9 !important; border-radius:4px !important;
   padding:0 !important; margin:0 !important;
-  box-shadow:none !important; outline:none !important;
+  box-shadow:none !important;
 }
 #poll-interval select {
   background:#000 !important; color:#c9d1d9 !important;
   border:none !important; font-size:0.75rem !important;
   padding:2px 4px !important; margin:0 !important;
   min-height:26px !important; height:26px !important;
-  line-height:26px !important;
 }
-
-/* ── Optimize button slightly wider ──────────────────────────── */
-#rerun-optimize { min-width:0 !important; }
-button:has(> #rerun-optimize) { padding:0 !important; }
-#btn-optimize { min-width:140px !important; }
 
 /* ── Collapsible pipeline steps ──────────────────────────────── */
 .pipeline-step { cursor:pointer; }
@@ -3701,18 +3695,18 @@ def create_dashboard(
                     btn_process_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-process")
                     btn_report = gr.Button("Generate Report", variant="secondary", scale=1)
                     btn_report_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-report")
-                with gr.Row():
-                    btn_monitor = gr.Button("Start Continuous Process", variant="secondary", scale=0)
-                    btn_monitor_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-monitor")
-                    btn_stop_monitor = gr.Button("\u25a0", scale=0, elem_classes="stop-btn", elem_id="stop-monitor", visible=True)
+                with gr.Row(variant="compact", equal_height=True):
+                    btn_monitor = gr.Button("Start Continuous Process", variant="secondary", scale=4)
+                    btn_monitor_rerun = gr.Button("\u21bb", scale=1, elem_classes="rerun-btn", elem_id="rerun-monitor")
+                    btn_stop_monitor = gr.Button("\u25a0", scale=1, elem_classes="stop-btn", elem_id="stop-monitor", visible=True)
                     drp_poll_interval = gr.Dropdown(
-                        choices=[("1min", 60), ("2min", 120), ("3min", 180),
-                                 ("5min", 300), ("10min", 600), ("30min", 1800), ("1hr", 3600)],
-                        value=60, label="", scale=0, min_width=70,
-                        elem_id="poll-interval", show_label=False,
+                        choices=[("1 min", 60), ("2 min", 120), ("3 min", 180),
+                                 ("5 min", 300), ("10 min", 600), ("30 min", 1800), ("1 hr", 3600)],
+                        value=60, label="Interval", scale=2, min_width=90,
+                        elem_id="poll-interval", show_label=False, container=False,
                     )
-                    btn_optimize = gr.Button("Optimize Agent", variant="secondary", scale=0, elem_id="btn-optimize")
-                    btn_optimize_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-optimize")
+                    btn_optimize = gr.Button("Optimize Agent", variant="secondary", scale=4, elem_id="btn-optimize")
+                    btn_optimize_rerun = gr.Button("\u21bb", scale=1, elem_classes="rerun-btn", elem_id="rerun-optimize")
 
                 scan_output = gr.HTML(
                     value=_empty_state("Anomaly scan results will appear here",
