@@ -133,17 +133,17 @@ def launch_dashboard(
     )
 
     # ── Register /live-html AFTER launch (launch replaces demo.app) ──
-    # Serves _live_html only while a pipeline/monitor thread is alive AND
-    # no static output (report/scan/optimize) has been requested by the user.
+    # Serves the active pipeline's HTML (process takes priority over monitor).
     try:
         from fastapi.responses import PlainTextResponse
         @demo.app.get("/live-html")
         def _serve_live_html():
-            alive = (_dash_mod._process_thread is not None and _dash_mod._process_thread.is_alive()) or (_dash_mod._monitor_thread is not None and _dash_mod._monitor_thread.is_alive())
-            serve = alive and not _dash_mod._static_output_active
-            if serve:
+            p_alive = _dash_mod._process_thread is not None and _dash_mod._process_thread.is_alive()
+            m_alive = _dash_mod._monitor_thread is not None and _dash_mod._monitor_thread.is_alive()
+            alive = p_alive or m_alive
+            if alive and not _dash_mod._static_output_active:
                 with _dash_mod._live_html_lock:
-                    html = _dash_mod._live_html or ""
+                    html = (_dash_mod._process_live_html or _dash_mod._monitor_live_html) or ""
                     _dash_mod._diag("live_html_serve", alive=alive, static=_dash_mod._static_output_active, html_len=len(html))
                     return PlainTextResponse(html)
             _dash_mod._diag("live_html_empty", alive=alive, static=_dash_mod._static_output_active)

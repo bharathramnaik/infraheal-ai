@@ -62,7 +62,9 @@ MONITOR_POLL_SECONDS = 30
 MONITOR_POLL_INTERVAL = 60  # mutable; updated by dropdown in UI
 
 # Live pipeline output: background thread writes, gr.Timer polls
-_live_html: str = ""
+# Separated per pipeline type so process and monitor don't overwrite each other.
+_process_live_html: str = ""
+_monitor_live_html: str = ""
 _live_html_lock = threading.Lock()
 _process_thread: Optional[threading.Thread] = None
 _monitor_thread: Optional[threading.Thread] = None
@@ -2722,23 +2724,23 @@ def create_dashboard(
         _diag("generate_report_exit", html_len=len(html_out), has_rows=bool(incident_rows))
         return html_out
 
-    def _run_pipeline_thread(gen_func: Callable):
-        global _live_html, _process_completed, _monitoring_completed, _static_output_active
-        import sys
+    def _run_pipeline_thread(gen_func: Callable, pipeline_type: str = "process"):
+        global _process_live_html, _monitor_live_html, _process_completed, _monitoring_completed, _static_output_active
         fn_name = gen_func.__name__
         _diag("pipeline_thread_start", fn=fn_name, static=_static_output_active)
         print("[THREAD] Starting pipeline thread", flush=True)
-        is_monitor = (fn_name == '_continuous_monitor')
+        is_monitor = (pipeline_type == "monitor")
         writes = 0
         skips = 0
         try:
             for partial in gen_func():
-                # Skip _live_html updates while static output (report/scan/optimize) is displayed
                 if not _static_output_active:
                     with _live_html_lock:
-                        _live_html = partial
+                        if is_monitor:
+                            _monitor_live_html = partial
+                        else:
+                            _process_live_html = partial
                         writes += 1
-                        print(f"[THREAD] Wrote {len(partial)} bytes to _live_html", flush=True)
                 else:
                     skips += 1
         except Exception:
@@ -2750,73 +2752,74 @@ def create_dashboard(
         else:
             _process_completed = True
         _diag("pipeline_thread_exit", fn=fn_name, writes=writes, skips=skips, completed=True)
-        # Keep _live_html for cached pipeline viewing via _start_process().
         print("[THREAD] Pipeline thread exiting", flush=True)
 
     def _start_process():
-        global _process_thread, _live_html, _process_completed, _scenario_results, _static_output_active
-        import sys
+        global _process_thread, _process_live_html, _process_completed, _scenario_results, _static_output_active
         p_alive = _process_thread and _process_thread.is_alive()
         _diag("start_process_click", process_alive=p_alive, completed=_process_completed, static=_static_output_active)
         print("[START_PROCESS] Button clicked!", flush=True)
         if p_alive:
-            _static_output_active = False  # un-freeze live view
+            _static_output_active = False
             with _live_html_lock:
-                print("[START_PROCESS] Already running, returning existing HTML", flush=True)
-                return _live_html
+                return _process_live_html
         if _process_completed:
             print("[START_PROCESS] Already completed, showing cached result", flush=True)
             with _live_html_lock:
-                return _live_html
+                return _process_live_html
         _static_output_active = False
         _process_completed = False
         _result_cache.pop("report", None)
         _scenario_results.clear()
-        _live_html = '<div style="color:#8b949e;text-align:center;padding:12px;">Starting... </div>'
+        _process_live_html = '<div style="color:#8b949e;text-align:center;padding:12px;">Starting... </div>'
         print("[START_PROCESS] Starting thread...", flush=True)
-        _process_thread = threading.Thread(target=_run_pipeline_thread, args=(_process_all_incidents,), daemon=True)
+        _process_thread = threading.Thread(target=_run_pipeline_thread, args=(_process_all_incidents, "process"), daemon=True)
         _process_thread.start()
-        return _live_html
+        return _process_live_html
 
     def _start_monitor():
-        global _monitor_thread, _live_html, _scenario_results
+        global _monitor_thread, _monitor_live_html, _scenario_results
         global _stop_monitoring_requested, _monitoring_active, _monitoring_completed, _static_output_active
-        import sys
         m_alive = _monitor_thread and _monitor_thread.is_alive()
         _diag("start_monitor_click", monitor_alive=m_alive, completed=_monitoring_completed, static=_static_output_active)
         print("[START_MONITOR] Button clicked!", flush=True)
         if m_alive:
-            _static_output_active = False  # un-freeze live view
+            _static_output_active = False
             with _live_html_lock:
-                print("[START_MONITOR] Already running, returning existing HTML", flush=True)
-                return _live_html
+                return _monitor_live_html
         if _monitoring_completed:
             print("[START_MONITOR] Already completed, showing cached result", flush=True)
             with _live_html_lock:
-                return _live_html
+                return _monitor_live_html
         _static_output_active = False
         _monitoring_completed = False
         _stop_monitoring_requested = False
-        _monitoring_active = False  # generator will set True when it starts the loop
+        _monitoring_active = False
         _result_cache.pop("report", None)
         _scenario_results.clear()
-        _live_html = '<div style="color:#8b949e;text-align:center;padding:12px;">Starting continuous monitoring...</div>'
+        _monitor_live_html = '<div style="color:#8b949e;text-align:center;padding:12px;">Starting continuous monitoring...</div>'
         print("[START_MONITOR] Starting thread...", flush=True)
-        _monitor_thread = threading.Thread(target=_run_pipeline_thread, args=(_continuous_monitor,), daemon=True)
+        _monitor_thread = threading.Thread(target=_run_pipeline_thread, args=(_continuous_monitor, "monitor"), daemon=True)
         _monitor_thread.start()
-        return _live_html
+        return _monitor_live_html
 
     def _poll_live_html():
-        """Called by gr.Timer to poll pipeline thread progress."""
-        global _process_thread, _monitor_thread, _live_html, _static_output_active
-        alive = (_process_thread and _process_thread.is_alive()) or (_monitor_thread and _monitor_thread.is_alive())
+        """Called by gr.Timer to poll pipeline thread progress.
+        Picks the active pipeline's HTML — process takes priority over monitor.
+        """
+        global _process_thread, _monitor_thread, _process_live_html, _monitor_live_html, _static_output_active
+        p_alive = _process_thread and _process_thread.is_alive()
+        m_alive = _monitor_thread and _monitor_thread.is_alive()
         if _static_output_active:
             return gr.skip()
-        if not alive and not _live_html:
-            return gr.skip()
         with _live_html_lock:
-            result = _live_html or gr.skip()
-            return result
+            if p_alive and _process_live_html:
+                return _process_live_html
+            if m_alive and _monitor_live_html:
+                return _monitor_live_html
+            # Both dead: show whichever pipeline has content, preferring process
+            result = _process_live_html or _monitor_live_html
+            return result or gr.skip()
 
     def _process_all_incidents():
         """Run the pipeline on every scenario and produce a comprehensive report."""
@@ -3220,9 +3223,27 @@ def create_dashboard(
             failures = 0
             poll_cycle = 0
 
-            def _process_scenarios_cycle(slist, cycle_label):
+            # Pre-populate scenario steps so progress starts at 0% not 50% for initial scan
+            _prebuilt_steps = []
+            def _prepopulate_initial_scan():
+                nonlocal _prebuilt_steps
+                _prebuilt_steps = [_add_step(f"Initial Scan: Process {total_scenarios} Scenarios", f"0/{total_scenarios}", "pending")]
+                for si, (name, sc) in enumerate(scenario_list):
+                    title = sc.get("title", name)
+                    _prebuilt_steps.append(_add_step(f"  [{si+1}/{total_scenarios}] {title}", "Waiting...", "pending"))
+                yield _render_pipeline_flow()
+            for chunk in _prepopulate_initial_scan():
+                yield chunk
+
+            def _process_scenarios_cycle(slist, cycle_label, prebuilt_steps=None):
                 nonlocal summary_rows, total_anomalies, total_actions, processed, failures
-                ps = _add_step(f"{cycle_label}: Process {len(slist)} Scenarios", f"0/{len(slist)}", "running")
+                if prebuilt_steps:
+                    ps = prebuilt_steps[0]
+                    ps["status"] = "running"
+                    ps["desc"] = f"0/{len(slist)}"
+                    ps["start"] = time.time()
+                else:
+                    ps = _add_step(f"{cycle_label}: Process {len(slist)} Scenarios", f"0/{len(slist)}", "running")
                 yield _render_pipeline_flow()
                 for i, (name, sc) in enumerate(slist):
                     if _stop_monitoring_requested:
@@ -3231,7 +3252,13 @@ def create_dashboard(
                     result = None
                     dl = []
                     title = sc_data.get("title", name)
-                    sub = _add_step(f"  [{i+1}/{len(slist)}] {title}", "Anomaly detection & agents", "running")
+                    if prebuilt_steps and i < len(prebuilt_steps) - 1:
+                        sub = prebuilt_steps[i + 1]
+                        sub["status"] = "running"
+                        sub["desc"] = "Anomaly detection & agents"
+                        sub["start"] = time.time()
+                    else:
+                        sub = _add_step(f"  [{i+1}/{len(slist)}] {title}", "Anomaly detection & agents", "running")
                     yield _render_pipeline_flow()
 
                     print(f"[MONITOR] orchestrator={orchestrator}, anomaly_detector={anomaly_detector}", flush=True)
@@ -3301,8 +3328,8 @@ def create_dashboard(
                 _complete_step(ps)
                 yield _render_pipeline_flow()
 
-            # First pass: process all known scenarios
-            for chunk in _process_scenarios_cycle(scenario_list, "Initial Scan"):
+            # First pass: process all known scenarios (use pre-populated steps)
+            for chunk in _process_scenarios_cycle(scenario_list, "Initial Scan", _prebuilt_steps):
                 yield chunk
 
             # Polling loop: run full scenario processing each cycle
@@ -3864,20 +3891,20 @@ setInterval(function(){
                 _refresh_btn.click(fn=_poll_live_html, inputs=[], outputs=[scan_output], api_name="poll_live")
 
                 def _rerun_process():
-                    global _process_completed, _live_html, _scenario_results, _static_output_active
+                    global _process_completed, _process_live_html, _scenario_results, _static_output_active
                     _diag("rerun_process", completed=_process_completed, static=_static_output_active)
                     _process_completed = False
-                    _live_html = ""
+                    _process_live_html = ""
                     _result_cache.pop("report", None)
                     _scenario_results.clear()
                     _static_output_active = False
                     return _start_process()
                 def _rerun_monitor():
-                    global _monitoring_completed, _stop_monitoring_requested, _live_html, _scenario_results, _static_output_active
+                    global _monitoring_completed, _stop_monitoring_requested, _monitor_live_html, _scenario_results, _static_output_active
                     _diag("rerun_monitor", completed=_monitoring_completed, static=_static_output_active)
                     _stop_monitoring_requested = True
                     _monitoring_completed = False
-                    _live_html = ""
+                    _monitor_live_html = ""
                     _result_cache.pop("report", None)
                     _scenario_results.clear()
                     _static_output_active = False
