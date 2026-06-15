@@ -2819,30 +2819,33 @@ def create_dashboard(
         global _pending_approvals
         pending = [a for a in _pending_approvals if a.get("status") == "pending"]
         if not pending:
-            return ""
+            return (
+                '<div style="font-size:0.82rem;color:#64748b;text-align:center;padding:16px;">'
+                'No pending approvals.</div>'
+            )
         items = "".join(
             f'<div style="padding:12px;margin:8px 0;border:1px solid rgba(255,255,255,0.08);border-radius:8px;'
             f'background:rgba(255,184,0,0.04);border-left:3px solid {_C["amber"]};">'
             f'<div style="display:flex;justify-content:space-between;align-items:start;">'
             f'<div style="flex:1;">'
             f'<div style="font-size:0.85rem;font-weight:600;color:#e2e8f0;">{a.get("title","Action")}</div>'
-            f'<div style="font-size:0.75rem;color:#8b949e;margin:4px 0;">Scenario: {a.get("scenario","?")} | '
+            f'<div style="font-size:0.75rem;color:#8b949e;margin:4px 0;">{a.get("id","")} — Scenario: {a.get("scenario","?")} | '
             f'Risk: <span style="color:{_C["red"]};">{a.get("risk","medium")}</span></div>'
             f'<div style="font-size:0.78rem;color:#c9d1d9;white-space:pre-wrap;">{a.get("summary","")[:200]}</div>'
             f'</div></div>'
-            f'<div style="display:flex;gap:8px;margin-top:10px;">'
-            f'<button class="chat-quick-btn" onclick="approveAction(\'{a.get("id","")}\')" '
-            f'style="background:#00FF8822!important;border-color:#00FF88!important;color:#00FF88!important;">'
-            f'Approve</button>'
-            f'<button class="chat-quick-btn" onclick="denyAction(\'{a.get("id","")}\')" '
-            f'style="background:#FF3B3B22!important;border-color:#FF3B3B!important;color:#FF3B3B!important;">'
-            f'Deny</button>'
-            f'</div></div>'
+            f'</div>'
             for a in pending
         )
         if not items:
             return ""
-        return f'<div style="margin-top:12px;"><div style="font-size:0.8rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Pending Approvals ({len(pending)})</div>{items}</div>'
+        return (
+            f'<div style="margin-top:12px;">'
+            f'<div style="font-size:0.8rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">'
+            f'Pending Approvals ({len(pending)})</div>{items}'
+            f'<div style="font-size:0.75rem;color:#8b949e;text-align:right;margin-top:6px;">'
+            f'Go to the Approvals tab to review and act on these items.</div>'
+            f'</div>'
+        )
 
     def _approve_action(action_id: str) -> str:
         """Approve a pending action and execute it."""
@@ -2864,6 +2867,7 @@ def create_dashboard(
                         logger.error("Action %s execution failed: %s", action_id, exc)
                         exec_result = {"status": "failed", "error": str(exc)}
 
+                exec_msg = exec_result.get("message", exec_result.get("error", ""))
                 _approval_history.append({
                     "id": action_id,
                     "scenario": a.get("scenario", "?"),
@@ -2871,6 +2875,7 @@ def create_dashboard(
                     "action": "approved",
                     "timestamp": a["resolved_at"],
                     "execution": exec_result.get("status", "unknown"),
+                    "execution_detail": exec_msg[:120],
                 })
                 # Log to experience store
                 _add_experience({
@@ -3230,7 +3235,8 @@ def create_dashboard(
             f'<td style="font-size:0.78rem;"><span style="color:{"#00FF88" if h.get("action")=="approved" else "#FF3B3B"};">{h.get("action","")}</span></td>'
             f'<td style="font-size:0.78rem;color:#8b949e;">{h.get("reason","—")[:40]}</td>'
             f'<td style="font-size:0.78rem;color:#8b949e;white-space:nowrap;">{h.get("timestamp","")[:19].replace("T"," ")}</td>'
-            f'<td style="font-size:0.78rem;">{h.get("execution","—")}</td>'
+            f'<td style="font-size:0.78rem;" title="{html.escape(h.get("execution_detail",""))}">'
+            f'<span style="color:{"#00FF88" if h.get("execution")=="success" else "#FF3B3B"};">{h.get("execution","—")}</span></td>'
             f'</tr>'
             for h in reversed(_approval_history)
         )
@@ -3541,61 +3547,6 @@ function showModal(title, bodyHtml, confirmCb) {
   m.addEventListener("click", function(e) { if (e.target === m) m.remove(); });
   return m;
 }
-function approveAction(aid) {
-  var m = showModal("Approve Action", 'Provide a command or note (optional) for approving <b>' + aid + '</b>:', null);
-  var actions = m.querySelector("#agent-modal-actions");
-  actions.innerHTML = '<input class="agent-modal-input" id="agent-modal-approve-cmd" placeholder="e.g. Approved, proceed with remediation" autofocus>' +
-    '<div style="display:flex;gap:10px;justify-content:flex-end;">' +
-    '<button class="agent-modal-btn agent-modal-btn-cancel" onclick="this.closest(\'.agent-modal\').remove()">Cancel</button>' +
-    '<button class="agent-modal-btn agent-modal-btn-primary" id="agent-modal-approve">Approve</button></div>';
-  document.getElementById("agent-modal-approve").onclick = function() {
-    var cmd = document.getElementById("agent-modal-approve-cmd").value.trim() || "Approved";
-    m.remove();
-    trigger_approval("approve|" + aid + "|" + cmd);
-  };
-}
-function denyAction(aid) {
-  var m = showModal("Deny Action", "Provide a reason for denying <b>" + aid + "</b>:", null);
-  var actions = m.querySelector("#agent-modal-actions");
-  actions.innerHTML = '<input class="agent-modal-input" id="agent-modal-reason" placeholder="e.g. Action not needed, already resolved manually" autofocus>' +
-    '<div style="display:flex;gap:10px;justify-content:flex-end;">' +
-    '<button class="agent-modal-btn agent-modal-btn-cancel" onclick="this.closest(\'.agent-modal\').remove()">Cancel</button>' +
-    '<button class="agent-modal-btn agent-modal-btn-danger" id="agent-modal-deny">Deny</button></div>';
-  document.getElementById("agent-modal-deny").onclick = function() {
-    var reason = document.getElementById("agent-modal-reason").value.trim() || "No reason provided";
-    m.remove();
-    trigger_approval("deny|" + aid + "|" + reason);
-  };
-}
-function trigger_approval(val) {
-  console.log("trigger_approval:", val);
-  // Try Gradio's internal API client (Gradio 5+)
-  var app = document.querySelector("gradio-app");
-  if (app && app.submit) {
-    // Gradio 5+ client API
-    var fnId = "process_approval";
-    app.submit("approval-cmd-input", val, fnId).catch(function(e) {
-      console.warn("Gradio submit failed, falling back to DOM bridge", e);
-      _trigger_approval_dom(val);
-    });
-    return;
-  }
-  _trigger_approval_dom(val);
-}
-function _trigger_approval_dom(val) {
-  var ta = document.getElementById("approval-cmd-input");
-  var btnWrapper = document.getElementById("approval-trigger-btn");
-  var input = ta ? (ta.tagName === "INPUT" || ta.tagName === "TEXTAREA" ? ta : ta.querySelector("input, textarea")) : null;
-  var btn = btnWrapper ? (btnWrapper.tagName === "BUTTON" ? btnWrapper : btnWrapper.querySelector("button")) : null;
-  console.log("DOM bridge: input=" + (!!input) + " btn=" + (!!btn));
-  if (input && btn) {
-    var nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
-    nativeInputValueSetter.call(input, val);
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-    input.dispatchEvent(new Event("change", { bubbles: true }));
-    setTimeout(function() { btn.click(); }, 500);
-  }
-}
 function copyChatMsg(btn) {
   var bubble = btn.parentElement.querySelector(".chat-bubble");
   if (bubble) {
@@ -3636,26 +3587,6 @@ _obs.observe(_timerRoot,{childList:true,subtree:true,attributes:false});
             with gr.Tab("Command Center"):
                 header = gr.HTML(value=_branding_header)
                 metrics_row = gr.HTML(value=_get_command_center_metrics)
-
-                # Human approval panel (collapsible — auto-opens on new approvals)
-                approval_accordion = gr.Accordion("Approvals Required", open=False)
-                with approval_accordion:
-                    approval_panel = gr.HTML(value=_render_approval_panel)
-                    approval_cmd = gr.Textbox(
-                        visible=True,
-                        elem_id="approval-cmd-input",
-                        placeholder="approve APP-001 or deny APP-001 because <reason>",
-                        container=False,
-                        scale=1,
-                    )
-                    approval_trigger = gr.Button("Submit", elem_id="approval-trigger-btn", variant="primary", visible=True)
-                    approval_status = gr.HTML(value="")
-
-                # Approval history display
-                approval_history_panel = gr.HTML(value=_render_approval_history)
-
-                # Approval audit log (persistent)
-                audit_log_panel = gr.HTML(value=_render_audit_log)
 
                 gr.HTML(
                     '<div class="section-label" style="margin-top:16px;">Live Log Stream</div>'
@@ -3780,55 +3711,12 @@ _obs.observe(_timerRoot,{childList:true,subtree:true,attributes:false});
                 for btn, fn in [(btn_process, _cached_process), (btn_monitor, _cached_monitor)]:
                     btn.click(fn=fn, inputs=[], outputs=[scan_output])
                     btn.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
-                    btn.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[approval_accordion])
-                    btn.click(fn=_render_approval_panel, inputs=[], outputs=[approval_panel])
-                    btn.click(fn=_render_approval_history, inputs=[], outputs=[approval_history_panel])
-                    btn.click(fn=_render_audit_log, inputs=[], outputs=[audit_log_panel])
                 for btn, fn in [(btn_process_rerun, _rerun_process), (btn_monitor_rerun, _rerun_monitor)]:
                     btn.click(fn=fn, inputs=[], outputs=[scan_output])
                     btn.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
-                    btn.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[approval_accordion])
-                    btn.click(fn=_render_approval_panel, inputs=[], outputs=[approval_panel])
-                    btn.click(fn=_render_approval_history, inputs=[], outputs=[approval_history_panel])
-                    btn.click(fn=_render_audit_log, inputs=[], outputs=[audit_log_panel])
 
                 btn_stop_monitor.click(fn=_stop_monitoring, inputs=[], outputs=[scan_output])
                 btn_stop_monitor.click(fn=lambda: gr.update(open=True), inputs=[], outputs=[scan_accordion])
-
-                def _on_approval_cmd(cmd: str):
-                    try:
-                        if not cmd:
-                            return _render_approval_panel(), _render_approval_history(), "", _render_audit_log()
-                        parts = cmd.strip().split("|", 2)
-                        action = parts[0].strip().lower()
-                        aid = parts[1].strip() if len(parts) > 1 else ""
-                        reason = html.escape(parts[2].strip()) if len(parts) > 2 else ""
-                        ts = datetime.now().strftime("%H:%M:%S")
-                        logger.info("Approval cmd received: %s | %s", action, aid)
-                        action_title = aid
-                        for a in _pending_approvals:
-                            if a.get("id") == aid:
-                                action_title = a.get("title", aid)
-                                break
-                        if action == "approve":
-                            _approve_action(aid)
-                            status = f'<div style="padding:12px 16px;margin:8px 0;background:rgba(0,255,136,0.08);border:1px solid rgba(0,255,136,0.3);border-radius:8px;font-size:0.85rem;"><span style="color:#00FF88;font-weight:700;">&#10003; Approved</span> <span style="color:#c9d1d9;">{html.escape(action_title)}</span><br><span style="color:#8b949e;font-size:0.75rem;">{aid} at {ts}</span></div>'
-                        elif action == "deny":
-                            _deny_action(aid, reason)
-                            status = f'<div style="padding:12px 16px;margin:8px 0;background:rgba(255,59,59,0.08);border:1px solid rgba(255,59,59,0.3);border-radius:8px;font-size:0.85rem;"><span style="color:#FF3B3B;font-weight:700;">&#10007; Denied</span> <span style="color:#c9d1d9;">{html.escape(action_title)}</span><br><span style="color:#8b949e;font-size:0.75rem;">{aid} at {ts} — {reason[:120]}</span></div>'
-                        else:
-                            status = ""
-                        return _render_approval_panel(), _render_approval_history(), status, _render_audit_log()
-                    except Exception as exc:
-                        logger.error("Approval cmd error: %s", exc, exc_info=True)
-                        return _render_approval_panel(), _render_approval_history(), f'<div style="color:red;font-size:0.8rem;">Error: {exc}</div>', _render_audit_log()
-
-                approval_cmd.change(fn=_on_approval_cmd, inputs=[approval_cmd], outputs=[approval_panel, approval_history_panel, approval_status, audit_log_panel])
-                approval_cmd.submit(fn=_on_approval_cmd, inputs=[approval_cmd], outputs=[approval_panel, approval_history_panel, approval_status, audit_log_panel])
-                approval_trigger.click(fn=_on_approval_cmd, inputs=[approval_cmd], outputs=[approval_panel, approval_history_panel, approval_status, audit_log_panel])
-
-                # Approval history
-                gr.HTML('<div style="margin-top:12px;"></div>')
 
             # ──────────────────────────────────────────────────────
             #  TAB 2 — INCIDENT ANALYSIS
@@ -4057,7 +3945,140 @@ _obs.observe(_timerRoot,{childList:true,subtree:true,attributes:false});
                 )
 
             # ──────────────────────────────────────────────────────
-            #  TAB 4 — VISUALIZATION
+            #  TAB 4 — APPROVALS
+            # ──────────────────────────────────────────────────────
+            with gr.Tab("Approvals"):
+                gr.HTML(
+                    '<div class="section-title">Human Approval Center</div>'
+                    '<div class="section-subtitle">'
+                    'Review, approve, or deny remediation actions queued by the agent pipeline.</div>'
+                )
+
+                appr_panel = gr.HTML(value=_render_approval_panel)
+
+                def _refresh_approval_selector():
+                    pending = [a for a in _pending_approvals if a.get("status") == "pending"]
+                    if not pending:
+                        return gr.update(choices=[], value=None, interactive=False, placeholder="No pending approvals")
+                    choices = [(a["id"], f'{a["id"]} — {a.get("title","?")} ({a.get("risk","?")})') for a in pending]
+                    return gr.update(choices=choices, value=None, interactive=True, placeholder="Select an action...")
+
+                appr_approval_selector = gr.Dropdown(
+                    choices=[], label="Select Action to Review",
+                    interactive=False, placeholder="No pending approvals",
+                    scale=3,
+                )
+                with gr.Row():
+                    appr_reason = gr.Textbox(
+                        label="Reason (required for deny, optional for approve)",
+                        placeholder="e.g. Action approved, proceed | Action not needed, already resolved",
+                        scale=3, container=True,
+                    )
+                with gr.Row():
+                    appr_btn_approve = gr.Button("Approve Selected", variant="primary", scale=1)
+                    appr_btn_deny = gr.Button("Deny Selected", variant="stop", scale=1)
+                with gr.Row():
+                    appr_btn_approve_all = gr.Button("Approve All Pending", variant="primary", scale=1)
+                    appr_btn_deny_all = gr.Button("Deny All Pending", variant="stop", scale=1)
+
+                appr_status = gr.HTML(value="")
+                appr_history_panel = gr.HTML(value=_render_approval_history)
+                appr_audit_panel = gr.HTML(value=_render_audit_log)
+
+                def _on_approve_selected(aid: str, reason: str):
+                    if not aid:
+                        return _render_approval_panel(), _render_approval_history(), _render_audit_log(), _refresh_approval_selector(), ""
+                    _approve_action(aid)
+                    now = datetime.now().strftime("%H:%M:%S")
+                    action_title = aid
+                    for a in _pending_approvals:
+                        if a.get("id") == aid:
+                            action_title = a.get("title", aid)
+                            break
+                    status = (
+                        f'<div style="padding:12px 16px;margin:8px 0;background:rgba(0,255,136,0.08);'
+                        f'border:1px solid rgba(0,255,136,0.3);border-radius:8px;font-size:0.85rem;">'
+                        f'<span style="color:#00FF88;font-weight:700;">Approved</span> '
+                        f'<span style="color:#c9d1d9;">{html.escape(action_title)}</span><br>'
+                        f'<span style="color:#8b949e;font-size:0.75rem;">{aid} at {now}</span></div>'
+                    )
+                    return (
+                        _render_approval_panel(), _render_approval_history(), _render_audit_log(),
+                        _refresh_approval_selector(), status,
+                    )
+
+                def _on_deny_selected(aid: str, reason: str):
+                    if not aid:
+                        return _render_approval_panel(), _render_approval_history(), _render_audit_log(), _refresh_approval_selector(), ""
+                    reason = reason.strip() or "No reason provided"
+                    _deny_action(aid, reason)
+                    now = datetime.now().strftime("%H:%M:%S")
+                    action_title = aid
+                    for a in _pending_approvals:
+                        if a.get("id") == aid:
+                            action_title = a.get("title", aid)
+                            break
+                    status = (
+                        f'<div style="padding:12px 16px;margin:8px 0;background:rgba(255,59,59,0.08);'
+                        f'border:1px solid rgba(255,59,59,0.3);border-radius:8px;font-size:0.85rem;">'
+                        f'<span style="color:#FF3B3B;font-weight:700;">Denied</span> '
+                        f'<span style="color:#c9d1d9;">{html.escape(action_title)}</span><br>'
+                        f'<span style="color:#8b949e;font-size:0.75rem;">{aid} at {now} — {html.escape(reason)[:120]}</span></div>'
+                    )
+                    return (
+                        _render_approval_panel(), _render_approval_history(), _render_audit_log(),
+                        _refresh_approval_selector(), status,
+                    )
+
+                def _on_approve_all():
+                    count = 0
+                    for a in _pending_approvals:
+                        if a.get("status") == "pending":
+                            _approve_action(a["id"])
+                            count += 1
+                    now = datetime.now().strftime("%H:%M:%S")
+                    status = (
+                        f'<div style="padding:12px 16px;margin:8px 0;background:rgba(0,255,136,0.08);'
+                        f'border:1px solid rgba(0,255,136,0.3);border-radius:8px;font-size:0.85rem;">'
+                        f'<span style="color:#00FF88;font-weight:700;">Approved {count} action(s)</span><br>'
+                        f'<span style="color:#8b949e;font-size:0.75rem;">at {now}</span></div>'
+                    )
+                    return (
+                        _render_approval_panel(), _render_approval_history(), _render_audit_log(),
+                        _refresh_approval_selector(), status,
+                    )
+
+                def _on_deny_all(reason: str):
+                    reason = reason.strip() or "No reason provided"
+                    count = 0
+                    for a in _pending_approvals:
+                        if a.get("status") == "pending":
+                            _deny_action(a["id"], reason)
+                            count += 1
+                    now = datetime.now().strftime("%H:%M:%S")
+                    status = (
+                        f'<div style="padding:12px 16px;margin:8px 0;background:rgba(255,59,59,0.08);'
+                        f'border:1px solid rgba(255,59,59,0.3);border-radius:8px;font-size:0.85rem;">'
+                        f'<span style="color:#FF3B3B;font-weight:700;">Denied {count} action(s)</span><br>'
+                        f'<span style="color:#8b949e;font-size:0.75rem;">at {now}</span></div>'
+                    )
+                    return (
+                        _render_approval_panel(), _render_approval_history(), _render_audit_log(),
+                        _refresh_approval_selector(), status,
+                    )
+
+                outputs_approval = [
+                    appr_panel, appr_history_panel, appr_audit_panel,
+                    appr_approval_selector, appr_status,
+                ]
+                appr_btn_approve.click(fn=_on_approve_selected, inputs=[appr_approval_selector, appr_reason], outputs=outputs_approval)
+                appr_btn_deny.click(fn=_on_deny_selected, inputs=[appr_approval_selector, appr_reason], outputs=outputs_approval)
+                appr_btn_approve_all.click(fn=_on_approve_all, inputs=[], outputs=outputs_approval)
+                appr_btn_deny_all.click(fn=_on_deny_all, inputs=[appr_reason], outputs=outputs_approval)
+                appr_approval_selector.change(fn=lambda: gr.update(value=""), inputs=[], outputs=[appr_status])
+
+            # ──────────────────────────────────────────────────────
+            #  TAB 5 — VISUALIZATION
             # ──────────────────────────────────────────────────────
             with gr.Tab("Visualization"):
                 gr.HTML(
@@ -4523,7 +4544,6 @@ _obs.observe(_timerRoot,{childList:true,subtree:true,attributes:false});
                     outputs=[triage_panel, rca_panel, remed_panel, report_panel, reasoning_panel,
                              status_dot, status_text, risk_panel],
                 )
-
         # On first load, auto-select the first scenario in the Incident Analysis tab
         if scenario_names:
             demo.load(
