@@ -3629,7 +3629,7 @@ function initPipelineTimers() {
     document.querySelectorAll(".step-timer").forEach(function(e){tick(e,parseFloat(e.dataset.start));});
     // Auto-poll pipeline output via hidden refresh button
     var refBtn=document.querySelector("#refresh-btn button");
-    if(refBtn && document.querySelector(".pipeline-timer")) refBtn.click();
+    if(refBtn) refBtn.click();
   }
   setInterval(poll,1000);poll();
 }
