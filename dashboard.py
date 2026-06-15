@@ -2662,10 +2662,16 @@ def create_dashboard(
             rc_result = _scenario_results.get(name, {})
             rca_out = rc_result.get("rca", {})
             rc_text = "—"
+            rcs = []
             if rca_out:
                 rcs = rca_out.get("root_causes", []) if isinstance(rca_out, dict) else []
                 if rcs:
                     rc_text = html.escape(rcs[0][:100])
+            if not rcs and sc.get("description"):
+                rc_text = html.escape(sc["description"][:60] + "...")
+            analyzed = name in _scenario_results
+            status_label = "Analyzed" if analyzed else "Detected"
+            status_color = _C["green"] if analyzed else _C["text"]
             incident_rows += (
                 f'<tr>'
                 f'<td>{sc.get("id", "—")}</td>'
@@ -2673,7 +2679,7 @@ def create_dashboard(
                 f'<td>{sc.get("title", name)}</td>'
                 f'<td>{rc_text}</td>'
                 f'<td>{len(sc.get("logs", []))}</td>'
-                f'<td style="color:{_C["text"]};">Detected</td>'
+                f'<td style="color:{status_color};">{status_label}</td>'
                 f'</tr>'
             )
 
