@@ -49,6 +49,7 @@ _live_html: str = ""
 _live_html_lock = threading.Lock()
 _process_thread: Optional[threading.Thread] = None
 _monitor_thread: Optional[threading.Thread] = None
+_scenario_results: Dict[str, Dict[str, Any]] = {}  # latest result per scenario name
 
 # Approval audit log (persistent)
 APPROVAL_AUDIT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "approval_audit.json")
@@ -2636,11 +2637,19 @@ def create_dashboard(
         incident_rows = ""
         for name, sc in scenarios.items():
             sev = sc.get("severity", "P3")
+            rc_result = _scenario_results.get(name, {})
+            rca_out = rc_result.get("rca", {})
+            rc_text = "—"
+            if rca_out:
+                rcs = rca_out.get("root_causes", []) if isinstance(rca_out, dict) else []
+                if rcs:
+                    rc_text = html.escape(rcs[0][:100])
             incident_rows += (
                 f'<tr>'
                 f'<td>{sc.get("id", "—")}</td>'
                 f'<td>{format_severity_badge(sev)}</td>'
                 f'<td>{sc.get("title", name)}</td>'
+                f'<td>{rc_text}</td>'
                 f'<td>{len(sc.get("logs", []))}</td>'
                 f'<td style="color:{_C["text"]};">Detected</td>'
                 f'</tr>'
@@ -2653,7 +2662,7 @@ def create_dashboard(
             f'<div style="font-size:0.75rem;color:#64748b;">Generated {now}</div>'
             f'</div>'
             f'<table class="styled-table">'
-            f'<thead><tr><th>ID</th><th>Severity</th><th>Title</th><th>Log Entries</th><th>Status</th></tr></thead>'
+            f'<thead><tr><th>ID</th><th>Severity</th><th>Title</th><th>Root Cause</th><th>Log Entries</th><th>Status</th></tr></thead>'
             f'<tbody>{incident_rows}</tbody>'
             f'</table>'
             f'<div style="margin-top:18px;padding:14px;background:rgba(0,255,136,0.04);'
@@ -2677,6 +2686,10 @@ def create_dashboard(
             import traceback
             traceback.print_exc()
             print("[THREAD] Pipeline thread FAILED with exception above", flush=True)
+        # Brief pause so /live-html fetch can retrieve final report
+        import time
+        time.sleep(3)
+        print("[THREAD] Pipeline thread exiting", flush=True)
 
     def _start_process():
         global _process_thread, _live_html
@@ -2842,6 +2855,7 @@ def create_dashboard(
                 action_count = len(remed.get("recommended_actions", []))
                 total_actions += action_count
 
+                _scenario_results[name] = result
                 report_text = rep.get("summary", rep.get("narrative", ""))
                 q_count = _queue_actions_for_approval(name, remed.get("recommended_actions", []), report_text)
                 if q_count:
@@ -3182,6 +3196,8 @@ def create_dashboard(
                             rcs = rca_out.get("root_causes", []) if isinstance(rca_out, dict) else []
                             rc_text = html.escape(rcs[0][:80] if rcs else "—")
                         report_text = report_out.get("summary", report_out.get("narrative", "")) if report_out else ""
+                        if result:
+                            _scenario_results[name] = result
                         if actions:
                             _queue_actions_for_approval(name, actions, report_text, cycle=poll_cycle)
                         summary_rows += (
@@ -3652,7 +3668,6 @@ def create_dashboard(
                         value=60, label="", scale=0, min_width=80,
                         elem_id="poll-interval", show_label=False,
                     )
-                with gr.Row():
                     btn_optimize = gr.Button("Optimize Agent (LoRA)", variant="secondary", scale=1)
                     btn_optimize_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-optimize")
 
