@@ -42,7 +42,7 @@ _approval_id_counter = 0
 _monitoring_active = False
 _stop_monitoring_requested = False
 MONITOR_POLL_SECONDS = 30
-MONITOR_POLL_INTERVAL = 30  # mutable; updated by dropdown in UI
+MONITOR_POLL_INTERVAL = 60  # mutable; updated by dropdown in UI
 
 # Live pipeline output: background thread writes, gr.Timer polls
 _live_html: str = ""
@@ -2905,7 +2905,8 @@ def create_dashboard(
             f'<div style="display:flex;justify-content:space-between;align-items:start;">'
             f'<div style="flex:1;">'
             f'<div style="font-size:0.85rem;font-weight:600;color:#e2e8f0;">{a.get("title","Action")}</div>'
-            f'<div style="font-size:0.75rem;color:#8b949e;margin:4px 0;">{a.get("id","")} — Scenario: {a.get("scenario","?")} | '
+            f'<div style="font-size:0.75rem;color:#8b949e;margin:4px 0;">{a.get("id","")} — {a.get("scenario","?")}'
+            f'{" | Cycle #"+str(a.get("cycle","")) if a.get("cycle") else ""} | '
             f'Risk: <span style="color:{_C["red"]};">{a.get("risk","medium")}</span></div>'
             f'<div style="font-size:0.78rem;color:#c9d1d9;white-space:pre-wrap;">{a.get("summary","")[:200]}</div>'
             f'</div></div>'
@@ -2949,6 +2950,7 @@ def create_dashboard(
                     "scenario": a.get("scenario", "?"),
                     "title": a.get("title", "?"),
                     "action": "approved",
+                    "cycle": a.get("cycle", 0),
                     "timestamp": a["resolved_at"],
                     "execution": exec_result.get("status", "unknown"),
                     "execution_detail": exec_msg[:120],
@@ -2998,6 +3000,7 @@ def create_dashboard(
                     "scenario": a.get("scenario", "?"),
                     "title": a.get("title", "?"),
                     "action": "denied",
+                    "cycle": a.get("cycle", 0),
                     "reason": a["reason"],
                     "timestamp": a["resolved_at"],
                 })
@@ -3032,7 +3035,7 @@ def create_dashboard(
                 return _render_approval_panel()
         return _render_approval_panel()
 
-    def _queue_actions_for_approval(scenario_name: str, actions: list, report_summary: str) -> int:
+    def _queue_actions_for_approval(scenario_name: str, actions: list, report_summary: str, cycle: int = 0) -> int:
         """Queue remediation actions that require human approval. Returns count."""
         global _pending_approvals, _approval_id_counter
         count = 0
@@ -3054,6 +3057,7 @@ def create_dashboard(
                     "status": "pending",
                     "reason": "",
                     "step": step_idx + 1,
+                    "cycle": cycle,
                     "action_payload": action,
                 })
                 existing.add(key)
@@ -3107,103 +3111,100 @@ def create_dashboard(
             failures = 0
             poll_cycle = 0
 
-            # Process all known scenarios on the first pass
-            parent_step = _add_step("Process Active Incidents", f"0/{total_scenarios} scenarios", "running")
-            yield _render_pipeline_flow()
-
-            for i, (name, sc) in enumerate(scenario_list):
-                if _stop_monitoring_requested:
-                    break
-                sc_data = dict(sc)
-                result = None
-                detected_list = []
-                title = sc_data.get("title", name)
-                sub = _add_step(f"  [{i+1}/{total_scenarios}] {title}", "Anomaly detection & agents", "running")
+            def _process_scenarios_cycle(slist, cycle_label):
+                nonlocal summary_rows, total_anomalies, total_actions, processed, failures
+                ps = _add_step(f"{cycle_label}: Process {len(slist)} Scenarios", f"0/{len(slist)}", "running")
                 yield _render_pipeline_flow()
+                for i, (name, sc) in enumerate(slist):
+                    if _stop_monitoring_requested:
+                        break
+                    sc_data = dict(sc)
+                    result = None
+                    dl = []
+                    title = sc_data.get("title", name)
+                    sub = _add_step(f"  [{i+1}/{len(slist)}] {title}", "Anomaly detection & agents", "running")
+                    yield _render_pipeline_flow()
 
-                print(f"[MONITOR] orchestrator={orchestrator}, anomaly_detector={anomaly_detector}", flush=True)
-                if orchestrator is not None:
-                    try:
-                        print(f"[MONITOR] Calling orchestrator for {name}", flush=True)
-                        if anomaly_detector is not None:
-                            detected_list = anomaly_detector.detect_all(
-                                logs=sc_data.get("logs", []),
-                                metrics=sc_data.get("metrics", []),
-                            )
-                            sc_data["anomalies"] = detected_list
-                            total_anomalies += len(detected_list)
-                            print(f"[MONITOR] Detected {len(detected_list)} anomalies", flush=True)
-                        from concurrent.futures import ThreadPoolExecutor
-                        pool = ThreadPoolExecutor(max_workers=1)
-                        fut = pool.submit(orchestrator.process_scenario, sc_data)
+                    print(f"[MONITOR] orchestrator={orchestrator}, anomaly_detector={anomaly_detector}", flush=True)
+                    if orchestrator is not None:
                         try:
-                            result = fut.result(timeout=120)
-                        finally:
-                            pool.shutdown(wait=False)
-                            if not fut.done():
-                                fut.cancel()
-                        print(f"[MONITOR] orchestrator returned result={result is not None}, actions={len(result.get('remediation',{}).get('recommended_actions',[])) if result else 0}", flush=True)
+                            print(f"[MONITOR] Calling orchestrator for {name}", flush=True)
+                            if anomaly_detector is not None:
+                                dl = anomaly_detector.detect_all(
+                                    logs=sc_data.get("logs", []),
+                                    metrics=sc_data.get("metrics", []),
+                                )
+                                sc_data["anomalies"] = dl
+                                total_anomalies += len(dl)
+                                print(f"[MONITOR] Detected {len(dl)} anomalies", flush=True)
+                            from concurrent.futures import ThreadPoolExecutor
+                            pool = ThreadPoolExecutor(max_workers=1)
+                            fut = pool.submit(orchestrator.process_scenario, sc_data)
+                            try:
+                                result = fut.result(timeout=120)
+                            finally:
+                                pool.shutdown(wait=False)
+                                if not fut.done():
+                                    fut.cancel()
+                            print(f"[MONITOR] orchestrator returned result={result is not None}, actions={len(result.get('remediation',{}).get('recommended_actions',[])) if result else 0}", flush=True)
+                            processed += 1
+                            _complete_step(sub, "completed")
+                        except Exception as exc:
+                            logger.warning("Monitor scenario failed for %s: %s", name, exc)
+                            print(f"[MONITOR] Exception: {exc}", flush=True)
+                            import traceback; traceback.print_exc()
+                            failures += 1
+                            _complete_step(sub, "failed")
+                            sub["desc"] = f"Timeout or error: {str(exc)[:70]}"
+                    else:
+                        print(f"[MONITOR] No orchestrator (demo mode), sleeping 0.3s", flush=True)
+                        time.sleep(0.3)
                         processed += 1
                         _complete_step(sub, "completed")
-                    except Exception as exc:
-                        logger.warning("Monitor scenario failed for %s: %s", name, exc)
-                        print(f"[MONITOR] Exception: {exc}", flush=True)
-                        import traceback; traceback.print_exc()
-                        failures += 1
-                        _complete_step(sub, "failed")
-                        sub["desc"] = f"Timeout or error: {str(exc)[:70]}"
-                else:
-                    print(f"[MONITOR] No orchestrator (demo mode), sleeping 0.3s", flush=True)
-                    time.sleep(0.3)
-                    processed += 1
-                    _complete_step(sub, "completed")
 
-                parent_step["desc"] = f"{i+1}/{total_scenarios} scenarios"
+                    ps["desc"] = f"{i+1}/{len(slist)} scenarios"
+                    yield _render_pipeline_flow()
+
+                    if result:
+                        remed = result.get("remediation", {})
+                        actions = remed.get("recommended_actions", [])
+                        total_actions += len(actions)
+                        report_out = result.get("report", {})
+                        severity = sc_data.get("severity", "P3")
+                        rc_text = ""
+                        rca_out = result.get("rca", {})
+                        if rca_out:
+                            rcs = rca_out.get("root_causes", []) if isinstance(rca_out, dict) else []
+                            rc_text = html.escape(rcs[0][:80] if rcs else "—")
+                        report_text = report_out.get("summary", report_out.get("narrative", "")) if report_out else ""
+                        if actions:
+                            _queue_actions_for_approval(name, actions, report_text, cycle=poll_cycle)
+                        summary_rows += (
+                            f'<tr><td style="padding:4px 8px;border-bottom:1px solid #21262d;color:#e2e8f0;">{html.escape(title)}</td>'
+                            f'<td style="padding:4px 8px;border-bottom:1px solid #21262d;"><span class="severity-{severity}">{severity}</span></td>'
+                            f'<td style="padding:4px 8px;border-bottom:1px solid #21262d;color:#8b949e;">{rc_text}</td>'
+                            f'<td style="padding:4px 8px;border-bottom:1px solid #21262d;color:#c9d1d9;text-align:center;">{len(dl)}</td>'
+                            f'<td style="padding:4px 8px;border-bottom:1px solid #21262d;color:#c9d1d9;text-align:center;">{len(actions)}</td></tr>'
+                        )
+                _complete_step(ps)
                 yield _render_pipeline_flow()
 
-                if result:
-                    remed = result.get("remediation", {})
-                    actions = remed.get("recommended_actions", [])
-                    total_actions += len(actions)
-                    report_out = result.get("report", {})
-                    severity = sc_data.get("severity", "P3")
-                    rc_text = ""
-                    rca_out = result.get("rca", {})
-                    if rca_out:
-                        rcs = rca_out.get("root_causes", []) if isinstance(rca_out, dict) else []
-                        rc_text = html.escape(rcs[0][:80] if rcs else "—")
-                    report_text = report_out.get("summary", report_out.get("narrative", "")) if report_out else ""
-                    if actions:
-                        _queue_actions_for_approval(name, actions, report_text)
-                    summary_rows += (
-                        f'<tr><td style="padding:4px 8px;border-bottom:1px solid #21262d;color:#e2e8f0;">{html.escape(title)}</td>'
-                        f'<td style="padding:4px 8px;border-bottom:1px solid #21262d;"><span class="severity-{severity}">{severity}</span></td>'
-                        f'<td style="padding:4px 8px;border-bottom:1px solid #21262d;color:#8b949e;">{rc_text}</td>'
-                        f'<td style="padding:4px 8px;border-bottom:1px solid #21262d;color:#c9d1d9;text-align:center;">{len(detected_list)}</td>'
-                        f'<td style="padding:4px 8px;border-bottom:1px solid #21262d;color:#c9d1d9;text-align:center;">{len(actions)}</td></tr>'
-                    )
+            # First pass: process all known scenarios
+            for html in _process_scenarios_cycle(scenario_list, "Initial Scan"):
+                yield html
 
-            _complete_step(parent_step)
-            yield _render_pipeline_flow()
-
-            # Polling loop: re-scan for new anomalies every MONITOR_POLL_SECONDS
+            # Polling loop: run full scenario processing each cycle
             while not _stop_monitoring_requested:
                 poll_cycle += 1
-                poll_step = _add_step(f"Poll Cycle #{poll_cycle}", "Scanning...", "running")
+                # Show a pending step that becomes "complete" after processing
+                poll_step = _add_step(f"Poll Cycle #{poll_cycle}", "Running...", "running")
+                yield _render_pipeline_flow()
+                for html in _process_scenarios_cycle(scenario_list, f"Cycle #{poll_cycle}"):
+                    yield html
+                _complete_step(poll_step, "completed")
                 yield _render_pipeline_flow()
 
-                if anomaly_detector is not None:
-                    try:
-                        logs = _generate_live_logs()
-                        if logs:
-                            detected = anomaly_detector.detect(logs=logs, metrics=[])
-                            if detected:
-                                logger.info("Poll cycle %d: detected %d new anomalies", poll_cycle, len(detected))
-                    except Exception as exc:
-                        logger.warning("Poll scan issue: %s", exc)
-
-                _complete_step(poll_step, "completed")
-                # Update description to show countdown — renders inline in the pipeline flow
+                # Countdown until next cycle
                 remaining = MONITOR_POLL_INTERVAL
                 while remaining > 0 and not _stop_monitoring_requested:
                     poll_step["desc"] = f"Next scan in {remaining}s"
@@ -3314,6 +3315,7 @@ def create_dashboard(
         rows = "".join(
             f'<tr>'
             f'<td style="white-space:nowrap;font-size:0.78rem;color:#8b949e;">{h.get("id","")}</td>'
+            f'<td style="white-space:nowrap;font-size:0.78rem;color:#8b949e;">{"C"+str(h.get("cycle","")) if h.get("cycle") else "—"}</td>'
             f'<td style="white-space:nowrap;font-size:0.78rem;">{h.get("scenario","")[:20]}</td>'
             f'<td style="font-size:0.78rem;">{h.get("title","")}</td>'
             f'<td style="font-size:0.78rem;"><span style="color:{"#00FF88" if h.get("action")=="approved" else "#FF3B3B"};">{h.get("action","")}</span></td>'
@@ -3329,7 +3331,7 @@ def create_dashboard(
             '<div style="font-size:0.8rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">'
             f'Approval History ({len(_approval_history)})</div>'
             '<table class="styled-table">'
-            '<thead><tr><th>ID</th><th>Scenario</th><th>Action</th><th>Verdict</th><th>Reason</th><th>Timestamp</th><th>Execution</th></tr></thead>'
+            '<thead><tr><th>ID</th><th>Cycle</th><th>Scenario</th><th>Action</th><th>Verdict</th><th>Reason</th><th>Timestamp</th><th>Execution</th></tr></thead>'
             f'<tbody>{rows}</tbody></table></div>'
         )
 
@@ -3640,9 +3642,9 @@ def create_dashboard(
                     btn_monitor_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-monitor")
                     btn_stop_monitor = gr.Button("\u25a0", scale=0, elem_classes="stop-btn", elem_id="stop-monitor", visible=True)
                     drp_poll_interval = gr.Dropdown(
-                        choices=[("30s", 30), ("1min", 60), ("2min", 120), ("3min", 180),
+                        choices=[("1min", 60), ("2min", 120), ("3min", 180),
                                  ("5min", 300), ("10min", 600), ("30min", 1800), ("1hr", 3600)],
-                        value=30, label="Poll Interval", scale=1, min_width=100,
+                        value=60, label="Poll Interval", scale=1, min_width=100,
                         elem_id="poll-interval",
                     )
                 with gr.Row():
