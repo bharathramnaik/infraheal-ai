@@ -2805,7 +2805,8 @@ def create_dashboard(
 
     def _poll_live_html():
         """Called by gr.Timer to poll pipeline thread progress.
-        Picks the active pipeline's HTML — process takes priority over monitor.
+        Always shows the currently ALIVE pipeline — never falls through
+        to a stale completed pipeline if the other is still active.
         """
         global _process_thread, _monitor_thread, _process_live_html, _monitor_live_html, _static_output_active
         p_alive = _process_thread and _process_thread.is_alive()
@@ -2813,11 +2814,10 @@ def create_dashboard(
         if _static_output_active:
             return gr.skip()
         with _live_html_lock:
-            if p_alive and _process_live_html:
-                return _process_live_html
-            if m_alive and _monitor_live_html:
-                return _monitor_live_html
-            # Both dead: show whichever pipeline has content, preferring process
+            if p_alive:
+                return _process_live_html or gr.skip()
+            if m_alive:
+                return _monitor_live_html or gr.skip()
             result = _process_live_html or _monitor_live_html
             return result or gr.skip()
 
