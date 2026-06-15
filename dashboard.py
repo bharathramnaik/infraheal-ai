@@ -49,6 +49,8 @@ _live_html: str = ""
 _live_html_lock = threading.Lock()
 _process_thread: Optional[threading.Thread] = None
 _monitor_thread: Optional[threading.Thread] = None
+_process_completed: bool = False
+_monitoring_completed: bool = False
 _scenario_results: Dict[str, Dict[str, Any]] = {}  # latest result per scenario name
 
 # Approval audit log (persistent)
@@ -969,15 +971,29 @@ footer { display: none !important; }
 #refresh-btn{display:none!important}
 
 /* ── Poll Interval Dropdown (compact, black) ─────────────────── */
-#poll-interval { min-width:60px !important; max-width:80px !important; }
+#poll-interval { min-width:80px !important; max-width:110px !important; }
 #poll-interval label { display:none !important; }
 #poll-interval select, #poll-interval .gr-dropdown,
 #poll-interval .gr-box, #poll-interval .gr-dropdown-container,
 #poll-interval .gr-input, #poll-interval .gr-text-input {
   background:#000 !important; border:1px solid #30363d !important;
   color:#c9d1d9 !important; border-radius:6px !important;
-  font-size:0.78rem !important;
+  font-size:0.75rem !important; padding:2px 6px !important;
+  min-height:28px !important; height:28px !important;
 }
+
+/* ── Optimize button smaller ─────────────────────────────────── */
+#rerun-optimize { min-width:0 !important; }
+button:has(> #rerun-optimize) { padding:0 !important; }
+
+/* ── Collapsible pipeline steps ──────────────────────────────── */
+.pipeline-step { cursor:pointer; }
+.pipeline-step.collapsed .pipeline-step-desc,
+.pipeline-step.collapsed .pipeline-step-progress,
+.pipeline-step.collapsed .pipeline-step-duration { display:none !important; }
+.pipeline-step:hover { background:rgba(255,255,255,0.03); }
+/* ── Center table headers ────────────────────────────────────── */
+.styled-table th { text-align:center !important; }
 """
 
 
@@ -2674,9 +2690,10 @@ def create_dashboard(
         )
 
     def _run_pipeline_thread(gen_func: Callable):
-        global _live_html
+        global _live_html, _process_completed, _monitoring_completed
         import sys
         print("[THREAD] Starting pipeline thread", flush=True)
+        is_monitor = (gen_func.__name__ == '_continuous_monitor')
         try:
             for partial in gen_func():
                 with _live_html_lock:
@@ -2686,19 +2703,31 @@ def create_dashboard(
             import traceback
             traceback.print_exc()
             print("[THREAD] Pipeline thread FAILED with exception above", flush=True)
+        if is_monitor:
+            _monitoring_completed = True
+        else:
+            _process_completed = True
         # Brief pause so /live-html fetch can retrieve final report
         import time
-        time.sleep(3)
+        time.sleep(4)
+        # Clear the active HTML after final report window so Generate Report etc. work
+        with _live_html_lock:
+            _live_html = ""
         print("[THREAD] Pipeline thread exiting", flush=True)
 
     def _start_process():
-        global _process_thread, _live_html
+        global _process_thread, _live_html, _process_completed
         import sys
         print("[START_PROCESS] Button clicked!", flush=True)
         if (_process_thread and _process_thread.is_alive()) or (_monitor_thread and _monitor_thread.is_alive()):
             with _live_html_lock:
                 print("[START_PROCESS] Already running, returning existing HTML", flush=True)
                 return _live_html
+        if _process_completed:
+            print("[START_PROCESS] Already completed, showing cached result", flush=True)
+            with _live_html_lock:
+                return _live_html
+        _process_completed = False
         _live_html = '<div style="color:#8b949e;text-align:center;padding:12px;">Starting... </div>'
         print("[START_PROCESS] Starting thread...", flush=True)
         _process_thread = threading.Thread(target=_run_pipeline_thread, args=(_process_all_incidents,), daemon=True)
@@ -2707,13 +2736,18 @@ def create_dashboard(
 
     def _start_monitor():
         global _monitor_thread, _live_html
-        global _stop_monitoring_requested, _monitoring_active
+        global _stop_monitoring_requested, _monitoring_active, _monitoring_completed
         import sys
         print("[START_MONITOR] Button clicked!", flush=True)
         if (_process_thread and _process_thread.is_alive()) or (_monitor_thread and _monitor_thread.is_alive()):
             with _live_html_lock:
                 print("[START_MONITOR] Already running, returning existing HTML", flush=True)
                 return _live_html
+        if _monitoring_completed:
+            print("[START_MONITOR] Already completed, showing cached result", flush=True)
+            with _live_html_lock:
+                return _live_html
+        _monitoring_completed = False
         _stop_monitoring_requested = False
         _monitoring_active = False  # generator will set True when it starts the loop
         _live_html = '<div style="color:#8b949e;text-align:center;padding:12px;">Starting continuous monitoring...</div>'
@@ -3191,7 +3225,7 @@ def create_dashboard(
                         report_out = result.get("report", {})
                         severity = sc_data.get("severity", "P3")
                         rc_text = ""
-                        rca_out = result.get("rca", {})
+                        rca_out = result.get("rca", result.get("rca_result", {}))
                         if rca_out:
                             rcs = rca_out.get("root_causes", []) if isinstance(rca_out, dict) else []
                             rc_text = html.escape(rcs[0][:80] if rcs else "—")
@@ -3659,16 +3693,16 @@ def create_dashboard(
                     btn_report = gr.Button("Generate Report", variant="secondary", scale=1)
                     btn_report_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-report")
                 with gr.Row():
-                    btn_monitor = gr.Button("Start Continuous Monitoring", variant="secondary", scale=1)
+                    btn_monitor = gr.Button("Start Continuous Process", variant="secondary", scale=1)
                     btn_monitor_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-monitor")
                     btn_stop_monitor = gr.Button("\u25a0", scale=0, elem_classes="stop-btn", elem_id="stop-monitor", visible=True)
                     drp_poll_interval = gr.Dropdown(
                         choices=[("1min", 60), ("2min", 120), ("3min", 180),
                                  ("5min", 300), ("10min", 600), ("30min", 1800), ("1hr", 3600)],
-                        value=60, label="", scale=0, min_width=80,
+                        value=60, label="", scale=1, min_width=100,
                         elem_id="poll-interval", show_label=False,
                     )
-                    btn_optimize = gr.Button("Optimize Agent (LoRA)", variant="secondary", scale=1)
+                    btn_optimize = gr.Button("Optimize Agent", variant="secondary", scale=0)
                     btn_optimize_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-optimize")
 
                 scan_output = gr.HTML(
@@ -3683,7 +3717,7 @@ setInterval(function(){
   var doc=parent.document;
   /* fetch pipeline HTML first, then update timers (in case DOM was just rewritten) */
   fetch('/live-html').then(function(r){if(!r.ok)return'';return r.text()}).then(function(html){
-    if(html&&html.length>50){var el=doc.querySelector('#scan-output');if(el&&el.innerHTML!==html){el.innerHTML=html;}}
+    if(html&&html.length>50&&html.indexOf('<div class="pipeline-flow">')===0){var el=doc.querySelector('#scan-output');if(el&&el.innerHTML!==html){el.innerHTML=html;doc.querySelectorAll('.pipeline-step').forEach(function(s){s.onclick=function(){this.classList.toggle('collapsed');}});}}
     /* update timers right after potential DOM rewrite */
     var pt=doc.querySelector('.pipeline-timer');
     if(pt&&pt.dataset.status!=='completed'&&pt.dataset.start){var n=Date.now()/1e3,d=Math.max(0,Math.floor(n-parseFloat(pt.dataset.start)));pt.textContent=String(Math.floor(d/60)).padStart(2,'0')+':'+String(d%60).padStart(2,'0');}
@@ -3746,10 +3780,21 @@ setInterval(function(){
                 _refresh_btn = gr.Button("Refresh", elem_id="refresh-btn")
                 _refresh_btn.click(fn=_poll_live_html, inputs=[], outputs=[scan_output], api_name="poll_live")
 
+                def _rerun_process():
+                    global _process_completed, _live_html
+                    _process_completed = False
+                    _live_html = ""
+                    return _start_process()
+                def _rerun_monitor():
+                    global _monitoring_completed, _stop_monitoring_requested, _live_html
+                    _stop_monitoring_requested = True
+                    _monitoring_completed = False
+                    _live_html = ""
+                    return _start_monitor()
                 btn_process.click(fn=_start_process, inputs=[], outputs=[scan_output])
                 btn_monitor.click(fn=_start_monitor, inputs=[], outputs=[scan_output])
-                btn_process_rerun.click(fn=_start_process, inputs=[], outputs=[scan_output])
-                btn_monitor_rerun.click(fn=_start_monitor, inputs=[], outputs=[scan_output])
+                btn_process_rerun.click(fn=_rerun_process, inputs=[], outputs=[scan_output])
+                btn_monitor_rerun.click(fn=_rerun_monitor, inputs=[], outputs=[scan_output])
                 btn_stop_monitor.click(fn=_stop_monitoring, inputs=[], outputs=[scan_output])
                 def _set_poll_interval(v):
                     global MONITOR_POLL_INTERVAL
