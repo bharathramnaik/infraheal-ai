@@ -966,6 +966,12 @@ footer { display: none !important; }
 .pipeline-step-progress-bar.failed { background:#FF3B3B; }
 .pipeline-step-progress-bar.warning { background:#FFB800; }
 #refresh-btn{display:none!important}
+
+/* ── Poll Interval Dropdown (black & white) ──────────────────── */
+#poll-interval label { color:#fff !important; }
+#poll-interval .gr-dropdown { background:#000 !important; border:1px solid #555 !important; color:#fff !important; }
+#poll-interval .gr-dropdown select { background:#000 !important; color:#fff !important; border:none !important; }
+#poll-interval .gr-dropdown-container { background:#000 !important; border:1px solid #555 !important; }
 """
 
 
@@ -3636,8 +3642,10 @@ def create_dashboard(
                     drp_poll_interval = gr.Dropdown(
                         choices=[("30s", 30), ("1min", 60), ("2min", 120), ("3min", 180),
                                  ("5min", 300), ("10min", 600), ("30min", 1800), ("1hr", 3600)],
-                        value=30, label="Poll Interval", scale=1,
+                        value=30, label="Poll Interval", scale=1, min_width=100,
+                        elem_id="poll-interval",
                     )
+                with gr.Row():
                     btn_optimize = gr.Button("Optimize Agent (LoRA)", variant="secondary", scale=1)
                     btn_optimize_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-optimize")
 
@@ -3651,13 +3659,14 @@ def create_dashboard(
                 _POLL_JS = """<script>
 setInterval(function(){
   var doc=parent.document;
-  /* update pipeline timer */
-  var pt=doc.querySelector('.pipeline-timer');
-  if(pt&&pt.dataset.status!=='completed'&&pt.dataset.start){var n=Date.now()/1e3,d=Math.max(0,Math.floor(n-parseFloat(pt.dataset.start)));pt.textContent=String(Math.floor(d/60)).padStart(2,'0')+':'+String(d%60).padStart(2,'0');}
-  /* update step timers */
-  doc.querySelectorAll('.step-timer').forEach(function(e){if(e.dataset.status==='completed'||!e.dataset.start)return;var n=Date.now()/1e3,d=Math.max(0,Math.floor(n-parseFloat(e.dataset.start)));e.textContent=String(Math.floor(d/60)).padStart(2,'0')+':'+String(d%60).padStart(2,'0');});
-  /* fetch pipeline HTML */
-  fetch('/live-html').then(function(r){if(!r.ok)return'';return r.text()}).then(function(html){if(html&&html.length>50){var el=doc.querySelector('#scan-output');if(el&&el.innerHTML!==html){el.innerHTML=html;}}}).catch(function(){});
+  /* fetch pipeline HTML first, then update timers (in case DOM was just rewritten) */
+  fetch('/live-html').then(function(r){if(!r.ok)return'';return r.text()}).then(function(html){
+    if(html&&html.length>50){var el=doc.querySelector('#scan-output');if(el&&el.innerHTML!==html){el.innerHTML=html;}}
+    /* update timers right after potential DOM rewrite */
+    var pt=doc.querySelector('.pipeline-timer');
+    if(pt&&pt.dataset.status!=='completed'&&pt.dataset.start){var n=Date.now()/1e3,d=Math.max(0,Math.floor(n-parseFloat(pt.dataset.start)));pt.textContent=String(Math.floor(d/60)).padStart(2,'0')+':'+String(d%60).padStart(2,'0');}
+    doc.querySelectorAll('.step-timer').forEach(function(e){if(e.dataset.status==='completed'||!e.dataset.start)return;var n=Date.now()/1e3,d=Math.max(0,Math.floor(n-parseFloat(e.dataset.start)));e.textContent=String(Math.floor(d/60)).padStart(2,'0')+':'+String(d%60).padStart(2,'0');});
+  }).catch(function(){});
 },1000);
 </script>"""
                 gr.HTML(value='<iframe srcdoc="' + _POLL_JS.replace('"', '&quot;') + '" style="width:0;height:0;border:none;display:none"></iframe>')
