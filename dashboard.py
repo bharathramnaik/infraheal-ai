@@ -3628,9 +3628,9 @@ function initPipelineTimers() {
   function poll(){
     var pe=document.querySelector(".pipeline-timer");if(pe)tick(pe,parseFloat(pe.dataset.start));
     document.querySelectorAll(".step-timer").forEach(function(e){tick(e,parseFloat(e.dataset.start));});
-    // Auto-poll pipeline output via direct /live-html endpoint
+    // Pipeline output polling via /live-html endpoint (added externally)
     fetch('/live-html').then(function(r){return r.text()}).then(function(html){
-      if(html&&html.length>0&&html.indexOf('__type__')===-1){
+      if(html&&html.length>0&&html.indexOf('__type__')===-1&&html.indexOf('__gradio')===-1){
         var el=document.querySelector('#scan-output');
         if(el) el.innerHTML=html;
       }
@@ -3657,20 +3657,6 @@ _obs.observe(_timerRoot,{childList:true,subtree:true,attributes:false});
             demo.queue()
         except Exception:
             pass
-
-        # ── Custom FastAPI endpoint for direct HTML polling (bypasses Gradio WebSocket) ──
-        try:
-            from fastapi.responses import PlainTextResponse
-            @demo.app.get("/live-html")
-            def _serve_live_html():
-                global _live_html
-                alive = (_process_thread and _process_thread.is_alive()) or (_monitor_thread and _monitor_thread.is_alive())
-                if alive or _live_html:
-                    with _live_html_lock:
-                        return PlainTextResponse(_live_html or "")
-                return PlainTextResponse("")
-        except Exception as ex:
-            logger.warning("FastAPI route /live-html failed: %s", ex)
 
         # ──────────────────────────────────────────────────────────
         #  TAB 1 — COMMAND CENTER
