@@ -3757,16 +3757,30 @@ setInterval(function(){
                     return r
 
                 def _cached_report():
+                    global _scenario_results
+                    import sys
                     if "report" in _result_cache:
                         return _result_cache["report"]
-                    r = _generate_report()
-                    _result_cache["report"] = r
-                    return r
+                    try:
+                        r = _generate_report()
+                        _result_cache["report"] = r
+                        return r
+                    except Exception as e:
+                        import traceback
+                        tb = traceback.format_exc()
+                        print(f"[REPORT ERROR] {e}\n{tb}", flush=True)
+                        return f'<div style="color:red;padding:20px;">Report failed: {html.escape(str(e))}</div>'
 
                 def _rerun_report():
-                    r = _generate_report()
-                    _result_cache["report"] = r
-                    return r
+                    try:
+                        r = _generate_report()
+                        _result_cache["report"] = r
+                        return r
+                    except Exception as e:
+                        import traceback
+                        tb = traceback.format_exc()
+                        print(f"[REPORT RERUN ERROR] {e}\n{tb}", flush=True)
+                        return f'<div style="color:red;padding:20px;">Report failed: {html.escape(str(e))}</div>'
 
                 def _cached_optimize():
                     if "optimize" in _result_cache:
