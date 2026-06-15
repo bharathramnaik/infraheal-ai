@@ -2758,7 +2758,8 @@ def create_dashboard(
         print("[THREAD] Pipeline thread exiting", flush=True)
 
     def _start_process():
-        global _process_thread, _process_live_html, _process_completed, _scenario_results, _static_output_active, _last_pipeline
+        global _process_thread, _process_live_html, _process_completed, _scenario_results, _static_output_active
+        nonlocal _last_pipeline
         p_alive = _process_thread and _process_thread.is_alive()
         _diag("start_process_click", process_alive=p_alive, completed=_process_completed, static=_static_output_active)
         print("[START_PROCESS] Button clicked!", flush=True)
@@ -2783,8 +2784,9 @@ def create_dashboard(
         return _process_live_html
 
     def _start_monitor():
-        global _monitor_thread, _monitor_live_html, _scenario_results, _last_pipeline
+        global _monitor_thread, _monitor_live_html, _scenario_results
         global _stop_monitoring_requested, _monitoring_active, _monitoring_completed, _static_output_active
+        nonlocal _last_pipeline
         m_alive = _monitor_thread and _monitor_thread.is_alive()
         _diag("start_monitor_click", monitor_alive=m_alive, completed=_monitoring_completed, static=_static_output_active)
         print("[START_MONITOR] Button clicked!", flush=True)
@@ -2816,7 +2818,8 @@ def create_dashboard(
         to a stale completed pipeline if the other is still active.
         Falls back to _last_pipeline's HTML when both threads are dead.
         """
-        global _process_thread, _monitor_thread, _process_live_html, _monitor_live_html, _static_output_active, _last_pipeline
+        global _process_thread, _monitor_thread, _process_live_html, _monitor_live_html, _static_output_active
+        nonlocal _last_pipeline
         p_alive = _process_thread and _process_thread.is_alive()
         m_alive = _monitor_thread and _monitor_thread.is_alive()
         if _static_output_active:
