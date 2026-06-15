@@ -3075,12 +3075,13 @@ def create_dashboard(
             f'</div>'
         )
 
-    def _approve_action(action_id: str) -> str:
+    def _approve_action(action_id: str, reason: str = "") -> str:
         """Approve a pending action and execute it."""
         global _pending_approvals, _approval_history
         for a in _pending_approvals:
             if a.get("id") == action_id and a.get("status") == "pending":
                 a["status"] = "approved"
+                a["reason"] = reason or "Approved"
                 a["resolved_at"] = datetime.now().isoformat()
                 logger.info("Action %s approved by human", action_id)
 
@@ -3105,6 +3106,7 @@ def create_dashboard(
                     "timestamp": a["resolved_at"],
                     "execution": exec_result.get("status", "unknown"),
                     "execution_detail": exec_msg[:120],
+                    "reason": a["reason"],
                 })
                 # Log to experience store
                 _add_experience({
@@ -3130,7 +3132,7 @@ def create_dashboard(
                     "scenario": a.get("scenario", "?"),
                     "risk": a.get("risk", "medium"),
                     "execution": exec_result.get("status", "unknown"),
-                    "reason": "",
+                    "reason": a["reason"],
                     "timestamp": a["resolved_at"],
                 })
                 logger.info("Audit: approved %s (%s)", action_id, a.get("title", "?"))
@@ -4197,6 +4199,11 @@ setInterval(function(){
 
                 appr_panel = gr.HTML(value=_render_approval_panel())
 
+                def _refresh_approvals():
+                    return _render_approval_panel(), _render_approval_history(), _render_audit_log(), _refresh_approval_selector()
+
+                appr_refresh_btn = gr.Button("Refresh", variant="secondary", size="sm", scale=0)
+
                 def _refresh_approval_selector():
                     pending = [a for a in _pending_approvals if a.get("status") == "pending"]
                     if not pending:
@@ -4229,7 +4236,8 @@ setInterval(function(){
                 def _on_approve_selected(aid: str, reason: str):
                     if not aid:
                         return _render_approval_panel(), _render_approval_history(), _render_audit_log(), _refresh_approval_selector(), ""
-                    _approve_action(aid)
+                    reason = reason.strip()
+                    _approve_action(aid, reason)
                     now = datetime.now().strftime("%H:%M:%S")
                     action_title = aid
                     for a in _pending_approvals:
@@ -4271,11 +4279,12 @@ setInterval(function(){
                         _refresh_approval_selector(), status,
                     )
 
-                def _on_approve_all():
+                def _on_approve_all(reason: str = ""):
                     count = 0
+                    reason = reason.strip() or "Bulk approved"
                     for a in _pending_approvals:
                         if a.get("status") == "pending":
-                            _approve_action(a["id"])
+                            _approve_action(a["id"], reason)
                             count += 1
                     now = datetime.now().strftime("%H:%M:%S")
                     status = (
@@ -4314,8 +4323,9 @@ setInterval(function(){
                 ]
                 appr_btn_approve.click(fn=_on_approve_selected, inputs=[appr_approval_selector, appr_reason], outputs=outputs_approval)
                 appr_btn_deny.click(fn=_on_deny_selected, inputs=[appr_approval_selector, appr_reason], outputs=outputs_approval)
-                appr_btn_approve_all.click(fn=_on_approve_all, inputs=[], outputs=outputs_approval)
+                appr_btn_approve_all.click(fn=_on_approve_all, inputs=[appr_reason], outputs=outputs_approval)
                 appr_btn_deny_all.click(fn=_on_deny_all, inputs=[appr_reason], outputs=outputs_approval)
+                appr_refresh_btn.click(fn=_refresh_approvals, inputs=[], outputs=[appr_panel, appr_history_panel, appr_audit_panel, appr_approval_selector])
                 appr_approval_selector.change(fn=lambda: gr.update(value=""), inputs=[], outputs=[appr_status])
 
             # ──────────────────────────────────────────────────────
