@@ -216,6 +216,8 @@ def _get_preference_ranking() -> str:
         parts.append(f"{tool}: {rate:.0f}% approval ({prefs.get('approved',0)}/{prefs.get('total',0)})")
     return " | ".join(parts)
 
+logger = logging.getLogger("infraheal.dashboard")
+
 # Load on startup
 _load_experience_store()
 
@@ -267,8 +269,6 @@ except ImportError:
         DASHBOARD_HOST, DASHBOARD_PORT, MODEL_NAME, VLLM_BASE_URL,
         MODEL_REGISTRY, THINKING_TAGS,
     )
-
-logger = logging.getLogger("infraheal.dashboard")
 
 # ═══════════════════════════════════════════════════════════════════
 #  COLOR PALETTE  (B&W + severity-only)
