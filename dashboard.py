@@ -2722,7 +2722,7 @@ def create_dashboard(
         print("[THREAD] Pipeline thread exiting", flush=True)
 
     def _start_process():
-        global _process_thread, _live_html, _process_completed
+        global _process_thread, _live_html, _process_completed, _scenario_results
         import sys
         print("[START_PROCESS] Button clicked!", flush=True)
         if (_process_thread and _process_thread.is_alive()) or (_monitor_thread and _monitor_thread.is_alive()):
@@ -2734,6 +2734,8 @@ def create_dashboard(
             with _live_html_lock:
                 return _live_html
         _process_completed = False
+        _result_cache.pop("report", None)
+        _scenario_results.clear()
         _live_html = '<div style="color:#8b949e;text-align:center;padding:12px;">Starting... </div>'
         print("[START_PROCESS] Starting thread...", flush=True)
         _process_thread = threading.Thread(target=_run_pipeline_thread, args=(_process_all_incidents,), daemon=True)
@@ -2741,7 +2743,7 @@ def create_dashboard(
         return _live_html
 
     def _start_monitor():
-        global _monitor_thread, _live_html
+        global _monitor_thread, _live_html, _scenario_results
         global _stop_monitoring_requested, _monitoring_active, _monitoring_completed
         import sys
         print("[START_MONITOR] Button clicked!", flush=True)
@@ -2756,6 +2758,8 @@ def create_dashboard(
         _monitoring_completed = False
         _stop_monitoring_requested = False
         _monitoring_active = False  # generator will set True when it starts the loop
+        _result_cache.pop("report", None)
+        _scenario_results.clear()
         _live_html = '<div style="color:#8b949e;text-align:center;padding:12px;">Starting continuous monitoring...</div>'
         print("[START_MONITOR] Starting thread...", flush=True)
         _monitor_thread = threading.Thread(target=_run_pipeline_thread, args=(_continuous_monitor,), daemon=True)
@@ -3787,15 +3791,19 @@ setInterval(function(){
                 _refresh_btn.click(fn=_poll_live_html, inputs=[], outputs=[scan_output], api_name="poll_live")
 
                 def _rerun_process():
-                    global _process_completed, _live_html
+                    global _process_completed, _live_html, _scenario_results
                     _process_completed = False
                     _live_html = ""
+                    _result_cache.pop("report", None)
+                    _scenario_results.clear()
                     return _start_process()
                 def _rerun_monitor():
-                    global _monitoring_completed, _stop_monitoring_requested, _live_html
+                    global _monitoring_completed, _stop_monitoring_requested, _live_html, _scenario_results
                     _stop_monitoring_requested = True
                     _monitoring_completed = False
                     _live_html = ""
+                    _result_cache.pop("report", None)
+                    _scenario_results.clear()
                     return _start_monitor()
                 btn_process.click(fn=_start_process, inputs=[], outputs=[scan_output])
                 btn_monitor.click(fn=_start_monitor, inputs=[], outputs=[scan_output])
