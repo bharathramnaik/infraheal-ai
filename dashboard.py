@@ -1018,6 +1018,12 @@ footer { display: none !important; }
 .pipeline-step.collapsed .pipeline-step-progress,
 .pipeline-step.collapsed .pipeline-step-duration { display:none !important; }
 .pipeline-step:hover { background:rgba(255,255,255,0.03); }
+/* ── Per-cycle collapsible (monitoring) ──────────────────────── */
+.pipeline-cycle-group { }
+.pipeline-cycle-group > .pipeline-step.cycle-header { }
+.pipeline-cycle-group > .pipeline-step.cycle-header .pipeline-step-name::before { content:'\25bc '; font-size:0.6rem; color:#8b949e; }
+.pipeline-cycle-group.collapsed > .pipeline-cycle-children { display:none !important; }
+.pipeline-cycle-group.collapsed > .pipeline-step.cycle-header .pipeline-step-name::before { content:'\25b6 '; }
 /* ── Center table headers ────────────────────────────────────── */
 .styled-table th { text-align:center !important; }
 """
@@ -1903,8 +1909,9 @@ def create_dashboard(
         done = sum(1 for s in steps if s["status"] in ("completed","failed","warning"))
         total = len(steps)
         pct = int(done / total * 100) if total else 0
-        step_html = ""
-        for s in steps:
+
+        def _render_one(s, extra_class=""):
+            cls = "pipeline-step" + (" " + extra_class if extra_class else "")
             st = s["status"]
             icon_html = f'<div class="pipeline-step-icon {st}"></div>'
             dur = s.get("duration", 0)
@@ -1917,8 +1924,8 @@ def create_dashboard(
                 dur_html = f'{dur_str}'
             else:
                 dur_html = dur_str
-            step_html += (
-                f'<div class="pipeline-step">'
+            return (
+                f'<div class="{cls}">'
                 f'{icon_html}'
                 f'<div class="pipeline-step-info">'
                 f'<div class="pipeline-step-name">{s["name"]}</div>'
@@ -1928,6 +1935,24 @@ def create_dashboard(
                 f'<div class="pipeline-step-duration">{dur_html}</div>'
                 f'</div>'
             )
+
+        step_html = ""
+        i = 0
+        while i < len(steps):
+            s = steps[i]
+            name = s.get("name", "")
+            is_parent = (not name.startswith("  ") and i + 1 < len(steps) and steps[i + 1].get("name", "").startswith("  "))
+            if is_parent:
+                children_html = ""
+                i += 1
+                while i < len(steps) and steps[i].get("name", "").startswith("  "):
+                    children_html += _render_one(steps[i])
+                    i += 1
+                step_html += f'<div class="pipeline-cycle-group">{_render_one(s, "cycle-header")}<div class="pipeline-cycle-children">{children_html}</div></div>'
+            else:
+                step_html += _render_one(s)
+                i += 1
+
         elapsed_str = f"{int(elapsed//60):02d}:{int(elapsed%60):02d}"
         timer_color = "#58a6ff" if status == "running" else ("#00FF88" if status == "completed" else status_color)
         start_ts = pr.get("start_time", now)
@@ -3827,7 +3852,7 @@ setInterval(function(){
   var d=parent.document,pt=d.querySelector('.pipeline-timer');
   if(pt&&pt.dataset.status!=='completed'&&pt.dataset.start){var n=Date.now()/1e3,e=Math.max(0,Math.floor(n-parseFloat(pt.dataset.start)));pt.textContent=String(Math.floor(e/60)).padStart(2,'0')+':'+String(e%60).padStart(2,'0');}
   d.querySelectorAll('.step-timer').forEach(function(e){if(e.dataset.status==='completed'||!e.dataset.start)return;var n=Date.now()/1e3,t=Math.max(0,Math.floor(n-parseFloat(e.dataset.start)));e.textContent=String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0');});
-  d.querySelectorAll('.pipeline-step').forEach(function(s){s.onclick=function(){this.classList.toggle('collapsed');};});
+  d.querySelectorAll('.pipeline-step').forEach(function(s){s.onclick=function(){this.classList.toggle('collapsed');var g=this.parentElement;if(g&&g.classList.contains('pipeline-cycle-group'))g.classList.toggle('collapsed');};});
 },1000);
 """ + "</scri" + "pt>"
                 gr.HTML(value='<iframe srcdoc="' + _TIMER_JS.replace('"', '&quot;') + '" style="width:0;height:0;border:none;display:none"></iframe>')
