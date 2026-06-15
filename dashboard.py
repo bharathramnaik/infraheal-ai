@@ -2679,7 +2679,7 @@ def create_dashboard(
         for name, sc in scenarios.items():
             sev = sc.get("severity", "P3")
             rc_result = _scenario_results.get(name, {})
-            rca_out = rc_result.get("rca", {})
+            rca_out = rc_result.get("rca", rc_result.get("rca_result", {}))
             rc_text = "—"
             rcs = []
             if rca_out:
@@ -2808,15 +2808,12 @@ def create_dashboard(
 
     def _poll_live_html():
         """Called by gr.Timer to poll pipeline thread progress."""
-        global _process_thread, _monitor_thread, _live_html
-        import sys
+        global _process_thread, _monitor_thread, _live_html, _static_output_active
         alive = (_process_thread and _process_thread.is_alive()) or (_monitor_thread and _monitor_thread.is_alive())
-        if not alive:
-            print("[POLL] No thread alive, skipping", flush=True)
+        if not alive or _static_output_active:
             return gr.skip()
         with _live_html_lock:
             result = _live_html or gr.skip()
-            print(f"[POLL] Thread alive, returning {len(_live_html)} bytes" if _live_html else "[POLL] Thread alive, _live_html empty", flush=True)
             return result
 
     def _process_all_incidents():
@@ -3761,22 +3758,13 @@ def create_dashboard(
                     elem_id="scan-output"
                 )
 
-                # ── Invisible iframe: runs timer + fetch polling JS ──
-                # Split <script> tag to suppress Gradio's false-positive warning
-                # about scripts inside innerHTML (ours is in iframe srcdoc, which
-                # executes correctly as a nested document).
-                _POLL_JS = "<scri" + "pt>\n" + """
-setInterval(function(){
-  var doc=parent.document;
-  fetch('/live-html').then(function(r){if(!r.ok)return'';return r.text()}).then(function(html){
-    if(html&&html.length>50&&html.indexOf('<div class="pipeline-flow">')===0){var el=doc.querySelector('#scan-output');if(el&&el.innerHTML!==html){el.innerHTML=html;doc.querySelectorAll('.pipeline-step').forEach(function(s){s.onclick=function(){this.classList.toggle('collapsed');}});}}
-    var pt=doc.querySelector('.pipeline-timer');
-    if(pt&&pt.dataset.status!=='completed'&&pt.dataset.start){var n=Date.now()/1e3,d=Math.max(0,Math.floor(n-parseFloat(pt.dataset.start)));pt.textContent=String(Math.floor(d/60)).padStart(2,'0')+':'+String(d%60).padStart(2,'0');}
-    doc.querySelectorAll('.step-timer').forEach(function(e){if(e.dataset.status==='completed'||!e.dataset.start)return;var n=Date.now()/1e3,d=Math.max(0,Math.floor(n-parseFloat(e.dataset.start)));e.textContent=String(Math.floor(d/60)).padStart(2,'0')+':'+String(d%60).padStart(2,'0');});
-  }).catch(function(){});
-},1000);
-""" + "</scri" + "pt>"
-                gr.HTML(value='<iframe srcdoc="' + _POLL_JS.replace('"', '&quot;') + '" style="width:0;height:0;border:none;display:none"></iframe>')
+                # ── Gradio-native timer: polls pipeline progress every 1s ──
+                # Replaces the prior iframe+srcdoc hack (browser JS was unreliable
+                # with Gradio 6.18.0's event system).  The timer fires a server-side
+                # event that calls _poll_live_html and updates scan_output through
+                # Gradio's normal event queue, eliminating race conditions.
+                _live_poll_timer = gr.Timer(value=1.0, active=True)
+                _live_poll_timer.tick(fn=_poll_live_html, inputs=[], outputs=[scan_output])
 
                 # ── Rerun-aware wrappers ──
                 def _cached_scan():
