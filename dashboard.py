@@ -3653,7 +3653,7 @@ def create_dashboard(
         font=gr.themes.GoogleFont("Inter"),
         font_mono=gr.themes.GoogleFont("JetBrains Mono"),
     )
-    with gr.Blocks(title="InfraHeal AI — Autonomous Incident Resolution", css=CUSTOM_CSS, theme=_theme) as demo:
+    with gr.Blocks(title="InfraHeal AI — Autonomous Incident Resolution", css=CUSTOM_CSS, theme=_theme, head=HEAD_HTML) as demo:
         try:
             demo.queue()
         except Exception:
@@ -3697,6 +3697,9 @@ def create_dashboard(
                                        "Click 'Run Anomaly Scan' to start."),
                     elem_id="scan-output"
                 )
+
+                # ── Invisible iframe: runs polling JS for pipeline updates ──
+                gr.HTML(value='<iframe srcdoc="<script>setInterval(function(){fetch(\'/live-html\').then(function(r){return r.text()}).then(function(html){if(html&&html.length>0&&html.indexOf(\'__type__\')===-1){var el=parent.document.querySelector(\'#scan-output\');if(el)el.innerHTML=html;}}).catch(function(){})},1000)</script>" style="width:0;height:0;border:none;display:none;"></iframe>')
 
                 # ── Rerun-aware wrappers ──
                 def _cached_scan():

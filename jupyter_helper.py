@@ -142,11 +142,11 @@ def launch_dashboard(
     except Exception as ex:
         logger.warning("live-html endpoint failed: %s", ex)
 
+    # Head HTML is passed via gr.Blocks() constructor; polling via iframe
     logger.info("Launching dashboard on port %d (share=%s)...", free_port, share)
     demo.launch(
         server_name=DASHBOARD_HOST,
         server_port=free_port,
-        head=_dash_mod.HEAD_HTML,
         share=share,
         show_error=show_error,
     )
