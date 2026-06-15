@@ -3628,13 +3628,7 @@ function initPipelineTimers() {
   function poll(){
     var pe=document.querySelector(".pipeline-timer");if(pe)tick(pe,parseFloat(pe.dataset.start));
     document.querySelectorAll(".step-timer").forEach(function(e){tick(e,parseFloat(e.dataset.start));});
-    // Pipeline output polling via /live-html endpoint (added externally)
-    fetch('/live-html').then(function(r){return r.text()}).then(function(html){
-      if(html&&html.length>0&&html.indexOf('__type__')===-1&&html.indexOf('__gradio')===-1){
-        var el=document.querySelector('#scan-output');
-        if(el) el.innerHTML=html;
-      }
-    }).catch(function(){});
+    // Pipeline output polling injected via jupyter_helper.py
   }
   setInterval(poll,1000);poll();
 }

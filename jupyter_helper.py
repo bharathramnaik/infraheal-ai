@@ -125,15 +125,34 @@ def launch_dashboard(
     try:
         from fastapi.responses import PlainTextResponse
         import dashboard as _dash_mod
+        import sys
+        print(f"[LIVE-HTML] demo.app type: {type(demo.app)}", flush=True)
         @demo.app.get("/live-html")
         def _serve_live_html():
             alive = (_dash_mod._process_thread is not None and _dash_mod._process_thread.is_alive()) or (_dash_mod._monitor_thread is not None and _dash_mod._monitor_thread.is_alive())
             if alive or _dash_mod._live_html:
                 with _dash_mod._live_html_lock:
-                    return PlainTextResponse(_dash_mod._live_html or "")
+                    html = _dash_mod._live_html or ""
+                    if alive:
+                        print(f"[LIVE-HTML] Returning {len(html)} bytes (alive={alive})", flush=True)
+                    return PlainTextResponse(html)
             return PlainTextResponse("")
+        print("[LIVE-HTML] Endpoint registered successfully", flush=True)
     except Exception as ex:
         logger.warning("live-html endpoint failed: %s", ex)
+
+    # ── Inject polling JS into head config ──
+    try:
+        poll_js = "<script>(function(){if(window._livePollActive)return;window._livePollActive=true;setInterval(function(){fetch('/live-html').then(function(r){return r.text()}).then(function(html){if(html&&html.length>0&&html.indexOf('__type__')===-1){var el=document.querySelector('#scan-output');if(el)el.innerHTML=html;}}).catch(function(){})},1000);})();</script>"
+        if hasattr(demo, "config") and isinstance(demo.config, dict):
+            existing = demo.config.get("head", "")
+            if poll_js not in existing:
+                demo.config["head"] = existing + poll_js
+                import sys
+                print("[LIVE-HTML] Polling JS injected into head config", flush=True)
+    except Exception as ex:
+        import sys
+        print(f"[LIVE-HTML] Polling JS injection failed: {ex}", flush=True)
 
     logger.info("Launching dashboard on port %d (share=%s)...", free_port, share)
     demo.launch(
