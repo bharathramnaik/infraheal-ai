@@ -3627,6 +3627,9 @@ function initPipelineTimers() {
   function poll(){
     var pe=document.querySelector(".pipeline-timer");if(pe)tick(pe,parseFloat(pe.dataset.start));
     document.querySelectorAll(".step-timer").forEach(function(e){tick(e,parseFloat(e.dataset.start));});
+    // Auto-poll pipeline output via hidden refresh button
+    var refBtn=document.querySelector("#refresh-btn button");
+    if(refBtn && document.querySelector(".pipeline-timer")) refBtn.click();
   }
   setInterval(poll,1000);poll();
 }
@@ -3737,22 +3740,16 @@ _obs.observe(_timerRoot,{childList:true,subtree:true,attributes:false});
                     btn.click(fn=fn, inputs=[], outputs=[scan_output])
 
                 # Process / Monitor buttons use background thread + timer polling
-                # Timer polls background thread progress (keep above click wiring)
-                _pipeline_timer = gr.Timer(value=1, active=True)
-                _pipeline_timer.tick(fn=_poll_live_html, inputs=[], outputs=[scan_output])
+                # REALTIME UPDATES: client-side JS polls via hidden button click
+                with gr.Row(visible=False):
+                    _refresh_btn = gr.Button("Refresh", elem_id="refresh-btn")
+                _refresh_btn.click(fn=_poll_live_html, inputs=[], outputs=[scan_output])
 
                 btn_process.click(fn=_start_process, inputs=[], outputs=[scan_output])
                 btn_monitor.click(fn=_start_monitor, inputs=[], outputs=[scan_output])
                 btn_process_rerun.click(fn=_start_process, inputs=[], outputs=[scan_output])
                 btn_monitor_rerun.click(fn=_start_monitor, inputs=[], outputs=[scan_output])
                 btn_stop_monitor.click(fn=_stop_monitoring, inputs=[], outputs=[scan_output])
-
-                # ── DEBUG: test if ANY click updates scan_output ──
-                def _test_update():
-                    import time
-                    return f'<div style="padding:20px;color:lime;font-size:2rem;">TEST {time.time()}</div>'
-                btn_debug = gr.Button("TEST UPDATE", elem_id="btn-test-update", visible=True)
-                btn_debug.click(fn=_test_update, inputs=[], outputs=[scan_output])
 
             # ──────────────────────────────────────────────────────
             #  TAB 2 — INCIDENT ANALYSIS
