@@ -3601,6 +3601,7 @@ def create_dashboard(
 .agent-modal-btn-danger:hover { background:#FF3B3B33; }
 .agent-modal-btn-cancel { border-color:#30363d; color:#8b949e; }
 .agent-modal-btn-cancel:hover { background:rgba(255,255,255,0.05); }
+#refresh-btn{display:none!important;}
 </style>
 <script>
 function showModal(title, bodyHtml, confirmCb) {
@@ -3627,9 +3628,13 @@ function initPipelineTimers() {
   function poll(){
     var pe=document.querySelector(".pipeline-timer");if(pe)tick(pe,parseFloat(pe.dataset.start));
     document.querySelectorAll(".step-timer").forEach(function(e){tick(e,parseFloat(e.dataset.start));});
-    // Auto-poll pipeline output via hidden refresh button
-    var refBtn=document.querySelector("#refresh-btn button");
-    if(refBtn) refBtn.click();
+    // Auto-poll pipeline output via REST API (bypasses WebSocket update issues)
+    fetch('/api/poll_live/',{method:'POST',headers:{'Content-Type':'application/json'},body:'{"data":[],"event_data":null}'}).then(function(r){return r.json()}).then(function(d){
+      if(d&&d.success&&d.data&&typeof d.data[0]==='string'){
+        var el=document.querySelector('#scan-output');
+        if(el) el.innerHTML=d.data[0];
+      }
+    }).catch(function(){});
   }
   setInterval(poll,1000);poll();
 }
@@ -3688,7 +3693,8 @@ _obs.observe(_timerRoot,{childList:true,subtree:true,attributes:false});
 
                 scan_output = gr.HTML(
                     value=_empty_state("Anomaly scan results will appear here",
-                                       "Click 'Run Anomaly Scan' to start.")
+                                       "Click 'Run Anomaly Scan' to start."),
+                    elem_id="scan-output"
                 )
 
                 # ── Rerun-aware wrappers ──
@@ -3740,10 +3746,9 @@ _obs.observe(_timerRoot,{childList:true,subtree:true,attributes:false});
                     btn.click(fn=fn, inputs=[], outputs=[scan_output])
 
                 # Process / Monitor buttons use background thread + timer polling
-                # REALTIME UPDATES: client-side JS polls via hidden button click
-                with gr.Row(visible=False):
-                    _refresh_btn = gr.Button("Refresh", elem_id="refresh-btn")
-                _refresh_btn.click(fn=_poll_live_html, inputs=[], outputs=[scan_output])
+                # REALTIME UPDATES: hidden button for REST API polling
+                _refresh_btn = gr.Button("Refresh", elem_id="refresh-btn")
+                _refresh_btn.click(fn=_poll_live_html, inputs=[], outputs=[scan_output], api_name="poll_live")
 
                 btn_process.click(fn=_start_process, inputs=[], outputs=[scan_output])
                 btn_monitor.click(fn=_start_monitor, inputs=[], outputs=[scan_output])
