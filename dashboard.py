@@ -2726,6 +2726,7 @@ def create_dashboard(
 
     def _run_pipeline_thread(gen_func: Callable, pipeline_type: str = "process"):
         global _process_live_html, _monitor_live_html, _process_completed, _monitoring_completed, _static_output_active
+        import sys
         fn_name = gen_func.__name__
         _diag("pipeline_thread_start", fn=fn_name, static=_static_output_active)
         print("[THREAD] Starting pipeline thread", flush=True)
@@ -2745,8 +2746,9 @@ def create_dashboard(
                     skips += 1
         except Exception:
             import traceback
-            traceback.print_exc()
-            print("[THREAD] Pipeline thread FAILED with exception above", flush=True)
+            exc = traceback.format_exc()
+            print("[THREAD] Pipeline thread FAILED:\n" + exc, flush=True)
+            _diag("pipeline_thread_error", fn=fn_name, exc=str(sys.exc_info()[1]))
         if is_monitor:
             _monitoring_completed = True
         else:
