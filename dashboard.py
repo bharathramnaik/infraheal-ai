@@ -80,7 +80,7 @@ _static_output_active: bool = False  # True when user clicked report/scan/optimi
 APPROVAL_AUDIT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "approval_audit.json")
 
 # Head HTML injected into Gradio page (must be passed to launch())
-HEAD_HTML = """<style>.agent-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999}.agent-modal-box{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:24px;max-width:460px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5)}.agent-modal-title{font-size:1rem;font-weight:700;color:#e2e8f0;margin-bottom:12px}.agent-modal-body{font-size:0.85rem;color:#8b949e;margin-bottom:20px;line-height:1.5}.agent-modal-input{width:100%;padding:10px 12px;background:#0d1117;border:1px solid #30363d;border-radius:8px;color:#e2e8f0;font-size:0.85rem;outline:none;box-sizing:border-box;margin-bottom:16px}.agent-modal-input:focus{border-color:#58a6ff}.agent-modal-actions{display:flex;gap:10px;justify-content:flex-end}.agent-modal-btn{padding:8px 20px;border-radius:8px;border:1px solid;font-size:0.82rem;font-weight:600;cursor:pointer;background:transparent}.agent-modal-btn-primary{background:#00FF8822;border-color:#00FF88;color:#00FF88}.agent-modal-btn-primary:hover{background:#00FF8833}.agent-modal-btn-danger{background:#FF3B3B22;border-color:#FF3B3B;color:#FF3B3B}.agent-modal-btn-danger:hover{background:#FF3B3B33}.agent-modal-btn-cancel{border-color:#30363d;color:#8b949e}.agent-modal-btn-cancel:hover{background:rgba(255,255,255,0.05)}#refresh-btn{display:none!important}.tab-badge{display:inline-flex!important;align-items:center;justify-content:center;min-width:14px;height:14px;border-radius:7px;font-size:9px;font-weight:700;padding:0 3px;line-height:1}.tab-badge.has-pending{background:#FFB800!important;color:#0d1117!important}.tab-badge.all-clear{background:#00FF88!important;color:#0d1117!important}#floating-badge{position:fixed!important;top:10px;right:120px;z-index:9999;pointer-events:none;box-shadow:0 1px 4px rgba(0,0,0,0.3)}</style>"""
+HEAD_HTML = """<style>.agent-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999}.agent-modal-box{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:24px;max-width:460px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5)}.agent-modal-title{font-size:1rem;font-weight:700;color:#e2e8f0;margin-bottom:12px}.agent-modal-body{font-size:0.85rem;color:#8b949e;margin-bottom:20px;line-height:1.5}.agent-modal-input{width:100%;padding:10px 12px;background:#0d1117;border:1px solid #30363d;border-radius:8px;color:#e2e8f0;font-size:0.85rem;outline:none;box-sizing:border-box;margin-bottom:16px}.agent-modal-input:focus{border-color:#58a6ff}.agent-modal-actions{display:flex;gap:10px;justify-content:flex-end}.agent-modal-btn{padding:8px 20px;border-radius:8px;border:1px solid;font-size:0.82rem;font-weight:600;cursor:pointer;background:transparent}.agent-modal-btn-primary{background:#00FF8822;border-color:#00FF88;color:#00FF88}.agent-modal-btn-primary:hover{background:#00FF8833}.agent-modal-btn-danger{background:#FF3B3B22;border-color:#FF3B3B;color:#FF3B3B}.agent-modal-btn-danger:hover{background:#FF3B3B33}.agent-modal-btn-cancel{border-color:#30363d;color:#8b949e}.agent-modal-btn-cancel:hover{background:rgba(255,255,255,0.05)}#refresh-btn{display:none!important}.tab-badge{display:inline-flex!important;align-items:center;justify-content:center;min-width:13px;height:13px;border-radius:7px;font-size:9px;font-weight:700;padding:0 2px;line-height:1}.tab-badge.has-pending{background:#FFB800!important;color:#0d1117!important}.tab-badge.all-clear{background:#00FF88!important;color:#0d1117!important}#cmd-pending-count-wrap{position:fixed!important;top:8px;right:120px;z-index:9999!important;pointer-events:none}</style>"""
 
 def _append_audit_log(entry: dict):
     """Append to persistent approval audit log."""
@@ -104,10 +104,26 @@ def _load_audit_log() -> list:
         logger.warning("Failed to read approval audit log: %s", exc)
     return []
 
+# Audit log filter state (set by UI datepicker + button)
+_audit_filter_from: Optional[str] = None
+_audit_filter_to: Optional[str] = None
+
 def _render_audit_log() -> str:
     entries = _load_audit_log()
     if not entries:
         return ""
+    # Apply optional date filter
+    filtered = entries
+    if _audit_filter_from:
+        try:
+            filtered = [e for e in filtered if str(e.get("timestamp",""))[:10] >= _audit_filter_from]
+        except Exception:
+            pass
+    if _audit_filter_to:
+        try:
+            filtered = [e for e in filtered if str(e.get("timestamp",""))[:10] <= _audit_filter_to]
+        except Exception:
+            pass
     rows = "".join(
         f'<tr>'
         f'<td style="font-size:0.76rem;white-space:nowrap;">{e.get("action","")}</td>'
@@ -117,15 +133,16 @@ def _render_audit_log() -> str:
         f'<td style="font-size:0.76rem;color:#8b949e;">{e.get("reason","")[:40]}</td>'
         f'<td style="font-size:0.76rem;color:#8b949e;white-space:nowrap;">{str(e.get("timestamp",""))[:19]}</td>'
         f'</tr>'
-        for e in reversed(entries[-50:])
+        for e in reversed(filtered[-100:])
     )
     return (
         '<div style="margin-top:16px;">'
         '<div style="font-size:0.8rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">'
-        f'Approval Audit Log ({len(entries)})</div>'
-        '<table class="styled-table" style="font-size:0.76rem;">'
+        f'Approval Audit Log ({len(filtered)} / {len(entries)})</div>'
+        '<div style="max-height:320px;overflow-y:auto;border:1px solid rgba(255,255,255,0.06);border-radius:6px;">'
+        '<table class="styled-table" style="font-size:0.76rem;width:100%;">'
         '<thead><tr><th>Action</th><th>ID</th><th>Tool</th><th>Scenario</th><th>Reason/Outcome</th><th>Timestamp</th></tr></thead>'
-        f'<tbody>{rows}</tbody></table></div>'
+        f'<tbody>{rows}</tbody></table></div></div>'
     )
 
 # Experience store for continuous learning
@@ -2886,7 +2903,9 @@ def create_dashboard(
             p_alive = _process_thread and _process_thread.is_alive()
             m_alive = _monitor_thread and _monitor_thread.is_alive()
             cnt = len([a for a in _pending_approvals if a.get("status") == "pending"])
-            cnt_html = f'<span id="pending-count" data-count="{cnt}"></span>'
+            cls = 'has-pending' if cnt > 0 else 'all-clear'
+            icon = str(cnt) if cnt > 0 else '\u2713'
+            cnt_html = f'<span id="floating-badge" class="tab-badge {cls}">{icon}</span>'
             if _static_output_active:
                 return gr.skip(), cnt_html
             with _live_html_lock:
@@ -2901,7 +2920,7 @@ def create_dashboard(
                 return result or gr.skip(), cnt_html
         except Exception as exc:
             _diag("poll_live_html_error", exc=str(exc))
-            return gr.skip(), '<span id="pending-count" data-count="0"></span>'
+            return gr.skip(), '<span id="floating-badge" class="tab-badge all-clear">\u2713</span>'
 
     def _process_all_incidents():
         """Run the pipeline on every scenario and produce a comprehensive report."""
@@ -3347,6 +3366,7 @@ def create_dashboard(
         blocked_scenarios = list(_blocked_scenarios.keys())
         if not blocked_scenarios:
             return ""
+        _onclick = "return (function(){var t=document.querySelectorAll('button[role=&quot;tab&quot;]');for(var i=0;i<t.length;i++){if(t[i].textContent.trim()==='Approvals'){t[i].click();break;}}return false;})()"
         return (
             f'<div style="padding:12px 16px;margin:12px 0;border:2px solid #FF3B3B;border-radius:8px;'
             f'background:rgba(255,59,59,0.1);font-size:0.85rem;">'
@@ -3357,9 +3377,9 @@ def create_dashboard(
             f'<span style="color:#FFB800;font-weight:600;">{", ".join(html.escape(s) for s in blocked_scenarios)}</span></div>'
             f'<div style="color:#8b949e;font-size:0.80rem;margin-top:4px;">'
             f'Approve or deny the high-risk action(s) in the Approvals tab to resume the pipeline.</div>'
-            f'<button class="goto-approvals" style="margin-top:8px;padding:6px 16px;background:transparent;'
-            f'border:1px solid #FFB800;border-radius:6px;color:#FFB800;font-size:0.82rem;font-weight:600;'
-            f'cursor:pointer;">Go to Approvals →</button>'
+            f'<a href="javascript:void(0)" onclick="{_onclick}" '
+            f'style="display:inline-block;margin-top:8px;padding:6px 16px;border:1px solid #FFB800;border-radius:6px;'
+            f'color:#FFB800;font-size:0.82rem;font-weight:600;cursor:pointer;text-decoration:none;">Go to Approvals →</a>'
             f'</div>'
         )
 
@@ -3971,6 +3991,12 @@ def create_dashboard(
         except Exception:
             pass
 
+        # ── Floating approval badge (outside tabs — always visible) ──
+        cmd_pending_count = gr.HTML(
+            value='<span id="floating-badge" class="tab-badge all-clear">\u2713</span>',
+            elem_id="cmd-pending-count-wrap",
+        )
+
         # ──────────────────────────────────────────────────────────
         #  TAB 1 — COMMAND CENTER
         # ──────────────────────────────────────────────────────────
@@ -3978,13 +4004,6 @@ def create_dashboard(
             with gr.Tab("Command Center"):
                 header = gr.HTML(value=_branding_header)
                 metrics_row = gr.HTML(value=_get_command_center_metrics)
-
-                # Hidden badge counter — the #pending-count element stays in DOM for JS to read.
-                # The iframe JS creates a floating badge on document.body (always visible).
-                cmd_pending_count = gr.HTML(
-                    value='<span id="pending-count" class="tab-badge all-clear" data-count="0">\u2713</span>',
-                    visible=False,
-                )
 
                 gr.HTML(
                     '<div class="section-label" style="margin-top:16px;">Live Log Stream</div>'
@@ -4046,12 +4065,12 @@ def create_dashboard(
                 _live_poll_timer.tick(fn=_poll_live_html, inputs=[], outputs=[scan_output, cmd_pending_count])
 
                 # ── Badge counter helper ──
-                # Returns the visible badge span (positioned to the right of tabs via CSS)
+                # Returns floating badge HTML (always visible, outside tabs)
                 def _pending_count_html():
                     cnt = len([a for a in _pending_approvals if a.get("status") == "pending"])
                     cls = 'has-pending' if cnt > 0 else 'all-clear'
                     icon = str(cnt) if cnt > 0 else '\u2713'
-                    return f'<span id="pending-count" class="tab-badge {cls}" data-count="{cnt}">{icon}</span>'
+                    return f'<span id="floating-badge" class="tab-badge {cls}">{icon}</span>'
 
                 # ── Iframe for client-side JS: timers, badge, navigation ──
                 # Scripts in gr.HTML are blocked by innerHTML; an iframe srcdoc
@@ -4061,16 +4080,6 @@ def create_dashboard(
                 "if(pt&&pt.dataset.status!=='completed'&&pt.dataset.start){var n=Date.now()/1e3,e=Math.max(0,Math.floor(n-parseFloat(pt.dataset.start)));pt.textContent=String(Math.floor(e/60)).padStart(2,'0')+':'+String(e%60).padStart(2,'0');}" +
                 "d.querySelectorAll('.step-timer').forEach(function(e){if(e.dataset.status==='completed'||!e.dataset.start)return;var n=Date.now()/1e3,t=Math.max(0,Math.floor(n-parseFloat(e.dataset.start)));e.textContent=String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0');});" +
                 "d.querySelectorAll('.pipeline-step').forEach(function(s){s.onclick=function(){this.classList.toggle('collapsed');var g=this.parentElement;if(g&&g.classList.contains('pipeline-cycle-group'))g.classList.toggle('collapsed');};});" +
-                "var pc=d.getElementById('pending-count'),cnt=pc?parseInt(pc.getAttribute('data-count')||'0'):0;" +
-                "var fb=d.getElementById('floating-badge');if(!fb){fb=d.createElement('span');fb.id='floating-badge';fb.className='tab-badge';d.body.appendChild(fb);}" +
-                "fb.textContent=cnt>0?String(cnt):'\u2713';fb.className='tab-badge'+(cnt>0?' has-pending':' all-clear');" +
-                "var tbtn=d.querySelector('button[role=\"tab\"][data-label=\"Approvals\"]');" +
-                "if(!tbtn){var tabs=d.querySelectorAll('button[role=\"tab\"]');for(var i=0;i<tabs.length;i++){if(tabs[i].textContent.trim()==='Approvals'){tbtn=tabs[i];break;}}}" +
-                "if(tbtn){var bg=tbtn.querySelector('.tab-badge');if(!bg){bg=d.createElement('span');bg.className='tab-badge';tbtn.appendChild(bg);}" +
-                "bg.textContent=cnt>0?String(cnt):'\u2713';bg.className='tab-badge'+(cnt>0?' has-pending':' all-clear');tbtn.setAttribute('data-label','Approvals');}" +
-                "d.querySelectorAll('.goto-approvals').forEach(function(btn){btn.onclick=function(){" +
-                "var tabs=d.querySelectorAll('button[role=\"tab\"]');for(var i=0;i<tabs.length;i++){" +
-                "if(tabs[i].textContent.trim()==='Approvals'){tabs[i].click();break;}}}});" +
                 "}catch(e){}}," + '1000);\n</scri' + "pt>")
                 gr.HTML(value='<iframe srcdoc="' + html.escape(_CLIENT_JS, quote=True) + '" style="width:0;height:0;border:none;display:none"></iframe>')
 
@@ -4454,7 +4463,26 @@ def create_dashboard(
 
                 appr_status = gr.HTML(value="")
                 appr_history_panel = gr.HTML(value=_render_approval_history())
+
+                # Audit log with date filter
+                with gr.Row(equal_height=True):
+                    audit_from = gr.Datepicker(label="From", value=None, scale=1, container=True)
+                    audit_to = gr.Datepicker(label="To", value=None, scale=1, container=True)
+                    audit_filter_btn = gr.Button("Filter", variant="secondary", scale=0, size="sm")
+                    audit_clear_btn = gr.Button("Clear", variant="secondary", scale=0, size="sm")
                 appr_audit_panel = gr.HTML(value=_render_audit_log())
+                def _apply_audit_filter(f, t):
+                    global _audit_filter_from, _audit_filter_to
+                    _audit_filter_from = str(f)[:10] if f else None
+                    _audit_filter_to = str(t)[:10] if t else None
+                    return _render_audit_log()
+                audit_filter_btn.click(fn=_apply_audit_filter, inputs=[audit_from, audit_to], outputs=[appr_audit_panel])
+                def _clear_audit_filter():
+                    global _audit_filter_from, _audit_filter_to
+                    _audit_filter_from = None
+                    _audit_filter_to = None
+                    return _render_audit_log()
+                audit_clear_btn.click(fn=_clear_audit_filter, inputs=[], outputs=[appr_audit_panel])
 
                 # Enable/disable approve/deny buttons based on dropdown selection
                 appr_approval_selector.change(
