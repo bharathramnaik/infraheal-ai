@@ -1904,6 +1904,23 @@ def create_dashboard(
         scenarios = _demo_scenarios()
 
     scenario_names = list(scenarios.keys())
+    # Precompute anomaly count using the actual anomaly detector
+    _anomaly_count_cache: int = 0
+    if anomaly_detector is not None:
+        for sc in scenarios.values():
+            _anomaly_count_cache += len(
+                anomaly_detector.detect_all(
+                    logs=sc.get("logs", []),
+                    metrics=sc.get("metrics", []),
+                )
+            )
+    else:
+        _anomaly_count_cache = sum(
+            1 for sc in scenarios.values()
+            for l in sc.get("logs", [])
+            if l.get("level") in ("CRITICAL", "ERROR")
+        )
+
     runbooks = _demo_runbooks()
 
     # state holders
@@ -2776,12 +2793,7 @@ def create_dashboard(
         else:
             resolution_str = "—"
 
-        # Compute anomaly count from all scenario logs
-        all_logs = []
-        for sc in scenarios.values():
-            all_logs.extend(sc.get("logs", []))
-        error_logs = [l for l in all_logs if l.get("level") in ("CRITICAL", "ERROR")]
-        anomaly_count = len(error_logs)
+        anomaly_count = _anomaly_count_cache
 
         # Compute system health from average error rate across all scenario metrics
         all_metrics = []
