@@ -3948,7 +3948,7 @@ def create_dashboard(
         font=gr.themes.GoogleFont("Inter"),
         font_mono=gr.themes.GoogleFont("JetBrains Mono"),
     )
-    with gr.Blocks(title="InfraHeal AI — Autonomous Incident Resolution", css=CUSTOM_CSS, theme=_theme) as demo:
+    with gr.Blocks(title="InfraHeal AI — Autonomous Incident Resolution", css=CUSTOM_CSS, theme=_theme, head=HEAD_HTML) as demo:
         try:
             demo.queue()
         except Exception:
@@ -4610,7 +4610,7 @@ setInterval(function(){
                 appr_btn_deny.click(fn=_on_deny_selected, inputs=[appr_approval_selector, appr_reason], outputs=outputs_approval)
                 appr_btn_approve_all.click(fn=_on_approve_all, inputs=[appr_reason], outputs=outputs_approval)
                 appr_btn_deny_all.click(fn=_on_deny_all, inputs=[appr_reason], outputs=outputs_approval)
-                appr_refresh_btn.click(fn=_refresh_approvals, inputs=[], outputs=[appr_panel, appr_history_panel, appr_audit_panel, appr_approval_selector])
+                appr_refresh_btn.click(fn=_safe_refresh_approvals, inputs=[], outputs=[appr_panel, appr_history_panel, appr_audit_panel, appr_approval_selector])
 
             # ──────────────────────────────────────────────────────
             #  TAB 5 — VISUALIZATION
