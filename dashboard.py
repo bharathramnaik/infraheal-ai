@@ -80,19 +80,7 @@ _static_output_active: bool = False  # True when user clicked report/scan/optimi
 APPROVAL_AUDIT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "approval_audit.json")
 
 # Head HTML injected into Gradio page (must be passed to launch())
-HEAD_HTML = """<style>.agent-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999}.agent-modal-box{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:24px;max-width:460px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5)}.agent-modal-title{font-size:1rem;font-weight:700;color:#e2e8f0;margin-bottom:12px}.agent-modal-body{font-size:0.85rem;color:#8b949e;margin-bottom:20px;line-height:1.5}.agent-modal-input{width:100%;padding:10px 12px;background:#0d1117;border:1px solid #30363d;border-radius:8px;color:#e2e8f0;font-size:0.85rem;outline:none;box-sizing:border-box;margin-bottom:16px}.agent-modal-input:focus{border-color:#58a6ff}.agent-modal-actions{display:flex;gap:10px;justify-content:flex-end}.agent-modal-btn{padding:8px 20px;border-radius:8px;border:1px solid;font-size:0.82rem;font-weight:600;cursor:pointer;background:transparent}.agent-modal-btn-primary{background:#00FF8822;border-color:#00FF88;color:#00FF88}.agent-modal-btn-primary:hover{background:#00FF8833}.agent-modal-btn-danger{background:#FF3B3B22;border-color:#FF3B3B;color:#FF3B3B}.agent-modal-btn-danger:hover{background:#FF3B3B33}.agent-modal-btn-cancel{border-color:#30363d;color:#8b949e}.agent-modal-btn-cancel:hover{background:rgba(255,255,255,0.05)}#refresh-btn{display:none!important}.tab-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:9px;font-size:11px;font-weight:700;padding:0 5px;margin-left:6px;vertical-align:middle;line-height:1}.tab-badge.has-pending{background:#FFB800;color:#0d1117}.tab-badge.all-clear{background:#00FF88;color:#0d1117}.tab-badge.all-clear::after{content:"\2713";font-size:12px}</style>
-<script>
-(function(){function u(){var d=document,pt=d.querySelector('.pipeline-timer');if(pt&&pt.dataset.status!=='completed'&&pt.dataset.start){var n=Date.now()/1e3,e=Math.max(0,Math.floor(n-parseFloat(pt.dataset.start)));pt.textContent=String(Math.floor(e/60)).padStart(2,'0')+':'+String(e%60).padStart(2,'0');}
-d.querySelectorAll('.step-timer').forEach(function(e){if(e.dataset.status==='completed'||!e.dataset.start)return;var n=Date.now()/1e3,t=Math.max(0,Math.floor(n-parseFloat(e.dataset.start)));e.textContent=String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0');});
-d.querySelectorAll('.pipeline-step').forEach(function(s){s.onclick=function(){this.classList.toggle('collapsed');var g=this.parentElement;if(g&&g.classList.contains('pipeline-cycle-group'))g.classList.toggle('collapsed');};});
-var pc=d.getElementById('pending-count');if(pc){var cnt=parseInt(pc.getAttribute('data-count')||'0');
-var tabs=d.querySelectorAll('.tabs > .tab-nav > button');for(var i=0;i<tabs.length;i++){var b=tabs[i];
-if(b.textContent.trim()==='Approvals'){var bg=b.querySelector('.tab-badge');
-if(!bg){bg=d.createElement('span');bg.className='tab-badge';b.appendChild(bg);}
-bg.textContent=cnt>0?cnt:'';bg.className='tab-badge'+(cnt>0?' has-pending':' all-clear');break;}}}}
-if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',function(){setInterval(u,1000);});}else{setInterval(u,1000);}
-})();
-</script>"""
+HEAD_HTML = """<style>.agent-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999}.agent-modal-box{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:24px;max-width:460px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5)}.agent-modal-title{font-size:1rem;font-weight:700;color:#e2e8f0;margin-bottom:12px}.agent-modal-body{font-size:0.85rem;color:#8b949e;margin-bottom:20px;line-height:1.5}.agent-modal-input{width:100%;padding:10px 12px;background:#0d1117;border:1px solid #30363d;border-radius:8px;color:#e2e8f0;font-size:0.85rem;outline:none;box-sizing:border-box;margin-bottom:16px}.agent-modal-input:focus{border-color:#58a6ff}.agent-modal-actions{display:flex;gap:10px;justify-content:flex-end}.agent-modal-btn{padding:8px 20px;border-radius:8px;border:1px solid;font-size:0.82rem;font-weight:600;cursor:pointer;background:transparent}.agent-modal-btn-primary{background:#00FF8822;border-color:#00FF88;color:#00FF88}.agent-modal-btn-primary:hover{background:#00FF8833}.agent-modal-btn-danger{background:#FF3B3B22;border-color:#FF3B3B;color:#FF3B3B}.agent-modal-btn-danger:hover{background:#FF3B3B33}.agent-modal-btn-cancel{border-color:#30363d;color:#8b949e}.agent-modal-btn-cancel:hover{background:rgba(255,255,255,0.05)}#refresh-btn{display:none!important}.tab-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:9px;font-size:11px;font-weight:700;padding:0 5px;margin-left:6px;vertical-align:middle;line-height:1}.tab-badge.has-pending{background:#FFB800;color:#0d1117}.tab-badge.all-clear{background:#00FF88;color:#0d1117}.tab-badge.all-clear::after{content:"\\2713";font-size:12px}</style>"""
 
 def _append_audit_log(entry: dict):
     """Append to persistent approval audit log."""
@@ -3366,6 +3354,9 @@ def create_dashboard(
             f'<span style="color:#FFB800;font-weight:600;">{", ".join(html.escape(s) for s in blocked_scenarios)}</span></div>'
             f'<div style="color:#8b949e;font-size:0.80rem;margin-top:4px;">'
             f'Approve or deny the high-risk action(s) in the Approvals tab to resume the pipeline.</div>'
+            f'<button class="goto-approvals" style="margin-top:8px;padding:6px 16px;background:transparent;'
+            f'border:1px solid #FFB800;border-radius:6px;color:#FFB800;font-size:0.82rem;font-weight:600;'
+            f'cursor:pointer;">Go to Approvals →</button>'
             f'</div>'
         )
 
@@ -4055,6 +4046,25 @@ def create_dashboard(
                 def _pending_count_html():
                     cnt = len([a for a in _pending_approvals if a.get("status") == "pending"])
                     return f'<span id="pending-count" data-count="{cnt}"></span>'
+
+                # ── Iframe for client-side JS: timers, badge, navigation ──
+                # Scripts in gr.HTML are blocked by innerHTML; an iframe srcdoc
+                # creates a new document context where scripts execute normally.
+                _CLIENT_JS = ("<scri" + "pt>\n" +
+                "setInterval(function(){var d=parent.document,pt=d.querySelector('.pipeline-timer');" +
+                "if(pt&&pt.dataset.status!=='completed'&&pt.dataset.start){var n=Date.now()/1e3,e=Math.max(0,Math.floor(n-parseFloat(pt.dataset.start)));pt.textContent=String(Math.floor(e/60)).padStart(2,'0')+':'+String(e%60).padStart(2,'0');}" +
+                "d.querySelectorAll('.step-timer').forEach(function(e){if(e.dataset.status==='completed'||!e.dataset.start)return;var n=Date.now()/1e3,t=Math.max(0,Math.floor(n-parseFloat(e.dataset.start)));e.textContent=String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0');});" +
+                "d.querySelectorAll('.pipeline-step').forEach(function(s){s.onclick=function(){this.classList.toggle('collapsed');var g=this.parentElement;if(g&&g.classList.contains('pipeline-cycle-group'))g.classList.toggle('collapsed');};});" +
+                "var pc=d.getElementById('pending-count');if(pc){var cnt=parseInt(pc.getAttribute('data-count')||'0');" +
+                "var tabs=d.querySelectorAll('button[role=\"tab\"]');for(var i=0;i<tabs.length;i++){var b=tabs[i];" +
+                "if(b.textContent.trim()==='Approvals'){var bg=b.querySelector('.tab-badge');" +
+                "if(!bg){bg=d.createElement('span');bg.className='tab-badge';b.appendChild(bg);}" +
+                "bg.textContent=cnt>0?cnt:'';bg.className='tab-badge'+(cnt>0?' has-pending':' all-clear');break;}}}" +
+                "d.querySelectorAll('.goto-approvals').forEach(function(btn){btn.onclick=function(){" +
+                "var tabs=d.querySelectorAll('button[role=\"tab\"]');for(var i=0;i<tabs.length;i++){" +
+                "if(tabs[i].textContent.trim()==='Approvals'){tabs[i].click();break;}}}});" +
+                "},1000);\n</scri" + "pt>")
+                gr.HTML(value='<iframe srcdoc="' + html.escape(_CLIENT_JS, quote=True) + '" style="width:0;height:0;border:none;display:none"></iframe>')
 
                 # ── Rerun-aware wrappers ──
                 def _cached_scan():
