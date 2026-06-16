@@ -1914,12 +1914,15 @@ def create_dashboard(
 
     # ── Pipeline flow state ────────────────────────────────────────
     _pipeline_run: Dict[str, Any] = {"name": "", "status": "idle", "steps": [], "start_time": 0, "elapsed": 0}
+    _level_pipeline_run: Dict[str, Any] = {"name": "", "status": "idle", "steps": [], "start_time": 0, "elapsed": 0}
+    _level_pipeline_html: str = ""
+    _level_pipeline_active: bool = False
 
     def _pipeline_step(name: str, desc: str = "", status: str = "pending", progress: int = 0):
         return {"name": name, "desc": desc, "status": status, "progress": progress, "duration": 0, "start": time.time()}
 
-    def _render_pipeline_flow() -> str:
-        pr = _pipeline_run
+    def _render_pipeline_flow(run_key: str = "") -> str:
+        pr = _level_pipeline_run if run_key == "_level" else _pipeline_run
         steps = pr.get("steps", [])
         if not steps:
             return ""
@@ -2013,6 +2016,180 @@ def create_dashboard(
             step_data["progress"] = 100
         _pipeline_run["status"] = "completed" if all(st["status"] == "completed" for st in _pipeline_run["steps"]) else "warning"
         return _render_pipeline_flow()
+
+    # ── Level-Specific Resolution Pipeline (progressive) ─────────
+
+    def _run_level_pipeline_generator(scenario_name: str, level_filter: str):
+        """Generator that yields progressive HTML for the level pipeline."""
+        nonlocal _level_pipeline_run, _level_pipeline_html, _level_pipeline_active
+        if scenario_name not in scenarios:
+            _level_pipeline_active = False
+            return
+        sc = scenarios[scenario_name]
+        scenario_logs = sc.get("logs", [])
+        scenario_metrics = sc.get("metrics", [])
+        if not scenario_logs:
+            _level_pipeline_html = _empty_state("No logs in this scenario")
+            _level_pipeline_active = False
+            return
+
+        levels = [level_filter] if level_filter else ["CRITICAL", "ERROR", "WARNING"]
+        meta = {"CRITICAL": ("#FF3B3B","Critical"), "ERROR": ("#FF8C00","Error"), "WARNING": ("#FFB800","Warning")}
+        result_blocks = []
+
+        _level_pipeline_run.clear()
+        _level_pipeline_run.update({
+            "name": f"Level-specific: {', '.join(levels)}",
+            "status": "running", "steps": [],
+            "start_time": time.time(), "elapsed": 0,
+        })
+
+        for lvl in levels:
+            lvl_steps = [
+                f"  Triage [{lvl}]",
+                f"  RCA [{lvl}]",
+                f"  Remediation [{lvl}]",
+            ]
+            for step_name in lvl_steps:
+                _level_pipeline_run["steps"].append({
+                    "name": step_name, "desc": "", "status": "pending",
+                    "progress": 0, "duration": 0, "start": 0,
+                })
+
+        yield None  # signal start
+
+        try:
+            for lvl in levels:
+                level_logs = [l for l in scenario_logs if l.get("level","").upper() == lvl]
+                if not level_logs:
+                    for i in range(3):
+                        _level_pipeline_run["steps"][levels.index(lvl)*3 + i]["status"] = "skipped"
+                        _level_pipeline_run["steps"][levels.index(lvl)*3 + i]["desc"] = "No logs"
+                    result_blocks.append(
+                        f'<div style="color:#64748b;font-style:italic;margin:8px 0;padding:8px;'
+                        f'border-left:3px solid {meta[lvl][0]};background:rgba(255,255,255,0.02);'
+                        f'border-radius:0 6px 6px 0;font-size:0.82rem;">'
+                        f'{meta[lvl][1]}: No {lvl}-level logs</div>'
+                    )
+                    yield _render_pipeline_flow(run_key="_level") + "".join(result_blocks)
+                    continue
+
+                # Triage step
+                si = levels.index(lvl) * 3
+                _level_pipeline_run["steps"][si]["status"] = "running"
+                _level_pipeline_run["steps"][si]["start"] = time.time()
+                yield _render_pipeline_flow(run_key="_level") + "".join(result_blocks)
+
+                an = anomaly_detector.detect_all(logs=level_logs, metrics=scenario_metrics) if anomaly_detector else []
+                _level_pipeline_run["steps"][si]["status"] = "completed"
+                _level_pipeline_run["steps"][si]["duration"] = time.time() - _level_pipeline_run["steps"][si]["start"]
+                _level_pipeline_run["steps"][si]["progress"] = 100
+
+                # RCA step
+                _level_pipeline_run["steps"][si+1]["status"] = "running"
+                _level_pipeline_run["steps"][si+1]["start"] = time.time()
+                yield _render_pipeline_flow(run_key="_level") + "".join(result_blocks)
+
+                if orchestrator and an:
+                    try:
+                        pl = orchestrator.process_by_error_level(logs=level_logs, metrics=scenario_metrics, use_llm=True)
+                        lr = pl.get("per_level", {}).get(lvl, {})
+                    except Exception:
+                        lr = {}
+                else:
+                    lr = {}
+
+                _level_pipeline_run["steps"][si+1]["status"] = "completed"
+                _level_pipeline_run["steps"][si+1]["duration"] = time.time() - _level_pipeline_run["steps"][si+1]["start"]
+                _level_pipeline_run["steps"][si+1]["progress"] = 100
+
+                # Remediation step
+                _level_pipeline_run["steps"][si+2]["status"] = "running"
+                _level_pipeline_run["steps"][si+2]["start"] = time.time()
+                yield _render_pipeline_flow(run_key="_level") + "".join(result_blocks)
+
+                pf = lr.get("pipeline_full") if lr.get("llm_generated") else None
+                if pf:
+                    rem = pf.get("remediation", {})
+                    rca = pf.get("rca", {})
+                    steps = []
+                    for a in rem.get("recommended_actions", []):
+                        t = a.get("tool_name",""); r = a.get("rationale","")
+                        steps.append(f"{t}: {r}" if r else t)
+                    root_cause = rca.get("root_cause", lr.get("root_cause", f"{lvl} indicators detected."))
+                    confidence = rca.get("confidence_score", lr.get("confidence", 0.75))
+                    summary = rca.get("reasoning_summary", f"Analyzed {len(an)} {lvl}-level anomalies.")[:200]
+                else:
+                    steps = lr.get("resolution_steps", [f"{lvl} standard remediation steps"])
+                    root_cause = lr.get("root_cause", f"{lvl} indicators detected.")
+                    confidence = lr.get("confidence", 0.75)
+                    summary = lr.get("resolution_summary", f"Analyzed {len(level_logs)} {lvl} entries.")
+
+                _level_pipeline_run["steps"][si+2]["status"] = "completed"
+                _level_pipeline_run["steps"][si+2]["duration"] = time.time() - _level_pipeline_run["steps"][si+2]["start"]
+                _level_pipeline_run["steps"][si+2]["progress"] = 100
+
+                conf_pct = confidence * 100 if isinstance(confidence, float) and confidence <= 1 else confidence
+                steps_html = "".join(
+                    f'<div class="action-card"><div class="action-icon" style="background:rgba(255,255,255,0.1);color:#64748b;">{i}</div>'
+                    f'<div style="flex:1;min-width:0;"><div style="font-size:0.82rem;color:#e2e8f0;">{s}</div></div></div>'
+                    for i, s in enumerate(steps, 1)
+                ) if steps else '<div style="color:#64748b;font-style:italic;padding:12px;">No automated resolution steps.</div>'
+
+                result_blocks.append(
+                    f'<div class="agent-panel" style="margin-bottom:12px;border-left:3px solid {meta[lvl][0]};">'
+                    f'<div class="agent-panel-header" style="background:linear-gradient(135deg,{meta[lvl][0]}15,transparent);">'
+                    f'<span style="font-size:1.1rem;">{meta[lvl][0]}</span>'
+                    f'<span style="color:{meta[lvl][0]};font-weight:700;">{lvl}</span>'
+                    f'<span style="color:#64748b;font-size:0.78rem;margin-left:8px;">{len(an)} anomaly{"ies" if len(an)!=1 else "y"}</span>'
+                    f'<span style="margin-left:auto;font-size:0.72rem;color:#64748b;">{conf_pct:.0f}%</span>'
+                    f'</div>'
+                    f'<div class="agent-panel-body">'
+                    f'<div style="margin-bottom:10px;"><span style="color:#64748b;font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;">Summary</span>'
+                    f'<div style="margin-top:4px;font-size:0.85rem;color:#e2e8f0;line-height:1.5;">{summary}</div></div>'
+                    f'<div style="margin-bottom:10px;"><span style="color:#64748b;font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;">Root Cause</span>'
+                    f'<div style="margin-top:4px;font-size:0.82rem;color:#e2e8f0;background:rgba(255,255,255,0.02);padding:8px 12px;border-radius:6px;border-left:3px solid {meta[lvl][0]};">{root_cause}</div></div>'
+                    f'<div><span style="color:#64748b;font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;display:block;">Steps</span>{steps_html}</div>'
+                    f'</div></div>'
+                )
+                yield _render_pipeline_flow(run_key="_level") + "".join(result_blocks)
+
+            _level_pipeline_run["status"] = "completed"
+            yield _render_pipeline_flow(run_key="_level") + "".join(result_blocks)
+        finally:
+            _level_pipeline_active = False
+
+    def _start_level_resolution(scenario_name: str, level_filter: str) -> str:
+        nonlocal _level_pipeline_html, _level_pipeline_active
+        if not scenario_name or scenario_name not in scenarios:
+            return _empty_state("Select a scenario first")
+        _level_pipeline_html = '<div style="color:#8b949e;text-align:center;padding:12px;">Starting level-specific resolution...</div>'
+        _level_pipeline_active = True
+        threading.Thread(target=_run_level_thread, args=(scenario_name, level_filter), daemon=True).start()
+        return _level_pipeline_html
+
+    def _run_level_thread(scenario_name: str, level_filter: str):
+        nonlocal _level_pipeline_html, _level_pipeline_active
+        try:
+            gen = _run_level_pipeline_generator(scenario_name, level_filter)
+            next(gen)  # skip initial None
+            for partial in gen:
+                if partial:
+                    _level_pipeline_html = partial
+        except Exception as exc:
+            _level_pipeline_html = f'<div style="color:#FF3B3B;text-align:center;padding:20px;">Level pipeline failed: {exc}</div>'
+        finally:
+            _level_pipeline_active = False
+
+    def _poll_level_html() -> str:
+        nonlocal _level_pipeline_html, _level_pipeline_active
+        if _level_pipeline_active:
+            return _level_pipeline_html if _level_pipeline_html else gr.skip()
+        if _level_pipeline_html:
+            h = _level_pipeline_html
+            _level_pipeline_html = ""
+            return h
+        return gr.skip()
 
     # ------- event handlers -----------------------------------------------
 
@@ -2358,11 +2535,7 @@ def create_dashboard(
         if not scenario_logs:
             return _empty_state("No logs in this scenario")
 
-        # Determine which levels to process
-        if level_filter and level_filter != "ALL":
-            levels_to_process = [level_filter]
-        else:
-            levels_to_process = ["CRITICAL", "ERROR", "WARNING"]
+        levels_to_process = [level_filter] if level_filter else ["CRITICAL", "ERROR", "WARNING"]
 
         # ── Progress simulation with realistic timing ────────────
         progress_parts = []
@@ -4212,8 +4385,8 @@ def create_dashboard(
                 )
                 with gr.Row():
                     level_filter = gr.Dropdown(
-                        choices=["ALL", "CRITICAL", "ERROR", "WARNING"],
-                        value="ALL",
+                        choices=["CRITICAL", "ERROR", "WARNING"],
+                        value="CRITICAL",
                         label="Filter by Log Level",
                         scale=1,
                     )
@@ -4233,8 +4406,12 @@ def create_dashboard(
                     inputs=[scenario_dropdown],
                     outputs=[scenario_desc, scenario_logs],
                 )
+                # Level pipeline poll timer (1s)
+                _level_poll_timer = gr.Timer(value=1.0, active=True)
+                _level_poll_timer.tick(fn=_poll_level_html, inputs=[], outputs=[level_resolution_panel])
+
                 level_resolve_btn.click(
-                    fn=_run_error_level_resolution,
+                    fn=_start_level_resolution,
                     inputs=[scenario_dropdown, level_filter],
                     outputs=[level_resolution_panel],
                 )
