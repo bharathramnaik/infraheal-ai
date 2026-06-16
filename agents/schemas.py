@@ -169,10 +169,10 @@ incident: sev=P1 cat=application
 rca: root=Database connection pool exhaustion conf=0.92
 tools: restart_service, scale_resources, rollback_deployment, flush_cache
 actions:
-  [1] scale_resources: Increase database connection pool (requires_approval=true, risk=high)
-  [2] rollback_deployment: Rollback payment-service to v2.3.0 (requires_approval=true, risk=high)
-  [3] flush_cache: Clear query cache (risk=low)
-  [4] restart_service: Restart payment-service (risk=medium)
+  [1] scale_resources: Increase database connection pool (rationale: pool at 100% capacity, expected_outcome: connections freed, requires_approval=true, risk=high)
+  [2] rollback_deployment: Rollback payment-service to v2.3.0 (rationale: v2.3.1 introduced bad query pattern, expected_outcome: query load returns to normal, requires_approval=true, risk=high)
+  [3] flush_cache: Clear query cache (rationale: stale cached queries slowing system, expected_outcome: cache rebuilt fresh, risk=low)
+  [4] restart_service: Restart payment-service (rationale: clean slate after rollback, expected_outcome: service healthy, risk=medium)
 """
 
 REPORTING_FEW_SHOT = """

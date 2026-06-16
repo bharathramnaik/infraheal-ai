@@ -29,9 +29,9 @@ REMEDIATION_SYSTEM_PROMPT = """You are a remediation planner. Given root cause +
 
 {tools_section}
 
-Safety: high-risk actions must set requires_approval=true. BE CONCISE. Output ONLY this JSON:
+Safety: high-risk actions must set requires_approval=true. BE CONCISE. Include rationale and expected_outcome for each action. Output ONLY this JSON:
 
-{"recommended_actions":[{"step":1,"tool_name":"tool","parameters":{"k":"v"},"risk_level":"low|medium|high","requires_approval":bool}],"execution_order":"seq|par","rollback_plan":"brief","estimated_resolution_time":"duration","warnings":["caveat"],"confidence":0-1}
+{"recommended_actions":[{"step":1,"tool_name":"tool","parameters":{"k":"v"},"rationale":"why this action","expected_outcome":"what it achieves","risk_level":"low|medium|high","requires_approval":bool}],"execution_order":"seq|par","rollback_plan":"brief","estimated_resolution_time":"duration","warnings":["caveat"],"confidence":0-1}
 
 No prose, no markdown, only JSON.
 

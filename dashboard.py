@@ -2046,9 +2046,9 @@ def create_dashboard(
 
         for lvl in levels:
             lvl_steps = [
-                f"  Triage [{lvl}]",
-                f"  RCA [{lvl}]",
-                f"  Remediation [{lvl}]",
+                f"  Detect [{lvl}]",
+                f"  Pipeline [{lvl}]",
+                f"  Results [{lvl}]",
             ]
             for step_name in lvl_steps:
                 _level_pipeline_run["steps"].append({
@@ -2139,8 +2139,7 @@ def create_dashboard(
                 result_blocks.append(
                     f'<div class="agent-panel" style="margin-bottom:12px;border-left:3px solid {meta[lvl][0]};">'
                     f'<div class="agent-panel-header" style="background:linear-gradient(135deg,{meta[lvl][0]}15,transparent);">'
-                    f'<span style="font-size:1.1rem;">{meta[lvl][0]}</span>'
-                    f'<span style="color:{meta[lvl][0]};font-weight:700;">{lvl}</span>'
+                    f'<span style="color:{meta[lvl][0]};font-weight:800;font-size:0.9rem;">{lvl}</span>'
                     f'<span style="color:#64748b;font-size:0.78rem;margin-left:8px;">{len(an)} anomaly{"ies" if len(an)!=1 else "y"}</span>'
                     f'<span style="margin-left:auto;font-size:0.72rem;color:#64748b;">{conf_pct:.0f}%</span>'
                     f'</div>'
