@@ -2686,10 +2686,14 @@ def create_dashboard(
 
     def _render_live_logs() -> str:
         """Render the current live log stream as HTML."""
-        logs = _generate_live_logs()
-        if not logs:
+        try:
+            logs = _generate_live_logs()
+            if not logs:
+                return _get_command_center_logs()
+            return format_log_table(logs)
+        except Exception as exc:
+            _diag("render_live_logs_error", exc=str(exc))
             return _get_command_center_logs()
-        return format_log_table(logs)
 
     def _get_perf_metrics_html() -> str:
         """Build the performance metrics tab."""
@@ -2870,22 +2874,26 @@ def create_dashboard(
         to a stale completed pipeline if the other is still active.
         Falls back to _last_pipeline's HTML when both threads are dead.
         """
-        global _process_thread, _monitor_thread, _process_live_html, _monitor_live_html, _static_output_active
-        nonlocal _last_pipeline
-        p_alive = _process_thread and _process_thread.is_alive()
-        m_alive = _monitor_thread and _monitor_thread.is_alive()
-        if _static_output_active:
+        try:
+            global _process_thread, _monitor_thread, _process_live_html, _monitor_live_html, _static_output_active
+            nonlocal _last_pipeline
+            p_alive = _process_thread and _process_thread.is_alive()
+            m_alive = _monitor_thread and _monitor_thread.is_alive()
+            if _static_output_active:
+                return gr.skip()
+            with _live_html_lock:
+                if p_alive:
+                    return _process_live_html or gr.skip()
+                if m_alive:
+                    return _monitor_live_html or gr.skip()
+                if _last_pipeline == "monitor":
+                    result = _monitor_live_html or _process_live_html
+                else:
+                    result = _process_live_html or _monitor_live_html
+                return result or gr.skip()
+        except Exception as exc:
+            _diag("poll_live_html_error", exc=str(exc))
             return gr.skip()
-        with _live_html_lock:
-            if p_alive:
-                return _process_live_html or gr.skip()
-            if m_alive:
-                return _monitor_live_html or gr.skip()
-            if _last_pipeline == "monitor":
-                result = _monitor_live_html or _process_live_html
-            else:
-                result = _process_live_html or _monitor_live_html
-            return result or gr.skip()
 
     def _process_all_incidents():
         """Run the pipeline on every scenario and produce a comprehensive report."""
@@ -4426,10 +4434,22 @@ setInterval(function(){
                     visible=False,
                 )
 
+                # Safe wrapper for auto-refresh timer
+                def _safe_approval_panel():
+                    try:
+                        return _render_approval_panel()
+                    except Exception as exc:
+                        _diag("auto_refresh_panel_error", exc=str(exc))
+                        return '<div style="color:#64748b;text-align:center;padding:16px;">Approval panel temporarily unavailable.</div>'
+
                 # Auto-refresh badge count + panel every 5s so the tab dot and content stay accurate
                 def _poll_pending_count():
-                    cnt = len([a for a in _pending_approvals if a.get("status") == "pending"])
-                    return f'<span id="pending-count" data-count="{cnt}"></span>'
+                    try:
+                        cnt = len([a for a in _pending_approvals if a.get("status") == "pending"])
+                        return f'<span id="pending-count" data-count="{cnt}"></span>'
+                    except Exception as exc:
+                        _diag("poll_pending_count_error", exc=str(exc))
+                        return '<span id="pending-count" data-count="0"></span>'
 
                 appr_badge_timer = gr.Timer(value=5.0, active=True)
                 appr_badge_timer.tick(fn=_poll_pending_count, inputs=[], outputs=[appr_pending_count])
@@ -4437,7 +4457,7 @@ setInterval(function(){
                 # Auto-refresh the approval panel itself
                 appr_auto_refresh = gr.Timer(value=5.0, active=True)
                 appr_auto_refresh.tick(
-                    fn=lambda: _render_approval_panel(),
+                    fn=lambda: _safe_approval_panel(),
                     inputs=[], outputs=[appr_panel],
                 )
 
@@ -4491,11 +4511,17 @@ setInterval(function(){
                     return log
 
                 def _on_approve_selected(aid: str, reason: str):
+                    _diag("approve_selected_called", aid=aid, reason_len=len(reason or ""))
                     if not aid:
+                        _diag("approve_selected_no_aid", aid=aid)
                         return _render_approval_panel(), _render_approval_history(), _render_audit_log(), _refresh_approval_selector(), ""
                     reason = reason.strip()
-                    _approve_action(aid, reason)
+                    try:
+                        _approve_action(aid, reason)
+                    except Exception as exc:
+                        _diag("approve_action_exception", aid=aid, exc=str(exc))
                     a = next((x for x in _pending_approvals if x.get("id") == aid), None)
+                    _diag("approve_selected_found", aid=aid, found=a is not None)
                     status = _render_action_log(a, "Approved", "00FF88") if a else ""
                     return (
                         _render_approval_panel(), _render_approval_history(), _render_audit_log(),
@@ -4503,11 +4529,17 @@ setInterval(function(){
                     )
 
                 def _on_deny_selected(aid: str, reason: str):
+                    _diag("deny_selected_called", aid=aid, reason_len=len(reason or ""))
                     if not aid:
+                        _diag("deny_selected_no_aid", aid=aid)
                         return _render_approval_panel(), _render_approval_history(), _render_audit_log(), _refresh_approval_selector(), ""
                     reason = reason.strip() or "No reason provided"
-                    _deny_action(aid, reason)
+                    try:
+                        _deny_action(aid, reason)
+                    except Exception as exc:
+                        _diag("deny_action_exception", aid=aid, exc=str(exc))
                     a = next((x for x in _pending_approvals if x.get("id") == aid), None)
+                    _diag("deny_selected_found", aid=aid, found=a is not None)
                     status = _render_action_log(a, "Denied", "FF3B3B") if a else ""
                     return (
                         _render_approval_panel(), _render_approval_history(), _render_audit_log(),
