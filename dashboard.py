@@ -4464,17 +4464,17 @@ def create_dashboard(
                 appr_status = gr.HTML(value="")
                 appr_history_panel = gr.HTML(value=_render_approval_history())
 
-                # Audit log with date filter (text input for broadest Gradio compat)
+                # Audit log with date filter (calendar picker)
                 with gr.Row(equal_height=True):
-                    audit_from = gr.Textbox(label="From (YYYY-MM-DD)", value="", placeholder="e.g. 2026-01-01", scale=1, container=True)
-                    audit_to = gr.Textbox(label="To (YYYY-MM-DD)", value="", placeholder="e.g. 2026-12-31", scale=1, container=True)
+                    audit_from = gr.DateTime(label="From", include_time=False, type="string", scale=1, container=True)
+                    audit_to = gr.DateTime(label="To", include_time=False, type="string", scale=1, container=True)
                     audit_filter_btn = gr.Button("Filter", variant="secondary", scale=0, size="sm")
                     audit_clear_btn = gr.Button("Clear", variant="secondary", scale=0, size="sm")
                 appr_audit_panel = gr.HTML(value=_render_audit_log())
                 def _apply_audit_filter(f, t):
                     global _audit_filter_from, _audit_filter_to
-                    _audit_filter_from = f.strip()[:10] if f and f.strip() else None
-                    _audit_filter_to = t.strip()[:10] if t and t.strip() else None
+                    _audit_filter_from = str(f)[:10] if f else None
+                    _audit_filter_to = str(t)[:10] if t else None
                     return _render_audit_log()
                 audit_filter_btn.click(fn=_apply_audit_filter, inputs=[audit_from, audit_to], outputs=[appr_audit_panel])
                 def _clear_audit_filter():
