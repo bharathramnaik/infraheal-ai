@@ -3,13 +3,16 @@
 # The library assumes all routes have .path, but FastAPI _IncludedRouter doesn't.
 
 python3 -c "
-import prometheus_fastapi_instrumentator.routing as r
+import sys, prometheus_fastapi_instrumentator.routing as r
 orig = r._get_route_name
 def _patched(scope, routes):
     try:
         return orig(scope, routes)
-    except AttributeError as e:
-        # '_IncludedRouter' object has no attribute 'path'
+    except AttributeError:
         return 'unknown'
 r._get_route_name = _patched
-" && exec vllm serve "$@"
+# Now import and run vLLM CLI main in the same process
+from vllm.entrypoints.cli.main import main
+sys.argv = ['vllm'] + sys.argv[1:]
+main()
+" "$@"
