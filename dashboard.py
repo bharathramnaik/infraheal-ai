@@ -2064,7 +2064,10 @@ def create_dashboard(
         for lvl in levels:
             lvl_steps = [
                 f"  Detect [{lvl}]",
-                f"  Pipeline [{lvl}]",
+                f"  Triage [{lvl}]",
+                f"  RCA [{lvl}]",
+                f"  Remediation [{lvl}]",
+                f"  Report [{lvl}]",
                 f"  Results [{lvl}]",
             ]
             for step_name in lvl_steps:
@@ -2079,9 +2082,9 @@ def create_dashboard(
             for lvl in levels:
                 level_logs = [l for l in scenario_logs if l.get("level","").upper() == lvl]
                 if not level_logs:
-                    for i in range(3):
-                        _level_pipeline_run["steps"][levels.index(lvl)*3 + i]["status"] = "skipped"
-                        _level_pipeline_run["steps"][levels.index(lvl)*3 + i]["desc"] = "No logs"
+                    for i in range(6):
+                        _level_pipeline_run["steps"][levels.index(lvl)*6 + i]["status"] = "skipped"
+                        _level_pipeline_run["steps"][levels.index(lvl)*6 + i]["desc"] = "No logs"
                     result_blocks.append(
                         f'<div style="color:#64748b;font-style:italic;margin:8px 0;padding:8px;'
                         f'border-left:3px solid {meta[lvl][0]};background:rgba(255,255,255,0.02);'
@@ -2091,8 +2094,9 @@ def create_dashboard(
                     yield _render_pipeline_flow(run_key="_level") + "".join(result_blocks)
                     continue
 
-                # Triage step
-                si = levels.index(lvl) * 3
+                si = levels.index(lvl) * 6
+
+                # ── Detect ──────────────────────────────────────────
                 _level_pipeline_run["steps"][si]["status"] = "running"
                 _level_pipeline_run["steps"][si]["start"] = time.time()
                 yield _render_pipeline_flow(run_key="_level") + "".join(result_blocks)
@@ -2103,14 +2107,15 @@ def create_dashboard(
                 _level_pipeline_run["steps"][si]["progress"] = 100
                 _level_pipeline_run["steps"][si]["desc"] = f"{len(an)} anomalies"
 
-                # RCA step — runs Triage + RCA + Remediation + Report agents
-                _level_pipeline_run["steps"][si+1]["status"] = "running"
-                _level_pipeline_run["steps"][si+1]["start"] = time.time()
-                _level_pipeline_run["steps"][si+1]["desc"] = "Triage → RCA → Remediation → Report"
-                yield _render_pipeline_flow(run_key="_level") + "".join(result_blocks)
-
+                # Run the full pipeline (Triage+RCA+Remediation+Report+Execution+Safety)
+                pf = None
+                lr = {}
                 _agent_error = None
                 if orchestrator and an:
+                    for i_agent in range(4):
+                        _level_pipeline_run["steps"][si+1+i_agent]["status"] = "running"
+                        _level_pipeline_run["steps"][si+1+i_agent]["start"] = time.time()
+                    yield _render_pipeline_flow(run_key="_level") + "".join(result_blocks)
                     try:
                         pl = orchestrator.process_by_error_level(logs=level_logs, metrics=scenario_metrics, use_llm=True)
                         lr = pl.get("per_level", {}).get(lvl, {})
@@ -2118,42 +2123,44 @@ def create_dashboard(
                         _agent_error = str(exc)
                         logger.error("Level pipeline agent calls failed for %s: %s", lvl, exc)
                         lr = {}
+                    for i_agent in range(4):
+                        _level_pipeline_run["steps"][si+1+i_agent]["status"] = "completed"
+                        _level_pipeline_run["steps"][si+1+i_agent]["duration"] = time.time() - _level_pipeline_run["steps"][si+1+i_agent]["start"]
+                        _level_pipeline_run["steps"][si+1+i_agent]["progress"] = 100
+                        mode = "LLM" if lr.get("llm_generated") else "template"
+                        _level_pipeline_run["steps"][si+1+i_agent]["desc"] = f"vLLM pipeline: {mode} mode"
+                    yield _render_pipeline_flow(run_key="_level") + "".join(result_blocks)
                 else:
-                    lr = {}
+                    # Template fallback when no orchestrator or no anomalies
+                    for i_agent in range(4):
+                        _level_pipeline_run["steps"][si+1+i_agent]["status"] = "skipped"
+                        _level_pipeline_run["steps"][si+1+i_agent]["desc"] = "No orchestrator or no anomalies"
 
-                _level_pipeline_run["steps"][si+1]["status"] = "completed"
-                _level_pipeline_run["steps"][si+1]["duration"] = time.time() - _level_pipeline_run["steps"][si+1]["start"]
-                _level_pipeline_run["steps"][si+1]["progress"] = 100
-                desc = f"vLLM pipeline: {lr.get('llm_generated', False) and 'LLM' or 'template'} mode"
-                if _agent_error:
-                    desc += f" — error: {_agent_error[:60]}"
-                _level_pipeline_run["steps"][si+1]["desc"] = desc
-
-                # Remediation step
-                _level_pipeline_run["steps"][si+2]["status"] = "running"
-                _level_pipeline_run["steps"][si+2]["start"] = time.time()
+                # ── Results ──────────────────────────────────────────
+                pf = lr.get("pipeline_full") if lr.get("llm_generated") else None
+                _level_pipeline_run["steps"][si+5]["status"] = "running"
+                _level_pipeline_run["steps"][si+5]["start"] = time.time()
                 yield _render_pipeline_flow(run_key="_level") + "".join(result_blocks)
 
-                pf = lr.get("pipeline_full") if lr.get("llm_generated") else None
-                if pf:
+                if pf and _agent_error is None:
                     rem = pf.get("remediation", {})
                     rca = pf.get("rca", {})
                     steps = []
                     for a in rem.get("recommended_actions", []):
                         t = a.get("tool_name",""); r = a.get("rationale","")
                         steps.append(f"{t}: {r}" if r else t)
-                    root_cause = rca.get("root_cause", lr.get("root_cause", f"{lvl} indicators detected."))
-                    confidence = rca.get("confidence_score", lr.get("confidence", 0.75))
-                    summary = rca.get("reasoning_summary", f"Analyzed {len(an)} {lvl}-level anomalies.")[:200]
+                    root_cause = lr.get("root_cause", f"{lvl} indicators detected.")
+                    confidence = lr.get("confidence", 0.75)
+                    summary = lr.get("resolution_summary", f"Analyzed {len(an)} {lvl}-level anomalies.")[:200]
                 else:
                     steps = lr.get("resolution_steps", [f"{lvl} standard remediation steps"])
                     root_cause = lr.get("root_cause", f"{lvl} indicators detected.")
                     confidence = lr.get("confidence", 0.75)
                     summary = lr.get("resolution_summary", f"Analyzed {len(level_logs)} {lvl} entries.")
 
-                _level_pipeline_run["steps"][si+2]["status"] = "completed"
-                _level_pipeline_run["steps"][si+2]["duration"] = time.time() - _level_pipeline_run["steps"][si+2]["start"]
-                _level_pipeline_run["steps"][si+2]["progress"] = 100
+                _level_pipeline_run["steps"][si+5]["status"] = "completed"
+                _level_pipeline_run["steps"][si+5]["duration"] = time.time() - _level_pipeline_run["steps"][si+5]["start"]
+                _level_pipeline_run["steps"][si+5]["progress"] = 100
 
                 conf_pct = confidence * 100 if isinstance(confidence, float) and confidence <= 1 else confidence
                 steps_html = "".join(
