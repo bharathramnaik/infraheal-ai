@@ -80,7 +80,7 @@ _static_output_active: bool = False  # True when user clicked report/scan/optimi
 APPROVAL_AUDIT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "approval_audit.json")
 
 # Head HTML injected into Gradio page (must be passed to launch())
-HEAD_HTML = """<style>.agent-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999}.agent-modal-box{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:24px;max-width:460px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5)}.agent-modal-title{font-size:1rem;font-weight:700;color:#e2e8f0;margin-bottom:12px}.agent-modal-body{font-size:0.85rem;color:#8b949e;margin-bottom:20px;line-height:1.5}.agent-modal-input{width:100%;padding:10px 12px;background:#0d1117;border:1px solid #30363d;border-radius:8px;color:#e2e8f0;font-size:0.85rem;outline:none;box-sizing:border-box;margin-bottom:16px}.agent-modal-input:focus{border-color:#58a6ff}.agent-modal-actions{display:flex;gap:10px;justify-content:flex-end}.agent-modal-btn{padding:8px 20px;border-radius:8px;border:1px solid;font-size:0.82rem;font-weight:600;cursor:pointer;background:transparent}.agent-modal-btn-primary{background:#00FF8822;border-color:#00FF88;color:#00FF88}.agent-modal-btn-primary:hover{background:#00FF8833}.agent-modal-btn-danger{background:#FF3B3B22;border-color:#FF3B3B;color:#FF3B3B}.agent-modal-btn-danger:hover{background:#FF3B3B33}.agent-modal-btn-cancel{border-color:#30363d;color:#8b949e}.agent-modal-btn-cancel:hover{background:rgba(255,255,255,0.05)}#refresh-btn{display:none!important}.tab-badge{display:inline-flex!important;align-items:center;justify-content:center;min-width:13px;height:13px;border-radius:7px;font-size:9px;font-weight:700;padding:0 2px;line-height:1}.tab-badge.has-pending{background:#FFB800!important;color:#0d1117!important}.tab-badge.all-clear{background:#00FF88!important;color:#0d1117!important}#cmd-pending-count-wrap{position:fixed!important;top:8px;right:120px;z-index:9999!important;pointer-events:none}</style>"""
+HEAD_HTML = """<style>.agent-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999}.agent-modal-box{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:24px;max-width:460px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5)}.agent-modal-title{font-size:1rem;font-weight:700;color:#e2e8f0;margin-bottom:12px}.agent-modal-body{font-size:0.85rem;color:#8b949e;margin-bottom:20px;line-height:1.5}.agent-modal-input{width:100%;padding:10px 12px;background:#0d1117;border:1px solid #30363d;border-radius:8px;color:#e2e8f0;font-size:0.85rem;outline:none;box-sizing:border-box;margin-bottom:16px}.agent-modal-input:focus{border-color:#58a6ff}.agent-modal-actions{display:flex;gap:10px;justify-content:flex-end}.agent-modal-btn{padding:8px 20px;border-radius:8px;border:1px solid;font-size:0.82rem;font-weight:600;cursor:pointer;background:transparent}.agent-modal-btn-primary{background:#00FF8822;border-color:#00FF88;color:#00FF88}.agent-modal-btn-primary:hover{background:#00FF8833}.agent-modal-btn-danger{background:#FF3B3B22;border-color:#FF3B3B;color:#FF3B3B}.agent-modal-btn-danger:hover{background:#FF3B3B33}.agent-modal-btn-cancel{border-color:#30363d;color:#8b949e}.agent-modal-btn-cancel:hover{background:rgba(255,255,255,0.05)}#refresh-btn{display:none!important}#floating-badge{position:fixed!important;top:6px;right:110px;z-index:9999!important;display:inline-flex!important;align-items:center;justify-content:center;min-width:22px;height:22px;border-radius:11px;font-size:12px;font-weight:800;padding:0 5px;line-height:1;pointer-events:none;border:2px solid #0d1117}.all-clear,#floating-badge.all-clear{background:#00FF88!important;color:#0d1117!important}.has-pending,#floating-badge.has-pending{background:#FFB800!important;color:#0d1117!important}</style>"""
 
 def _append_audit_log(entry: dict):
     """Append to persistent approval audit log."""
@@ -375,28 +375,6 @@ CUSTOM_CSS = """
   background: rgba(255,255,255,0.1) !important;
   color: #ffffff !important;
 }
-.tabs > .tab-nav > button .tab-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  margin-left: 6px;
-  font-size: 0.6rem;
-  font-weight: 700;
-  color: #0d1117;
-  transition: background 0.3s ease;
-}
-.tabs > .tab-nav > button .tab-badge.has-pending {
-  background: #FFB800;
-  box-shadow: 0 0 6px rgba(255,184,0,0.6);
-}
-.tabs > .tab-nav > button .tab-badge.all-clear {
-  background: #00FF88;
-  box-shadow: 0 0 6px rgba(0,255,136,0.4);
-}
-
 /* ── Buttons ───────────────────────────────────────────────────── */
 .gr-button-primary, button.primary {
   background: #e2e8f0 !important;
