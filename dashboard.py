@@ -2878,27 +2878,30 @@ def create_dashboard(
             return '<div style="color:#FF3B3B;text-align:center;padding:12px;">Failed to start continuous monitoring.</div>'
 
     def _poll_live_html():
-        """Called by gr.Timer to poll pipeline thread progress."""
+        """Called by gr.Timer to poll pipeline thread progress.
+        Returns (scan_html, pending_count_html) so both outputs update together."""
         try:
-            global _process_thread, _monitor_thread, _process_live_html, _monitor_live_html, _static_output_active
+            global _process_thread, _monitor_thread, _process_live_html, _monitor_live_html, _static_output_active, _pending_approvals
             nonlocal _last_pipeline
             p_alive = _process_thread and _process_thread.is_alive()
             m_alive = _monitor_thread and _monitor_thread.is_alive()
+            cnt = len([a for a in _pending_approvals if a.get("status") == "pending"])
+            cnt_html = f'<span id="pending-count" data-count="{cnt}"></span>'
             if _static_output_active:
-                return gr.skip()
+                return gr.skip(), cnt_html
             with _live_html_lock:
                 if p_alive:
-                    return _process_live_html or gr.skip()
+                    return _process_live_html or gr.skip(), cnt_html
                 if m_alive:
-                    return _monitor_live_html or gr.skip()
+                    return _monitor_live_html or gr.skip(), cnt_html
                 if _last_pipeline == "monitor":
                     result = _monitor_live_html or _process_live_html
                 else:
                     result = _process_live_html or _monitor_live_html
-                return result or gr.skip()
+                return result or gr.skip(), cnt_html
         except Exception as exc:
             _diag("poll_live_html_error", exc=str(exc))
-            return gr.skip()
+            return gr.skip(), '<span id="pending-count" data-count="0"></span>'
 
     def _process_all_incidents():
         """Run the pipeline on every scenario and produce a comprehensive report."""
@@ -4039,7 +4042,7 @@ def create_dashboard(
                 # no scan-output alteration, eliminating the race condition that
                 # plagued the old full-HTML-replacement iframe.
                 _live_poll_timer = gr.Timer(value=1.0, active=True)
-                _live_poll_timer.tick(fn=_poll_live_html, inputs=[], outputs=[scan_output])
+                _live_poll_timer.tick(fn=_poll_live_html, inputs=[], outputs=[scan_output, cmd_pending_count])
 
                 # ── Badge counter helper ──
                 # Returns the hidden span with current pending count (always in DOM for JS tab badge)
@@ -4452,24 +4455,6 @@ def create_dashboard(
                 appr_tab.select(
                     fn=_safe_refresh_approvals,
                     inputs=[], outputs=[appr_panel, appr_history_panel, appr_audit_panel, appr_approval_selector, cmd_pending_count],
-                )
-
-                # Safe wrapper for auto-refresh timer
-                def _safe_approval_panel():
-                    global _approval_busy
-                    if _approval_busy:
-                        return None
-                    try:
-                        return _render_approval_panel()
-                    except Exception as exc:
-                        _diag("auto_refresh_panel_error", exc=str(exc))
-                        return '<div style="color:#64748b;text-align:center;padding:16px;">Approval panel temporarily unavailable.</div>'
-
-                # Auto-refresh the approval panel itself every 5s
-                appr_auto_refresh = gr.Timer(value=5.0, active=True)
-                appr_auto_refresh.tick(
-                    fn=lambda: _safe_approval_panel(),
-                    inputs=[], outputs=[appr_panel],
                 )
 
                 def _render_action_log(a: dict, action_label: str, color: str) -> str:
