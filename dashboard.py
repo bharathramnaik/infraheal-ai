@@ -58,6 +58,7 @@ _approval_history: List[Dict[str, Any]] = []
 _approval_id_counter = 0
 _blocked_scenarios: Dict[str, bool] = {}
 _auto_approve: bool = False
+_approval_busy: bool = False  # prevents auto-refresh race with approve/deny
 _monitoring_active = False
 _stop_monitoring_requested = False
 MONITOR_POLL_SECONDS = 30
@@ -2876,18 +2877,20 @@ def create_dashboard(
             p_alive = _process_thread and _process_thread.is_alive()
             m_alive = _monitor_thread and _monitor_thread.is_alive()
             if _static_output_active:
-                return None
+                return gr.skip()
             with _live_html_lock:
                 if p_alive:
-                    return _process_live_html
+                    return _process_live_html or gr.skip()
                 if m_alive:
-                    return _monitor_live_html
+                    return _monitor_live_html or gr.skip()
                 if _last_pipeline == "monitor":
-                    return _monitor_live_html or _process_live_html
-                return _process_live_html or _monitor_live_html
+                    result = _monitor_live_html or _process_live_html
+                else:
+                    result = _process_live_html or _monitor_live_html
+                return result or gr.skip()
         except Exception as exc:
             _diag("poll_live_html_error", exc=str(exc))
-            return None
+            return gr.skip()
 
     def _process_all_incidents():
         """Run the pipeline on every scenario and produce a comprehensive report."""
@@ -3962,6 +3965,12 @@ def create_dashboard(
                 header = gr.HTML(value=_branding_header)
                 metrics_row = gr.HTML(value=_get_command_center_metrics)
 
+                # Hidden badge counter (always in DOM for JS tab notification)
+                cmd_pending_count = gr.HTML(
+                    value='<span id="pending-count" data-count="0"></span>',
+                    visible=False,
+                )
+
                 gr.HTML(
                     '<div class="section-label" style="margin-top:16px;">Live Log Stream</div>'
                 )
@@ -4041,6 +4050,17 @@ setInterval(function(){
 },1000);
 """ + "</scri" + "pt>"
                 gr.HTML(value='<iframe srcdoc="' + _TIMER_JS.replace('"', '&quot;') + '" style="width:0;height:0;border:none;display:none"></iframe>')
+
+                # Badge counter timer (always in DOM for tab notification JS)
+                def _cmd_poll_badge():
+                    try:
+                        cnt = len([a for a in _pending_approvals if a.get("status") == "pending"])
+                        return f'<span id="pending-count" data-count="{cnt}"></span>'
+                    except Exception as exc:
+                        _diag("cmd_poll_badge_error", exc=str(exc))
+                        return '<span id="pending-count" data-count="0"></span>'
+                cmd_badge_timer = gr.Timer(value=5.0, active=True)
+                cmd_badge_timer.tick(fn=_cmd_poll_badge, inputs=[], outputs=[cmd_pending_count])
 
                 # ── Rerun-aware wrappers ──
                 def _cached_scan():
@@ -4428,33 +4448,18 @@ setInterval(function(){
                     inputs=[], outputs=[appr_panel, appr_history_panel, appr_audit_panel, appr_approval_selector],
                 )
 
-                # Hidden element: drives tab badge via JS (updated by timer below)
-                appr_pending_count = gr.HTML(
-                    value='<span id="pending-count" data-count="0"></span>',
-                    visible=False,
-                )
-
                 # Safe wrapper for auto-refresh timer
                 def _safe_approval_panel():
+                    global _approval_busy
+                    if _approval_busy:
+                        return None
                     try:
                         return _render_approval_panel()
                     except Exception as exc:
                         _diag("auto_refresh_panel_error", exc=str(exc))
                         return '<div style="color:#64748b;text-align:center;padding:16px;">Approval panel temporarily unavailable.</div>'
 
-                # Auto-refresh badge count + panel every 5s so the tab dot and content stay accurate
-                def _poll_pending_count():
-                    try:
-                        cnt = len([a for a in _pending_approvals if a.get("status") == "pending"])
-                        return f'<span id="pending-count" data-count="{cnt}"></span>'
-                    except Exception as exc:
-                        _diag("poll_pending_count_error", exc=str(exc))
-                        return '<span id="pending-count" data-count="0"></span>'
-
-                appr_badge_timer = gr.Timer(value=5.0, active=True)
-                appr_badge_timer.tick(fn=_poll_pending_count, inputs=[], outputs=[appr_pending_count])
-
-                # Auto-refresh the approval panel itself
+                # Auto-refresh the approval panel itself every 5s
                 appr_auto_refresh = gr.Timer(value=5.0, active=True)
                 appr_auto_refresh.tick(
                     fn=lambda: _safe_approval_panel(),
@@ -4515,9 +4520,12 @@ setInterval(function(){
                     return raw.split("|")[0] if raw and "|" in raw else raw or ""
 
                 def _on_approve_selected(aid: str, reason: str):
+                    global _approval_busy
+                    _approval_busy = True
                     aid = _extract_aid(aid)
                     _diag("approve_selected_called", aid=aid, reason_len=len(reason or ""))
                     if not aid:
+                        _approval_busy = False
                         _diag("approve_selected_no_aid", aid=aid)
                         return _render_approval_panel(), _render_approval_history(), _render_audit_log(), _refresh_approval_selector(), ""
                     reason = reason.strip()
@@ -4525,6 +4533,7 @@ setInterval(function(){
                         _approve_action(aid, reason)
                     except Exception as exc:
                         _diag("approve_action_exception", aid=aid, exc=str(exc))
+                    _approval_busy = False
                     a = next((x for x in _pending_approvals if x.get("id") == aid), None)
                     _diag("approve_selected_found", aid=aid, found=a is not None)
                     status = _render_action_log(a, "Approved", "00FF88") if a else ""
@@ -4534,9 +4543,12 @@ setInterval(function(){
                     )
 
                 def _on_deny_selected(aid: str, reason: str):
+                    global _approval_busy
+                    _approval_busy = True
                     aid = _extract_aid(aid)
                     _diag("deny_selected_called", aid=aid, reason_len=len(reason or ""))
                     if not aid:
+                        _approval_busy = False
                         _diag("deny_selected_no_aid", aid=aid)
                         return _render_approval_panel(), _render_approval_history(), _render_audit_log(), _refresh_approval_selector(), ""
                     reason = reason.strip() or "No reason provided"
@@ -4544,6 +4556,7 @@ setInterval(function(){
                         _deny_action(aid, reason)
                     except Exception as exc:
                         _diag("deny_action_exception", aid=aid, exc=str(exc))
+                    _approval_busy = False
                     a = next((x for x in _pending_approvals if x.get("id") == aid), None)
                     _diag("deny_selected_found", aid=aid, found=a is not None)
                     status = _render_action_log(a, "Denied", "FF3B3B") if a else ""
@@ -4553,6 +4566,8 @@ setInterval(function(){
                     )
 
                 def _on_approve_all(reason: str = ""):
+                    global _approval_busy
+                    _approval_busy = True
                     try:
                         count = 0
                         reason = reason.strip() or "Bulk approved"
@@ -4568,16 +4583,20 @@ setInterval(function(){
                             f'<span style="color:#00FF88;font-weight:700;">Approved {count} action(s)</span>'
                             f'</div>'
                         )
+                        _approval_busy = False
                         return (
                             _render_approval_panel(), _render_approval_history(), _render_audit_log(),
                             _refresh_approval_selector(), summary + logs_html,
                         )
                     except Exception as exc:
+                        _approval_busy = False
                         _diag("approve_all_error", exc=str(exc))
                         fb = _safe_refresh_approvals()
                         return fb[0], fb[1], fb[2], fb[3], '<div style="color:#FF3B3B;">Bulk approve failed.</div>'
 
                 def _on_deny_all(reason: str):
+                    global _approval_busy
+                    _approval_busy = True
                     try:
                         reason = reason.strip() or "No reason provided"
                         count = 0
@@ -4593,11 +4612,13 @@ setInterval(function(){
                             f'<span style="color:#FF3B3B;font-weight:700;">Denied {count} action(s)</span>'
                             f'</div>'
                         )
+                        _approval_busy = False
                         return (
                             _render_approval_panel(), _render_approval_history(), _render_audit_log(),
                             _refresh_approval_selector(), summary + logs_html,
                         )
                     except Exception as exc:
+                        _approval_busy = False
                         _diag("deny_all_error", exc=str(exc))
                         fb = _safe_refresh_approvals()
                         return fb[0], fb[1], fb[2], fb[3], '<div style="color:#FF3B3B;">Bulk deny failed.</div>'
