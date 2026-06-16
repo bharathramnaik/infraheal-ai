@@ -2869,31 +2869,25 @@ def create_dashboard(
         return _monitor_live_html
 
     def _poll_live_html():
-        """Called by gr.Timer to poll pipeline thread progress.
-        Always shows the currently ALIVE pipeline — never falls through
-        to a stale completed pipeline if the other is still active.
-        Falls back to _last_pipeline's HTML when both threads are dead.
-        """
+        """Called by gr.Timer to poll pipeline thread progress."""
         try:
             global _process_thread, _monitor_thread, _process_live_html, _monitor_live_html, _static_output_active
             nonlocal _last_pipeline
             p_alive = _process_thread and _process_thread.is_alive()
             m_alive = _monitor_thread and _monitor_thread.is_alive()
             if _static_output_active:
-                return gr.skip()
+                return None
             with _live_html_lock:
                 if p_alive:
-                    return _process_live_html or gr.skip()
+                    return _process_live_html
                 if m_alive:
-                    return _monitor_live_html or gr.skip()
+                    return _monitor_live_html
                 if _last_pipeline == "monitor":
-                    result = _monitor_live_html or _process_live_html
-                else:
-                    result = _process_live_html or _monitor_live_html
-                return result or gr.skip()
+                    return _monitor_live_html or _process_live_html
+                return _process_live_html or _monitor_live_html
         except Exception as exc:
             _diag("poll_live_html_error", exc=str(exc))
-            return gr.skip()
+            return None
 
     def _process_all_incidents():
         """Run the pipeline on every scenario and produce a comprehensive report."""
@@ -4388,8 +4382,13 @@ setInterval(function(){
 
                 appr_panel = gr.HTML(value=_render_approval_panel())
 
-                def _refresh_approvals():
-                    return _render_approval_panel(), _render_approval_history(), _render_audit_log(), _refresh_approval_selector()
+                def _safe_refresh_approvals():
+                    try:
+                        return _render_approval_panel(), _render_approval_history(), _render_audit_log(), _refresh_approval_selector()
+                    except Exception as exc:
+                        _diag("refresh_approvals_error", exc=str(exc))
+                        fallback = '<div style="color:#64748b;text-align:center;padding:16px;">Error loading approvals.</div>'
+                        return fallback, "", "", gr.update(choices=[], value=None, interactive=False)
 
                 appr_refresh_btn = gr.Button("Refresh", variant="secondary", size="sm", scale=0)
 
@@ -4425,7 +4424,7 @@ setInterval(function(){
 
                 # Auto-refresh approval components when user navigates to this tab
                 appr_tab.select(
-                    fn=lambda: (_render_approval_panel(), _render_approval_history(), _render_audit_log(), _refresh_approval_selector()),
+                    fn=_safe_refresh_approvals,
                     inputs=[], outputs=[appr_panel, appr_history_panel, appr_audit_panel, appr_approval_selector],
                 )
 
@@ -4554,44 +4553,54 @@ setInterval(function(){
                     )
 
                 def _on_approve_all(reason: str = ""):
-                    count = 0
-                    reason = reason.strip() or "Bulk approved"
-                    logs_html = ""
-                    for a in _pending_approvals:
-                        if a.get("status") == "pending":
-                            _approve_action(a["id"], reason)
-                            logs_html += _render_action_log(a, "Approved", "00FF88")
-                            count += 1
-                    summary = (
-                        f'<div style="padding:8px 12px;margin:4px 0;background:rgba(0,255,136,0.04);'
-                        f'border:1px solid rgba(0,255,136,0.2);border-radius:6px;font-size:0.82rem;">'
-                        f'<span style="color:#00FF88;font-weight:700;">Approved {count} action(s)</span>'
-                        f'</div>'
-                    )
-                    return (
-                        _render_approval_panel(), _render_approval_history(), _render_audit_log(),
-                        _refresh_approval_selector(), summary + logs_html,
-                    )
+                    try:
+                        count = 0
+                        reason = reason.strip() or "Bulk approved"
+                        logs_html = ""
+                        for a in _pending_approvals:
+                            if a.get("status") == "pending":
+                                _approve_action(a["id"], reason)
+                                logs_html += _render_action_log(a, "Approved", "00FF88")
+                                count += 1
+                        summary = (
+                            f'<div style="padding:8px 12px;margin:4px 0;background:rgba(0,255,136,0.04);'
+                            f'border:1px solid rgba(0,255,136,0.2);border-radius:6px;font-size:0.82rem;">'
+                            f'<span style="color:#00FF88;font-weight:700;">Approved {count} action(s)</span>'
+                            f'</div>'
+                        )
+                        return (
+                            _render_approval_panel(), _render_approval_history(), _render_audit_log(),
+                            _refresh_approval_selector(), summary + logs_html,
+                        )
+                    except Exception as exc:
+                        _diag("approve_all_error", exc=str(exc))
+                        fb = _safe_refresh_approvals()
+                        return fb[0], fb[1], fb[2], fb[3], '<div style="color:#FF3B3B;">Bulk approve failed.</div>'
 
                 def _on_deny_all(reason: str):
-                    reason = reason.strip() or "No reason provided"
-                    count = 0
-                    logs_html = ""
-                    for a in _pending_approvals:
-                        if a.get("status") == "pending":
-                            _deny_action(a["id"], reason)
-                            logs_html += _render_action_log(a, "Denied", "FF3B3B")
-                            count += 1
-                    summary = (
-                        f'<div style="padding:8px 12px;margin:4px 0;background:rgba(255,59,59,0.04);'
-                        f'border:1px solid rgba(255,59,59,0.2);border-radius:6px;font-size:0.82rem;">'
-                        f'<span style="color:#FF3B3B;font-weight:700;">Denied {count} action(s)</span>'
-                        f'</div>'
-                    )
-                    return (
-                        _render_approval_panel(), _render_approval_history(), _render_audit_log(),
-                        _refresh_approval_selector(), summary + logs_html,
-                    )
+                    try:
+                        reason = reason.strip() or "No reason provided"
+                        count = 0
+                        logs_html = ""
+                        for a in _pending_approvals:
+                            if a.get("status") == "pending":
+                                _deny_action(a["id"], reason)
+                                logs_html += _render_action_log(a, "Denied", "FF3B3B")
+                                count += 1
+                        summary = (
+                            f'<div style="padding:8px 12px;margin:4px 0;background:rgba(255,59,59,0.04);'
+                            f'border:1px solid rgba(255,59,59,0.2);border-radius:6px;font-size:0.82rem;">'
+                            f'<span style="color:#FF3B3B;font-weight:700;">Denied {count} action(s)</span>'
+                            f'</div>'
+                        )
+                        return (
+                            _render_approval_panel(), _render_approval_history(), _render_audit_log(),
+                            _refresh_approval_selector(), summary + logs_html,
+                        )
+                    except Exception as exc:
+                        _diag("deny_all_error", exc=str(exc))
+                        fb = _safe_refresh_approvals()
+                        return fb[0], fb[1], fb[2], fb[3], '<div style="color:#FF3B3B;">Bulk deny failed.</div>'
 
                 outputs_approval = [
                     appr_panel, appr_history_panel, appr_audit_panel,
