@@ -80,7 +80,19 @@ _static_output_active: bool = False  # True when user clicked report/scan/optimi
 APPROVAL_AUDIT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "approval_audit.json")
 
 # Head HTML injected into Gradio page (must be passed to launch())
-HEAD_HTML = """<style>.agent-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999}.agent-modal-box{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:24px;max-width:460px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5)}.agent-modal-title{font-size:1rem;font-weight:700;color:#e2e8f0;margin-bottom:12px}.agent-modal-body{font-size:0.85rem;color:#8b949e;margin-bottom:20px;line-height:1.5}.agent-modal-input{width:100%;padding:10px 12px;background:#0d1117;border:1px solid #30363d;border-radius:8px;color:#e2e8f0;font-size:0.85rem;outline:none;box-sizing:border-box;margin-bottom:16px}.agent-modal-input:focus{border-color:#58a6ff}.agent-modal-actions{display:flex;gap:10px;justify-content:flex-end}.agent-modal-btn{padding:8px 20px;border-radius:8px;border:1px solid;font-size:0.82rem;font-weight:600;cursor:pointer;background:transparent}.agent-modal-btn-primary{background:#00FF8822;border-color:#00FF88;color:#00FF88}.agent-modal-btn-primary:hover{background:#00FF8833}.agent-modal-btn-danger{background:#FF3B3B22;border-color:#FF3B3B;color:#FF3B3B}.agent-modal-btn-danger:hover{background:#FF3B3B33}.agent-modal-btn-cancel{border-color:#30363d;color:#8b949e}.agent-modal-btn-cancel:hover{background:rgba(255,255,255,0.05)}#refresh-btn{display:none!important}</style>"""
+HEAD_HTML = """<style>.agent-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999}.agent-modal-box{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:24px;max-width:460px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5)}.agent-modal-title{font-size:1rem;font-weight:700;color:#e2e8f0;margin-bottom:12px}.agent-modal-body{font-size:0.85rem;color:#8b949e;margin-bottom:20px;line-height:1.5}.agent-modal-input{width:100%;padding:10px 12px;background:#0d1117;border:1px solid #30363d;border-radius:8px;color:#e2e8f0;font-size:0.85rem;outline:none;box-sizing:border-box;margin-bottom:16px}.agent-modal-input:focus{border-color:#58a6ff}.agent-modal-actions{display:flex;gap:10px;justify-content:flex-end}.agent-modal-btn{padding:8px 20px;border-radius:8px;border:1px solid;font-size:0.82rem;font-weight:600;cursor:pointer;background:transparent}.agent-modal-btn-primary{background:#00FF8822;border-color:#00FF88;color:#00FF88}.agent-modal-btn-primary:hover{background:#00FF8833}.agent-modal-btn-danger{background:#FF3B3B22;border-color:#FF3B3B;color:#FF3B3B}.agent-modal-btn-danger:hover{background:#FF3B3B33}.agent-modal-btn-cancel{border-color:#30363d;color:#8b949e}.agent-modal-btn-cancel:hover{background:rgba(255,255,255,0.05)}#refresh-btn{display:none!important}.tab-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:9px;font-size:11px;font-weight:700;padding:0 5px;margin-left:6px;vertical-align:middle;line-height:1}.tab-badge.has-pending{background:#FFB800;color:#0d1117}.tab-badge.all-clear{background:#00FF88;color:#0d1117}.tab-badge.all-clear::after{content:"\2713";font-size:12px}</style>
+<script>
+(function(){function u(){var d=document,pt=d.querySelector('.pipeline-timer');if(pt&&pt.dataset.status!=='completed'&&pt.dataset.start){var n=Date.now()/1e3,e=Math.max(0,Math.floor(n-parseFloat(pt.dataset.start)));pt.textContent=String(Math.floor(e/60)).padStart(2,'0')+':'+String(e%60).padStart(2,'0');}
+d.querySelectorAll('.step-timer').forEach(function(e){if(e.dataset.status==='completed'||!e.dataset.start)return;var n=Date.now()/1e3,t=Math.max(0,Math.floor(n-parseFloat(e.dataset.start)));e.textContent=String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0');});
+d.querySelectorAll('.pipeline-step').forEach(function(s){s.onclick=function(){this.classList.toggle('collapsed');var g=this.parentElement;if(g&&g.classList.contains('pipeline-cycle-group'))g.classList.toggle('collapsed');};});
+var pc=d.getElementById('pending-count');if(pc){var cnt=parseInt(pc.getAttribute('data-count')||'0');
+var tabs=d.querySelectorAll('.tabs > .tab-nav > button');for(var i=0;i<tabs.length;i++){var b=tabs[i];
+if(b.textContent.trim()==='Approvals'){var bg=b.querySelector('.tab-badge');
+if(!bg){bg=d.createElement('span');bg.className='tab-badge';b.appendChild(bg);}
+bg.textContent=cnt>0?cnt:'';bg.className='tab-badge'+(cnt>0?' has-pending':' all-clear');break;}}}}
+if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',function(){setInterval(u,1000);});}else{setInterval(u,1000);}
+})();
+</script>"""
 
 def _append_audit_log(entry: dict):
     """Append to persistent approval audit log."""
@@ -2817,57 +2829,65 @@ def create_dashboard(
     def _start_process():
         global _process_thread, _process_live_html, _process_completed, _scenario_results, _static_output_active
         nonlocal _last_pipeline
-        p_alive = _process_thread and _process_thread.is_alive()
-        _diag("start_process_click", process_alive=p_alive, completed=_process_completed, static=_static_output_active)
-        print("[START_PROCESS] Button clicked!", flush=True)
-        if p_alive:
+        try:
+            p_alive = _process_thread and _process_thread.is_alive()
+            _diag("start_process_click", process_alive=p_alive, completed=_process_completed, static=_static_output_active)
+            print("[START_PROCESS] Button clicked!", flush=True)
+            if p_alive:
+                _static_output_active = False
+                with _live_html_lock:
+                    return _process_live_html
+            if _process_completed:
+                _last_pipeline = "process"
+                print("[START_PROCESS] Already completed, showing cached result", flush=True)
+                with _live_html_lock:
+                    return _process_live_html
             _static_output_active = False
-            with _live_html_lock:
-                return _process_live_html
-        if _process_completed:
+            _process_completed = False
             _last_pipeline = "process"
-            print("[START_PROCESS] Already completed, showing cached result", flush=True)
-            with _live_html_lock:
-                return _process_live_html
-        _static_output_active = False
-        _process_completed = False
-        _last_pipeline = "process"
-        _result_cache.pop("report", None)
-        _scenario_results.clear()
-        _process_live_html = '<div style="color:#8b949e;text-align:center;padding:12px;">Starting... </div>'
-        print("[START_PROCESS] Starting thread...", flush=True)
-        _process_thread = threading.Thread(target=_run_pipeline_thread, args=(_process_all_incidents, "process"), daemon=True)
-        _process_thread.start()
-        return _process_live_html
+            _result_cache.pop("report", None)
+            _scenario_results.clear()
+            _process_live_html = '<div style="color:#8b949e;text-align:center;padding:12px;">Starting... </div>'
+            print("[START_PROCESS] Starting thread...", flush=True)
+            _process_thread = threading.Thread(target=_run_pipeline_thread, args=(_process_all_incidents, "process"), daemon=True)
+            _process_thread.start()
+            return _process_live_html
+        except Exception as exc:
+            _diag("start_process_exception", exc=str(exc))
+            return '<div style="color:#FF3B3B;text-align:center;padding:12px;">Failed to start pipeline.</div>'
 
     def _start_monitor():
         global _monitor_thread, _monitor_live_html, _scenario_results
         global _stop_monitoring_requested, _monitoring_active, _monitoring_completed, _static_output_active
         nonlocal _last_pipeline
-        m_alive = _monitor_thread and _monitor_thread.is_alive()
-        _diag("start_monitor_click", monitor_alive=m_alive, completed=_monitoring_completed, static=_static_output_active)
-        print("[START_MONITOR] Button clicked!", flush=True)
-        if m_alive:
+        try:
+            m_alive = _monitor_thread and _monitor_thread.is_alive()
+            _diag("start_monitor_click", monitor_alive=m_alive, completed=_monitoring_completed, static=_static_output_active)
+            print("[START_MONITOR] Button clicked!", flush=True)
+            if m_alive:
+                _static_output_active = False
+                with _live_html_lock:
+                    return _monitor_live_html
+            if _monitoring_completed:
+                _last_pipeline = "monitor"
+                print("[START_MONITOR] Already completed, showing cached result", flush=True)
+                with _live_html_lock:
+                    return _monitor_live_html
             _static_output_active = False
-            with _live_html_lock:
-                return _monitor_live_html
-        if _monitoring_completed:
+            _monitoring_completed = False
+            _stop_monitoring_requested = False
+            _monitoring_active = False
             _last_pipeline = "monitor"
-            print("[START_MONITOR] Already completed, showing cached result", flush=True)
-            with _live_html_lock:
-                return _monitor_live_html
-        _static_output_active = False
-        _monitoring_completed = False
-        _stop_monitoring_requested = False
-        _monitoring_active = False
-        _last_pipeline = "monitor"
-        _result_cache.pop("report", None)
-        _scenario_results.clear()
-        _monitor_live_html = '<div style="color:#8b949e;text-align:center;padding:12px;">Starting continuous monitoring...</div>'
-        print("[START_MONITOR] Starting thread...", flush=True)
-        _monitor_thread = threading.Thread(target=_run_pipeline_thread, args=(_continuous_monitor, "monitor"), daemon=True)
-        _monitor_thread.start()
-        return _monitor_live_html
+            _result_cache.pop("report", None)
+            _scenario_results.clear()
+            _monitor_live_html = '<div style="color:#8b949e;text-align:center;padding:12px;">Starting continuous monitoring...</div>'
+            print("[START_MONITOR] Starting thread...", flush=True)
+            _monitor_thread = threading.Thread(target=_run_pipeline_thread, args=(_continuous_monitor, "monitor"), daemon=True)
+            _monitor_thread.start()
+            return _monitor_live_html
+        except Exception as exc:
+            _diag("start_monitor_exception", exc=str(exc))
+            return '<div style="color:#FF3B3B;text-align:center;padding:12px;">Failed to start continuous monitoring.</div>'
 
     def _poll_live_html():
         """Called by gr.Timer to poll pipeline thread progress."""
@@ -4030,37 +4050,11 @@ def create_dashboard(
                 _live_poll_timer = gr.Timer(value=1.0, active=True)
                 _live_poll_timer.tick(fn=_poll_live_html, inputs=[], outputs=[scan_output])
 
-                # ── Minimal iframe: real-time timer display only ──
-                # No fetch('/live-html'), no scan-output.innerHTML modification.
-                # Safely co-exists with the Gradio-native timer above.
-                _TIMER_JS = "<scri" + "pt>\n" + """
-setInterval(function(){
-  var d=parent.document,pt=d.querySelector('.pipeline-timer');
-  if(pt&&pt.dataset.status!=='completed'&&pt.dataset.start){var n=Date.now()/1e3,e=Math.max(0,Math.floor(n-parseFloat(pt.dataset.start)));pt.textContent=String(Math.floor(e/60)).padStart(2,'0')+':'+String(e%60).padStart(2,'0');}
-  d.querySelectorAll('.step-timer').forEach(function(e){if(e.dataset.status==='completed'||!e.dataset.start)return;var n=Date.now()/1e3,t=Math.max(0,Math.floor(n-parseFloat(e.dataset.start)));e.textContent=String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0');});
-  d.querySelectorAll('.pipeline-step').forEach(function(s){s.onclick=function(){this.classList.toggle('collapsed');var g=this.parentElement;if(g&&g.classList.contains('pipeline-cycle-group'))g.classList.toggle('collapsed');};});
-  /* ── Approvals tab notification badge ── */
-  var pc=d.getElementById('pending-count');
-  if(pc){var cnt=parseInt(pc.getAttribute('data-count')||'0');
-  var tabs=d.querySelectorAll('.tabs > .tab-nav > button');
-  for(var i=0;i<tabs.length;i++){var b=tabs[i];
-  if(b.textContent.trim()==='Approvals'){var bg=b.querySelector('.tab-badge');
-  if(!bg){bg=d.createElement('span');bg.className='tab-badge';b.appendChild(bg);}
-  bg.textContent=cnt>0?cnt:'';bg.className='tab-badge'+(cnt>0?' has-pending':' all-clear');break;}}}
-},1000);
-""" + "</scri" + "pt>"
-                gr.HTML(value='<iframe srcdoc="' + _TIMER_JS.replace('"', '&quot;') + '" style="width:0;height:0;border:none;display:none"></iframe>')
-
-                # Badge counter timer (always in DOM for tab notification JS)
-                def _cmd_poll_badge():
-                    try:
-                        cnt = len([a for a in _pending_approvals if a.get("status") == "pending"])
-                        return f'<span id="pending-count" data-count="{cnt}"></span>'
-                    except Exception as exc:
-                        _diag("cmd_poll_badge_error", exc=str(exc))
-                        return '<span id="pending-count" data-count="0"></span>'
-                cmd_badge_timer = gr.Timer(value=5.0, active=True)
-                cmd_badge_timer.tick(fn=_cmd_poll_badge, inputs=[], outputs=[cmd_pending_count])
+                # ── Badge counter helper ──
+                # Returns the hidden span with current pending count (always in DOM for JS tab badge)
+                def _pending_count_html():
+                    cnt = len([a for a in _pending_approvals if a.get("status") == "pending"])
+                    return f'<span id="pending-count" data-count="{cnt}"></span>'
 
                 # ── Rerun-aware wrappers ──
                 def _cached_scan():
@@ -4404,11 +4398,13 @@ setInterval(function(){
 
                 def _safe_refresh_approvals():
                     try:
-                        return _render_approval_panel(), _render_approval_history(), _render_audit_log(), _refresh_approval_selector()
+                        cnt = _pending_count_html()
+                        return _render_approval_panel(), _render_approval_history(), _render_audit_log(), _refresh_approval_selector(), cnt
                     except Exception as exc:
                         _diag("refresh_approvals_error", exc=str(exc))
                         fallback = '<div style="color:#64748b;text-align:center;padding:16px;">Error loading approvals.</div>'
-                        return fallback, "", "", gr.update(choices=[], value=None, interactive=False)
+                        cnt = '<span id="pending-count" data-count="0"></span>'
+                        return fallback, "", "", gr.update(choices=[], value=None, interactive=False), cnt
 
                 appr_refresh_btn = gr.Button("Refresh", variant="secondary", size="sm", scale=0)
 
@@ -4445,7 +4441,7 @@ setInterval(function(){
                 # Auto-refresh approval components when user navigates to this tab
                 appr_tab.select(
                     fn=_safe_refresh_approvals,
-                    inputs=[], outputs=[appr_panel, appr_history_panel, appr_audit_panel, appr_approval_selector],
+                    inputs=[], outputs=[appr_panel, appr_history_panel, appr_audit_panel, appr_approval_selector, cmd_pending_count],
                 )
 
                 # Safe wrapper for auto-refresh timer
@@ -4522,48 +4518,48 @@ setInterval(function(){
                 def _on_approve_selected(aid: str, reason: str):
                     global _approval_busy
                     _approval_busy = True
-                    aid = _extract_aid(aid)
-                    _diag("approve_selected_called", aid=aid, reason_len=len(reason or ""))
-                    if not aid:
-                        _approval_busy = False
-                        _diag("approve_selected_no_aid", aid=aid)
-                        return _render_approval_panel(), _render_approval_history(), _render_audit_log(), _refresh_approval_selector(), ""
-                    reason = reason.strip()
                     try:
+                        aid = _extract_aid(aid)
+                        _diag("approve_selected_called", aid=aid, reason_len=len(reason or ""))
+                        if not aid:
+                            return _render_approval_panel(), _render_approval_history(), _render_audit_log(), _refresh_approval_selector(), "", _pending_count_html()
+                        reason = reason.strip()
                         _approve_action(aid, reason)
+                        a = next((x for x in _pending_approvals if x.get("id") == aid), None)
+                        _diag("approve_selected_found", aid=aid, found=a is not None)
+                        status = _render_action_log(a, "Approved", "00FF88") if a else ""
+                        return (
+                            _render_approval_panel(), _render_approval_history(), _render_audit_log(),
+                            _refresh_approval_selector(), status, _pending_count_html(),
+                        )
                     except Exception as exc:
-                        _diag("approve_action_exception", aid=aid, exc=str(exc))
-                    _approval_busy = False
-                    a = next((x for x in _pending_approvals if x.get("id") == aid), None)
-                    _diag("approve_selected_found", aid=aid, found=a is not None)
-                    status = _render_action_log(a, "Approved", "00FF88") if a else ""
-                    return (
-                        _render_approval_panel(), _render_approval_history(), _render_audit_log(),
-                        _refresh_approval_selector(), status,
-                    )
+                        _diag("approve_selected_error", aid=aid, exc=str(exc))
+                        return _render_approval_panel(), _render_approval_history(), _render_audit_log(), _refresh_approval_selector(), "", _pending_count_html()
+                    finally:
+                        _approval_busy = False
 
                 def _on_deny_selected(aid: str, reason: str):
                     global _approval_busy
                     _approval_busy = True
-                    aid = _extract_aid(aid)
-                    _diag("deny_selected_called", aid=aid, reason_len=len(reason or ""))
-                    if not aid:
-                        _approval_busy = False
-                        _diag("deny_selected_no_aid", aid=aid)
-                        return _render_approval_panel(), _render_approval_history(), _render_audit_log(), _refresh_approval_selector(), ""
-                    reason = reason.strip() or "No reason provided"
                     try:
+                        aid = _extract_aid(aid)
+                        _diag("deny_selected_called", aid=aid, reason_len=len(reason or ""))
+                        if not aid:
+                            return _render_approval_panel(), _render_approval_history(), _render_audit_log(), _refresh_approval_selector(), "", _pending_count_html()
+                        reason = reason.strip() or "No reason provided"
                         _deny_action(aid, reason)
+                        a = next((x for x in _pending_approvals if x.get("id") == aid), None)
+                        _diag("deny_selected_found", aid=aid, found=a is not None)
+                        status = _render_action_log(a, "Denied", "FF3B3B") if a else ""
+                        return (
+                            _render_approval_panel(), _render_approval_history(), _render_audit_log(),
+                            _refresh_approval_selector(), status, _pending_count_html(),
+                        )
                     except Exception as exc:
-                        _diag("deny_action_exception", aid=aid, exc=str(exc))
-                    _approval_busy = False
-                    a = next((x for x in _pending_approvals if x.get("id") == aid), None)
-                    _diag("deny_selected_found", aid=aid, found=a is not None)
-                    status = _render_action_log(a, "Denied", "FF3B3B") if a else ""
-                    return (
-                        _render_approval_panel(), _render_approval_history(), _render_audit_log(),
-                        _refresh_approval_selector(), status,
-                    )
+                        _diag("deny_selected_error", aid=aid, exc=str(exc))
+                        return _render_approval_panel(), _render_approval_history(), _render_audit_log(), _refresh_approval_selector(), "", _pending_count_html()
+                    finally:
+                        _approval_busy = False
 
                 def _on_approve_all(reason: str = ""):
                     global _approval_busy
@@ -4583,16 +4579,16 @@ setInterval(function(){
                             f'<span style="color:#00FF88;font-weight:700;">Approved {count} action(s)</span>'
                             f'</div>'
                         )
-                        _approval_busy = False
                         return (
                             _render_approval_panel(), _render_approval_history(), _render_audit_log(),
-                            _refresh_approval_selector(), summary + logs_html,
+                            _refresh_approval_selector(), summary + logs_html, _pending_count_html(),
                         )
                     except Exception as exc:
-                        _approval_busy = False
                         _diag("approve_all_error", exc=str(exc))
                         fb = _safe_refresh_approvals()
-                        return fb[0], fb[1], fb[2], fb[3], '<div style="color:#FF3B3B;">Bulk approve failed.</div>'
+                        return fb[0], fb[1], fb[2], fb[3], '<div style="color:#FF3B3B;">Bulk approve failed.</div>', fb[4]
+                    finally:
+                        _approval_busy = False
 
                 def _on_deny_all(reason: str):
                     global _approval_busy
@@ -4612,26 +4608,26 @@ setInterval(function(){
                             f'<span style="color:#FF3B3B;font-weight:700;">Denied {count} action(s)</span>'
                             f'</div>'
                         )
-                        _approval_busy = False
                         return (
                             _render_approval_panel(), _render_approval_history(), _render_audit_log(),
-                            _refresh_approval_selector(), summary + logs_html,
+                            _refresh_approval_selector(), summary + logs_html, _pending_count_html(),
                         )
                     except Exception as exc:
-                        _approval_busy = False
                         _diag("deny_all_error", exc=str(exc))
                         fb = _safe_refresh_approvals()
-                        return fb[0], fb[1], fb[2], fb[3], '<div style="color:#FF3B3B;">Bulk deny failed.</div>'
+                        return fb[0], fb[1], fb[2], fb[3], '<div style="color:#FF3B3B;">Bulk deny failed.</div>', fb[4]
+                    finally:
+                        _approval_busy = False
 
                 outputs_approval = [
                     appr_panel, appr_history_panel, appr_audit_panel,
-                    appr_approval_selector, appr_status,
+                    appr_approval_selector, appr_status, cmd_pending_count,
                 ]
                 appr_btn_approve.click(fn=_on_approve_selected, inputs=[appr_approval_selector, appr_reason], outputs=outputs_approval)
                 appr_btn_deny.click(fn=_on_deny_selected, inputs=[appr_approval_selector, appr_reason], outputs=outputs_approval)
                 appr_btn_approve_all.click(fn=_on_approve_all, inputs=[appr_reason], outputs=outputs_approval)
                 appr_btn_deny_all.click(fn=_on_deny_all, inputs=[appr_reason], outputs=outputs_approval)
-                appr_refresh_btn.click(fn=_safe_refresh_approvals, inputs=[], outputs=[appr_panel, appr_history_panel, appr_audit_panel, appr_approval_selector])
+                appr_refresh_btn.click(fn=_safe_refresh_approvals, inputs=[], outputs=[appr_panel, appr_history_panel, appr_audit_panel, appr_approval_selector, cmd_pending_count])
 
             # ──────────────────────────────────────────────────────
             #  TAB 5 — VISUALIZATION
