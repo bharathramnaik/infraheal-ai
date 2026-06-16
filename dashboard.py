@@ -3302,7 +3302,7 @@ def create_dashboard(
                         "risk": risk_level,
                         "reason": "Auto-approved (auto-approve mode)",
                         "timestamp": datetime.now().isoformat(),
-                        "execution_status": exec_result.get("status", "unknown"),
+                        "execution": exec_result.get("status", "unknown"),
                         "execution_detail": exec_result.get("message", exec_result.get("error", ""))[:200],
                         "execution_steps": exec_result.get("steps", []),
                     })
@@ -3667,11 +3667,11 @@ def create_dashboard(
             f'<td style="white-space:nowrap;font-size:0.78rem;color:#8b949e;">C{str(h.get("cycle",0))}</td>'
             f'<td style="white-space:nowrap;font-size:0.78rem;">{h.get("scenario","")[:20]}</td>'
             f'<td style="font-size:0.78rem;">{h.get("title","")}</td>'
-            f'<td style="font-size:0.78rem;"><span style="color:{"#00FF88" if h.get("action")=="approved" else "#FF3B3B"};">{h.get("action","")}</span></td>'
+            f'<td style="font-size:0.78rem;"><span style="color:{"#00FF88" if h.get("action") in ("approved","auto-approved") else "#FF3B3B"};">{h.get("action","")}</span></td>'
             f'<td style="font-size:0.78rem;color:#8b949e;">{h.get("reason","—")[:40]}</td>'
             f'<td style="font-size:0.78rem;color:#8b949e;white-space:nowrap;">{h.get("timestamp","")[:19].replace("T"," ")}</td>'
             f'<td style="font-size:0.78rem;" title="{html.escape(h.get("execution_detail",""))}">'
-            f'<span style="color:{"#00FF88" if h.get("execution")=="success" else "#FF3B3B"};">{h.get("execution","—")}</span></td>'
+            f'<span style="color:{"#00FF88" if h.get("execution") in ("success","skipped") else "#FF3B3B"};">{h.get("execution","—")}</span></td>'
             f'</tr>'
             for h in reversed(_approval_history)
         )
@@ -4397,7 +4397,8 @@ setInterval(function(){
                     pending = [a for a in _pending_approvals if a.get("status") == "pending"]
                     if not pending:
                         return gr.update(choices=[], value=None, interactive=False)
-                    choices = [(a["id"], f'{a["id"]} — {a.get("title","?")} ({a.get("risk","?")})') for a in pending]
+                    # Flat strings (value=label) — some Gradio versions flatten tuples
+                    choices = [f'{a["id"]}|{a.get("title","?")} ({a.get("risk","?")})' for a in pending]
                     return gr.update(choices=choices, value=None, interactive=True)
 
                 appr_approval_selector = gr.Dropdown(
@@ -4510,7 +4511,12 @@ setInterval(function(){
                     )
                     return log
 
+                def _extract_aid(raw: str) -> str:
+                    """Extract action ID from dropdown choice string (format: 'APP-0001|title (risk)')."""
+                    return raw.split("|")[0] if raw and "|" in raw else raw or ""
+
                 def _on_approve_selected(aid: str, reason: str):
+                    aid = _extract_aid(aid)
                     _diag("approve_selected_called", aid=aid, reason_len=len(reason or ""))
                     if not aid:
                         _diag("approve_selected_no_aid", aid=aid)
@@ -4529,6 +4535,7 @@ setInterval(function(){
                     )
 
                 def _on_deny_selected(aid: str, reason: str):
+                    aid = _extract_aid(aid)
                     _diag("deny_selected_called", aid=aid, reason_len=len(reason or ""))
                     if not aid:
                         _diag("deny_selected_no_aid", aid=aid)
