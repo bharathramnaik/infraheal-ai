@@ -57,6 +57,7 @@ _pending_approvals: List[Dict[str, Any]] = []
 _approval_history: List[Dict[str, Any]] = []
 _approval_id_counter = 0
 _blocked_scenarios: Dict[str, bool] = {}
+_auto_approve: bool = False
 _monitoring_active = False
 _stop_monitoring_requested = False
 MONITOR_POLL_SECONDS = 30
@@ -355,6 +356,27 @@ CUSTOM_CSS = """
 .tabs > .tab-nav > button.selected {
   background: rgba(255,255,255,0.1) !important;
   color: #ffffff !important;
+}
+.tabs > .tab-nav > button .tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-left: 6px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #0d1117;
+  transition: background 0.3s ease;
+}
+.tabs > .tab-nav > button .tab-badge.has-pending {
+  background: #FFB800;
+  box-shadow: 0 0 6px rgba(255,184,0,0.6);
+}
+.tabs > .tab-nav > button .tab-badge.all-clear {
+  background: #00FF88;
+  box-shadow: 0 0 6px rgba(0,255,136,0.4);
 }
 
 /* ── Buttons ───────────────────────────────────────────────────── */
@@ -3240,7 +3262,7 @@ def create_dashboard(
 
     def _queue_actions_for_approval(scenario_name: str, actions: list, report_summary: str, cycle: int = 0) -> int:
         """Queue remediation actions that require human approval. Returns count."""
-        global _pending_approvals, _approval_id_counter
+        global _pending_approvals, _approval_id_counter, _auto_approve
         count = 0
         existing = {(a.get("scenario",""), a.get("title","")) for a in _pending_approvals if a.get("status") == "pending"}
         for step_idx, action in enumerate(actions):
@@ -3251,6 +3273,31 @@ def create_dashboard(
                     logger.info("Skipping duplicate approval: %s", key)
                     continue
                 is_high_risk = risk_level == "high"
+                if _auto_approve:
+                    _approval_id_counter += 1
+                    aid = f"AUTO-{_approval_id_counter:04d}"
+                    exec_result = {"status": "skipped", "message": "auto-approved"}
+                    if orchestrator is not None:
+                        try:
+                            exec_result = orchestrator.remediation_agent.execute_action(action)
+                        except Exception as exc:
+                            logger.error("Auto-approve exec failed: %s", exc)
+                            exec_result = {"status": "failed", "error": str(exc)}
+                    _approval_history.append({
+                        "id": aid,
+                        "scenario": scenario_name,
+                        "title": action.get("tool_name", "Unknown action"),
+                        "action": "auto-approved",
+                        "risk": risk_level,
+                        "reason": "Auto-approved (auto-approve mode)",
+                        "timestamp": datetime.now().isoformat(),
+                        "execution_status": exec_result.get("status", "unknown"),
+                        "execution_detail": exec_result.get("message", exec_result.get("error", ""))[:200],
+                        "execution_steps": exec_result.get("steps", []),
+                    })
+                    logger.info("Auto-approved action %s in scenario %s", action.get("tool_name"), scenario_name)
+                    count += 1
+                    continue
                 _approval_id_counter += 1
                 _pending_approvals.append({
                     "id": f"APP-{_approval_id_counter:04d}",
@@ -3934,6 +3981,18 @@ def create_dashboard(
                     )
                     btn_optimize = gr.Button("Optimize Agent", variant="secondary", scale=4, elem_id="btn-optimize")
                     btn_optimize_rerun = gr.Button("\u21bb", scale=0, elem_classes="rerun-btn", elem_id="rerun-optimize")
+                with gr.Row(variant="compact", equal_height=True):
+                    cmd_auto_approve = gr.Checkbox(
+                        value=False,
+                        label="Auto-approve actions",
+                        elem_id="auto-approve-chk",
+                        scale=1,
+                    )
+                    def _toggle_auto_approve(v: bool):
+                        global _auto_approve
+                        _auto_approve = v
+                        logger.info("Auto-approve %s", "enabled" if v else "disabled")
+                    cmd_auto_approve.change(fn=_toggle_auto_approve, inputs=[cmd_auto_approve], outputs=[])
 
                 scan_output = gr.HTML(
                     value=_empty_state("Anomaly scan results will appear here",
@@ -3960,6 +4019,14 @@ setInterval(function(){
   if(pt&&pt.dataset.status!=='completed'&&pt.dataset.start){var n=Date.now()/1e3,e=Math.max(0,Math.floor(n-parseFloat(pt.dataset.start)));pt.textContent=String(Math.floor(e/60)).padStart(2,'0')+':'+String(e%60).padStart(2,'0');}
   d.querySelectorAll('.step-timer').forEach(function(e){if(e.dataset.status==='completed'||!e.dataset.start)return;var n=Date.now()/1e3,t=Math.max(0,Math.floor(n-parseFloat(e.dataset.start)));e.textContent=String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0');});
   d.querySelectorAll('.pipeline-step').forEach(function(s){s.onclick=function(){this.classList.toggle('collapsed');var g=this.parentElement;if(g&&g.classList.contains('pipeline-cycle-group'))g.classList.toggle('collapsed');};});
+  /* ── Approvals tab notification badge ── */
+  var pc=d.getElementById('pending-count');
+  if(pc){var cnt=parseInt(pc.getAttribute('data-count')||'0');
+  var tabs=d.querySelectorAll('.tabs > .tab-nav > button');
+  for(var i=0;i<tabs.length;i++){var b=tabs[i];
+  if(b.textContent.trim()==='Approvals'){var bg=b.querySelector('.tab-badge');
+  if(!bg){bg=d.createElement('span');bg.className='tab-badge';b.appendChild(bg);}
+  bg.textContent=cnt>0?cnt:'';bg.className='tab-badge'+(cnt>0?' has-pending':' all-clear');break;}}}
 },1000);
 """ + "</scri" + "pt>"
                 gr.HTML(value='<iframe srcdoc="' + _TIMER_JS.replace('"', '&quot;') + '" style="width:0;height:0;border:none;display:none"></iframe>')
@@ -4342,6 +4409,27 @@ setInterval(function(){
                 appr_tab.select(
                     fn=lambda: (_render_approval_panel(), _render_approval_history(), _render_audit_log(), _refresh_approval_selector()),
                     inputs=[], outputs=[appr_panel, appr_history_panel, appr_audit_panel, appr_approval_selector],
+                )
+
+                # Hidden element: drives tab badge via JS (updated by timer below)
+                appr_pending_count = gr.HTML(
+                    value='<span id="pending-count" data-count="0"></span>',
+                    visible=False,
+                )
+
+                # Auto-refresh badge count + panel every 5s so the tab dot and content stay accurate
+                def _poll_pending_count():
+                    cnt = len([a for a in _pending_approvals if a.get("status") == "pending"])
+                    return f'<span id="pending-count" data-count="{cnt}"></span>'
+
+                appr_badge_timer = gr.Timer(value=5.0, active=True)
+                appr_badge_timer.tick(fn=_poll_pending_count, inputs=[], outputs=[appr_pending_count])
+
+                # Auto-refresh the approval panel itself
+                appr_auto_refresh = gr.Timer(value=5.0, active=True)
+                appr_auto_refresh.tick(
+                    fn=lambda: _render_approval_panel(),
+                    inputs=[], outputs=[appr_panel],
                 )
 
                 def _render_action_log(a: dict, action_label: str, color: str) -> str:
