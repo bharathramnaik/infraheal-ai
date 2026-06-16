@@ -13,12 +13,16 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from .base_agent import BaseAgent
+from .schemas import SCHEMA_VALIDATORS, REPORTING_FEW_SHOT
 
 logger = logging.getLogger(__name__)
 
 REPORTING_SYSTEM_PROMPT = """You are an expert incident report writer for a production infrastructure team.
 Your reports are clear, concise, and suitable for both engineering teams and leadership review.
-Always output valid JSON."""
+Always output valid JSON.
+
+Example:
+""" + REPORTING_FEW_SHOT
 
 REPORTING_PROMPT = """Generate a structured incident report in JSON format based on the following data.
 
@@ -61,6 +65,7 @@ class ReportingAgent(BaseAgent):
             system_prompt=REPORTING_SYSTEM_PROMPT,
             client=client,
             model_name=model_name,
+            schema_validator=SCHEMA_VALIDATORS.get("reporting_agent"),
         )
 
     def run(self, context: dict) -> dict:
@@ -97,11 +102,10 @@ class ReportingAgent(BaseAgent):
                 execution_status=exec_status[:200],
                 anomaly_count=len(anomalies),
             )
-            content = self._call_llm([
+            result = self._run_with_validation([
                 {"role": "system", "content": REPORTING_SYSTEM_PROMPT},
                 {"role": "user", "content": prompt},
             ])
-            result = self._parse_json_response(content)
             result["llm_generated"] = True
             self.logger.info("LLM report generated: %s", result.get("incident_id", "unknown"))
             return result

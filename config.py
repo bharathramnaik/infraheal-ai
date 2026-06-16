@@ -75,7 +75,7 @@ AGENT_MAX_TOKENS = {
     "reporting_agent": 1024,
     "critique_agent": 512,
 }
-TEMPERATURE = 0.3         # Low for consistent agent outputs
+TEMPERATURE = 0.0         # Zero for deterministic agent outputs
 TOP_P = 0.9
 FREQUENCY_PENALTY = 0.1   # Reduce repetition
 
@@ -88,7 +88,7 @@ DISK_CRITICAL_THRESHOLD = 90.0         # %
 LATENCY_CRITICAL_MS = 5000             # ms
 
 # ─── Agent Settings ──────────────────────────────────────────────
-AGENT_MAX_RETRIES = 2
+AGENT_MAX_RETRIES = 3
 AGENT_TIMEOUT_SECONDS = 60
 MAX_CONTEXT_LOGS = 5        # Max log lines sent to agents
 MAX_CONTEXT_LOGS_CHARS = 300  # Max total chars from logs in prompt

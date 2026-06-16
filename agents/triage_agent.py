@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional
 from openai import OpenAI
 
 from .base_agent import BaseAgent
+from .schemas import SCHEMA_VALIDATORS, TRIAGE_FEW_SHOT
 
 import sys
 import os
@@ -25,7 +26,10 @@ TRIAGE_SYSTEM_PROMPT = """You triage incidents by severity (P1-P4) and category.
 
 {"severity":"P1-P4","severity_label":"Critical/High/Medium/Low","category":"infrastructure|application|network|security|database|storage","impact_assessment":"2-3 sentence impact","affected_services":["svc1"],"urgency_reasoning":"why this severity","confidence":0-1,"escalation_needed":bool,"sla_minutes":int}
 
-P1=production down/data loss, P2=major degradation, P3=partial, P4=minor. Category must be one of the six listed. No prose, no markdown, no arrays. ONLY a single JSON object with the keys above."""
+P1=production down/data loss, P2=major degradation, P3=partial, P4=minor. Category must be one of the six listed. No prose, no markdown, no arrays. ONLY a single JSON object with the keys above.
+
+Examples of correct outputs:
+""" + TRIAGE_FEW_SHOT
 
 
 class TriageAgent(BaseAgent):
@@ -53,6 +57,7 @@ class TriageAgent(BaseAgent):
             system_prompt=TRIAGE_SYSTEM_PROMPT,
             client=client,
             model_name=model_name,
+            schema_validator=SCHEMA_VALIDATORS.get("triage_agent"),
         )
 
     def run(self, context: dict) -> dict:
@@ -80,8 +85,7 @@ class TriageAgent(BaseAgent):
             {"role": "user", "content": user_content},
         ]
 
-        raw = self._call_llm(messages)
-        result = self._parse_json_response(raw)
+        result = self._run_with_validation(messages)
 
         # Validate & enrich the result
         result = self._validate_result(result)

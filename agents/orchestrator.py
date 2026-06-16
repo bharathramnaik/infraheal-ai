@@ -19,11 +19,12 @@ from .rca_agent import RCAAgent
 from .remediation_agent import RemediationAgent
 from .reporting_agent import ReportingAgent
 from .safety_guard import SafetyGuard
+from .schemas import SCHEMA_VALIDATORS
 
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import VLLM_BASE_URL, VLLM_API_KEY, MODEL_NAME, detect_model
+from config import VLLM_BASE_URL, VLLM_API_KEY, MODEL_NAME, detect_model, AGENT_MAX_TOKENS
 from gpu_tracker import GPUMonitor
 
 logger = logging.getLogger(__name__)
@@ -332,6 +333,14 @@ class InfraHealOrchestrator:
         result["report"] = report
         result["report_latency"] = round(time.time() - step_start, 2)
 
+        # ── Step 5b: Cross-Agent Consistency Check ───────────────
+        consistency_warnings = self._check_consistency(
+            triage_result, rca_result, remediation_result, report,
+        )
+        if consistency_warnings:
+            logger.warning("Cross-agent consistency issues: %s", consistency_warnings)
+        result["consistency_warnings"] = consistency_warnings
+
         # ── Root Cause Host / Affected Hosts ──────────────────
         anomaly_sources = [a.get("source", "") for a in anomalies if a.get("source")]
         host_counts = {h: anomaly_sources.count(h) for h in set(anomaly_sources)}
@@ -628,28 +637,114 @@ rca: cause={rc} conf={conf}
 evidence: {ev}
 Return JSON: {{"confirmed":true/false,"refined_confidence":0-1,"refined_reasoning":"summary","gaps":["gap"],"suggestions":["suggestion"]}}"""
 
-    def _critique_analysis(self, anomalies, triage_result, rca_result) -> dict:
+    REFINE_PROMPT = """Refine the following root cause analysis based on identified gaps.
+Previous RCA:
+rca_cause: {rc}
+Previous critique gaps: {gaps}
+Produce an updated RCA JSON that addresses each gap.
+{output_schema}"""
+
+    def _critique_analysis(self, anomalies, triage_result, rca_result, max_passes=2) -> dict:
+        """Multi-pass critique that can refine the RCA result iteratively."""
         ev = "; ".join(str(e)[:60] for e in rca_result.get("evidence_chain", [])[:3])
-        prompt = self.CRITIQUE_PROMPT.format(
-            sev=triage_result.get("severity","?"),
-            cat=triage_result.get("category","?"),
-            impact=str(triage_result.get("impact_assessment",""))[:120],
-            rc=rca_result.get("root_cause","?"),
-            conf=rca_result.get("confidence_score",0),
-            ev=ev[:250],
-        )
-        messages = [
-            {"role": "system", "content": "You are a critique agent. Respond ONLY with the JSON object."},
-            {"role": "user", "content": prompt},
-        ]
-        raw = self.triage_agent._call_llm(messages)
-        try:
-            result = json.loads(raw)
-        except Exception:
-            result = {"confirmed": True, "refined_confidence": rca_result.get("confidence_score", 0.5), "refined_reasoning": rca_result.get("reasoning_summary", ""), "gaps": [], "suggestions": []}
-        result.setdefault("refined_confidence", rca_result.get("confidence_score", 0.5))
-        result.setdefault("refined_reasoning", rca_result.get("reasoning_summary", ""))
+        sev = triage_result.get("severity","?")
+        cat = triage_result.get("category","?")
+        impact = str(triage_result.get("impact_assessment",""))[:120]
+
+        for pass_num in range(max_passes):
+            prompt = self.CRITIQUE_PROMPT.format(
+                sev=sev, cat=cat, impact=impact,
+                rc=rca_result.get("root_cause","?"),
+                conf=rca_result.get("confidence_score",0),
+                ev=ev[:250],
+            )
+            messages = [
+                {"role": "system", "content": "You are a critique agent. Respond ONLY with the JSON object."},
+                {"role": "user", "content": prompt},
+            ]
+            raw = self.triage_agent._call_llm(messages)
+            try:
+                result = json.loads(raw)
+            except Exception:
+                result = {"confirmed": True, "refined_confidence": rca_result.get("confidence_score", 0.5),
+                          "refined_reasoning": rca_result.get("reasoning_summary", ""), "gaps": [], "suggestions": []}
+
+            result.setdefault("refined_confidence", rca_result.get("confidence_score", 0.5))
+            result.setdefault("refined_reasoning", rca_result.get("reasoning_summary", ""))
+
+            if result.get("confirmed") or pass_num == max_passes - 1:
+                break
+
+            # Refine: ask the LLM to produce a corrected RCA
+            gaps = result.get("gaps", [])
+            logger.info("Critique pass %d found gaps: %s — refining RCA", pass_num + 1, gaps)
+            refine_messages = [
+                {"role": "system", "content": "You are an RCA agent. Output ONLY valid JSON."},
+                {"role": "user", "content": self.REFINE_PROMPT.format(
+                    rc=rca_result.get("root_cause","?"),
+                    gaps=json.dumps(gaps),
+                    output_schema=json.dumps({
+                        "root_cause": "string",
+                        "root_cause_category": "string",
+                        "evidence_chain": ["string"],
+                        "confidence_score": 0.0,
+                        "contributing_factors": ["string"],
+                        "timeline_of_events": [{"timestamp":"string","event":"string"}],
+                        "affected_components": ["string"],
+                        "blast_radius": "string",
+                        "reasoning_summary": "string",
+                    }, indent=2),
+                )},
+            ]
+            refined_raw = self.triage_agent._call_llm(refine_messages)
+            try:
+                refined = json.loads(refined_raw)
+                if SCHEMA_VALIDATORS.get("rca_agent") is not None:
+                    valid, _ = SCHEMA_VALIDATORS["rca_agent"](refined)
+                    if valid:
+                        for key in ("root_cause", "root_cause_category", "evidence_chain",
+                                     "confidence_score", "contributing_factors", "timeline_of_events",
+                                     "affected_components", "blast_radius", "reasoning_summary"):
+                            if key in refined and refined[key]:
+                                rca_result[key] = refined[key]
+                        logger.info("RCA refined after critique pass %d", pass_num + 1)
+            except (json.JSONDecodeError, Exception) as exc:
+                logger.warning("RCA refinement failed after critique pass %d: %s", pass_num + 1, exc)
+
+        result["refined"] = rca_result.get("refined_confidence") is not None
         return result
+
+    # ── Cross-Agent Consistency ──────────────────────────────────
+
+    def _check_consistency(self, triage_result, rca_result, remediation_result, report) -> List[str]:
+        """Verify outputs across agents are consistent. Returns list of warnings."""
+        warnings = []
+        # 1. Report severity matches triage severity
+        report_sev = report.get("severity", "")
+        triage_sev = triage_result.get("severity", "")
+        if report_sev and triage_sev and report_sev != triage_sev:
+            warnings.append(f"Report severity '{report_sev}' differs from triage '{triage_sev}'")
+
+        # 2. Report root cause mentions RCA root cause
+        rc = rca_result.get("root_cause", "").lower()
+        rc_summary = report.get("root_cause_summary", "").lower()
+        if rc and rc_summary:
+            rc_words = set(rc.split()[:5])
+            summary_words = set(rc_summary.split()[:5])
+            overlap = rc_words & summary_words
+            if len(overlap) < 1:
+                warnings.append("Report root_cause_summary does not overlap with RCA root_cause")
+
+        # 3. Remediation actions reference root cause
+        actions = remediation_result.get("recommended_actions", [])
+        action_rationales = " ".join(a.get("rationale", "") for a in actions).lower()
+        if rc and len(rc.split()) >= 3:
+            key_terms = [w for w in rc.split()[:5] if len(w) > 3]
+            matches = sum(1 for t in key_terms if t in action_rationales)
+            if matches < 1 and actions:
+                warnings.append("Remediation action rationales do not reference root cause terms")
+
+        return warnings
 
     # ── Metrics ──────────────────────────────────────────────────
 

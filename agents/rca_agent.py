@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional
 from openai import OpenAI
 
 from .base_agent import BaseAgent
+from .schemas import SCHEMA_VALIDATORS, RCA_FEW_SHOT
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,10 @@ RCA_SYSTEM_PROMPT = """You are an RCA agent. Analyze anomalies and triage data. 
   "blast_radius": "short impact description",
   "reasoning_summary": "1-2 sentences explaining logic, linking symptoms to root cause"
 }
-Distinguish symptoms from causes. Consider deployments, config changes, traffic spikes. No prose, no markdown. ONLY valid JSON."""
+Distinguish symptoms from causes. Consider deployments, config changes, traffic spikes. No prose, no markdown. ONLY valid JSON.
+
+Example:
+""" + RCA_FEW_SHOT
 
 
 class RCAAgent(BaseAgent):
@@ -57,6 +61,7 @@ class RCAAgent(BaseAgent):
             system_prompt=RCA_SYSTEM_PROMPT,
             client=client,
             model_name=model_name,
+            schema_validator=SCHEMA_VALIDATORS.get("rca_agent"),
         )
 
     def run(self, context: dict) -> dict:
@@ -89,8 +94,7 @@ class RCAAgent(BaseAgent):
             {"role": "user", "content": user_content},
         ]
 
-        raw = self._call_llm(messages)
-        result = self._parse_json_response(raw)
+        result = self._run_with_validation(messages)
         result["kb_consulted"] = bool(runbook_context and len(runbook_context) > 10)
         result["kb_findings"] = (runbook_context[:300] if runbook_context else "") if result.get("kb_consulted") else ""
         result = self._validate_result(result, anomalies, triage_result)

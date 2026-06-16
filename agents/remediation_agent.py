@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Optional
 from openai import OpenAI
 
 from .base_agent import BaseAgent
+from .schemas import SCHEMA_VALIDATORS, REMEDIATION_FEW_SHOT
 
 import sys
 import os
@@ -32,7 +33,10 @@ Safety: high-risk actions must set requires_approval=true. BE CONCISE. Output ON
 
 {"recommended_actions":[{"step":1,"tool_name":"tool","parameters":{"k":"v"},"risk_level":"low|medium|high","requires_approval":bool}],"execution_order":"seq|par","rollback_plan":"brief","estimated_resolution_time":"duration","warnings":["caveat"],"confidence":0-1}
 
-No prose, no markdown, only JSON."""
+No prose, no markdown, only JSON.
+
+Example:
+""" + REMEDIATION_FEW_SHOT
 
 
 class RemediationAgent(BaseAgent):
@@ -69,6 +73,7 @@ class RemediationAgent(BaseAgent):
             client=client,
             model_name=model_name,
             tools=self._tool_registry,
+            schema_validator=SCHEMA_VALIDATORS.get("remediation_agent"),
         )
 
     def run(self, context: dict) -> dict:
@@ -103,8 +108,7 @@ class RemediationAgent(BaseAgent):
             {"role": "user", "content": user_content},
         ]
 
-        raw = self._call_llm(messages)
-        result = self._parse_json_response(raw)
+        result = self._run_with_validation(messages)
         result = self._validate_result(result)
 
         action_count = len(result.get("recommended_actions", []))

@@ -49,6 +49,8 @@ class BaseAgent:
         model_name: Optional[str] = None,
         tools: Optional[List[Dict[str, Any]]] = None,
         max_tokens: Optional[int] = None,
+        schema_validator: Optional[Any] = None,
+        few_shot_examples: str = "",
     ) -> None:
         self.name = name
         self.role = role
@@ -59,6 +61,8 @@ class BaseAgent:
         self.max_tokens = max_tokens or AGENT_MAX_TOKENS.get(name, AGENT_MAX_TOKENS.get(name.removesuffix("_agent"), MAX_TOKENS))
         self.logger = logging.getLogger(f"infraheal.{name}")
         self.execution_log: List[Dict[str, Any]] = []
+        self.schema_validator = schema_validator
+        self.few_shot_examples = few_shot_examples
 
     # ── Public API ───────────────────────────────────────────────
 
@@ -143,6 +147,44 @@ class BaseAgent:
         # All retries exhausted
         self.execution_log.append({"agent": self.name, "error": str(last_error), "success": False})
         raise last_error  # type: ignore[misc]
+
+    def _run_with_validation(self, messages: List[Dict[str, str]], max_retries: int = 2) -> dict:
+        """Call LLM, parse, and validate against schema with reject/retry.
+
+        When the parsed output fails schema validation, the error is fed
+        back to the model as a correction message and the call is retried.
+        """
+        if not self.schema_validator:
+            raw = self._call_llm(messages)
+            return self._parse_json_response(raw)
+
+        last_result: dict = {}
+        for attempt in range(max_retries + 1):
+            raw = self._call_llm(messages)
+            result = self._parse_json_response(raw)
+            valid, err_msg = self.schema_validator(result)
+            if not valid:
+                self.logger.warning(
+                    "%s schema validation failed (attempt %d/%d): %s",
+                    self.name, attempt + 1, max_retries + 1, err_msg,
+                )
+                last_result = result
+                if attempt < max_retries:
+                    messages.append({"role": "assistant", "content": json.dumps(result, default=str)})
+                    messages.append({
+                        "role": "user",
+                        "content": f"Output failed schema validation: {err_msg}\n"
+                                   f"Fix the JSON output to match the required schema exactly. "
+                                   f"Return ONLY the corrected JSON object.",
+                    })
+                continue
+            return result
+
+        self.logger.warning(
+            "%s schema validation exhausted %d retries — returning last result",
+            self.name, max_retries + 1,
+        )
+        return last_result
 
     def _build_messages(self, context: dict) -> List[Dict[str, str]]:
         """Build the standard system + user message list.
