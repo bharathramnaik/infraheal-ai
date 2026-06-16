@@ -4466,8 +4466,8 @@ def create_dashboard(
 
                 # Audit log with date filter (calendar picker)
                 with gr.Row(equal_height=True):
-                    audit_from = gr.DateTime(label="From", include_time=False, type="string", scale=1, container=True)
-                    audit_to = gr.DateTime(label="To", include_time=False, type="string", scale=1, container=True)
+                    audit_from = gr.DateTime(label="From", include_time=False, type="string", scale=1)
+                    audit_to = gr.DateTime(label="To", include_time=False, type="string", scale=1)
                     audit_filter_btn = gr.Button("Filter", variant="secondary", scale=0, size="sm")
                     audit_clear_btn = gr.Button("Clear", variant="secondary", scale=0, size="sm")
                 appr_audit_panel = gr.HTML(value=_render_audit_log())
