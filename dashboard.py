@@ -3022,12 +3022,14 @@ def create_dashboard(
 
                 # Block on high-risk actions
                 if _blocked_scenarios.get(name):
+                    _diag("pipeline_blocked", scenario=name, blocking=_blocked_scenarios.get(name))
                     step["status"] = "blocked"
                     step["desc"] = "BLOCKED — high-risk action pending approval"
                     yield _render_pipeline_flow() + _render_blocked_banner()
                     while _blocked_scenarios.get(name):
                         yield _render_pipeline_flow() + _render_blocked_banner()
                         time.sleep(2)
+                    _diag("pipeline_unblocked", scenario=name)
                     _complete_step(step, "completed")
                     yield _render_pipeline_flow()
 
@@ -3138,6 +3140,7 @@ def create_dashboard(
         )
         if not remaining:
             _blocked_scenarios.pop(scenario_name, None)
+            _diag("scenario_unblocked", scenario=scenario_name)
 
     def _approve_action(action_id: str, reason: str = "") -> str:
         """Approve a pending action and execute it."""
@@ -3295,6 +3298,7 @@ def create_dashboard(
                         "execution_detail": exec_result.get("message", exec_result.get("error", ""))[:200],
                         "execution_steps": exec_result.get("steps", []),
                     })
+                    _diag("auto_approved", action=action.get("tool_name"), scenario=scenario_name, status=exec_result.get("status"))
                     logger.info("Auto-approved action %s in scenario %s", action.get("tool_name"), scenario_name)
                     count += 1
                     continue
@@ -3317,9 +3321,28 @@ def create_dashboard(
                 count += 1
                 if is_high_risk:
                     _blocked_scenarios[scenario_name] = True
+                    _diag("high_risk_queued", action=action.get("tool_name"), scenario=scenario_name)
                     logger.info("Pipeline BLOCKED by high-risk action %s in scenario %s",
                                 action.get("tool_name"), scenario_name)
         return count
+
+    # ── Shared helper: renders blocked pipeline banner ──
+    def _render_blocked_banner() -> str:
+        blocked_scenarios = list(_blocked_scenarios.keys())
+        if not blocked_scenarios:
+            return ""
+        return (
+            f'<div style="padding:12px 16px;margin:12px 0;border:2px solid #FF3B3B;border-radius:8px;'
+            f'background:rgba(255,59,59,0.1);font-size:0.85rem;">'
+            f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'
+            f'<span style="font-size:1.2rem;">🛑</span>'
+            f'<span style="color:#FF3B3B;font-weight:700;">Pipeline BLOCKED</span></div>'
+            f'<div style="color:#e2e8f0;">High-risk action(s) pending approval in: '
+            f'<span style="color:#FFB800;font-weight:600;">{", ".join(html.escape(s) for s in blocked_scenarios)}</span></div>'
+            f'<div style="color:#8b949e;font-size:0.80rem;margin-top:4px;">'
+            f'Approve or deny the high-risk action(s) in the Approvals tab to resume the pipeline.</div>'
+            f'</div>'
+        )
 
     def _continuous_monitor():
         """Run continuous monitoring loop: process incidents, poll for new anomalies, report.
@@ -3379,24 +3402,6 @@ def create_dashboard(
                 yield _render_pipeline_flow()
             for chunk in _prepopulate_initial_scan():
                 yield chunk
-
-            def _render_blocked_banner() -> str:
-                """Render a prominent banner when the pipeline is blocked."""
-                blocked_scenarios = list(_blocked_scenarios.keys())
-                if not blocked_scenarios:
-                    return ""
-                return (
-                    f'<div style="padding:12px 16px;margin:12px 0;border:2px solid #FF3B3B;border-radius:8px;'
-                    f'background:rgba(255,59,59,0.1);font-size:0.85rem;">'
-                    f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'
-                    f'<span style="font-size:1.2rem;">🛑</span>'
-                    f'<span style="color:#FF3B3B;font-weight:700;">Pipeline BLOCKED</span></div>'
-                    f'<div style="color:#e2e8f0;">High-risk action(s) pending approval in: '
-                    f'<span style="color:#FFB800;font-weight:600;">{", ".join(html.escape(s) for s in blocked_scenarios)}</span></div>'
-                    f'<div style="color:#8b949e;font-size:0.80rem;margin-top:4px;">'
-                    f'Approve or deny the high-risk action(s) in the Approvals tab to resume the pipeline.</div>'
-                    f'</div>'
-                )
 
             def _process_scenarios_cycle(slist, cycle_label, prebuilt_steps=None):
                 nonlocal summary_rows, total_anomalies, total_actions, processed, failures
@@ -3513,6 +3518,8 @@ def create_dashboard(
             for chunk in _process_scenarios_cycle(scenario_list, "Initial Scan", _prebuilt_steps):
                 yield chunk
             # If pipeline is blocked after initial scan, wait
+            if _blocked_scenarios:
+                _diag("monitor_blocked", phase="initial_scan", scenarios=list(_blocked_scenarios.keys()))
             while _blocked_scenarios and not _stop_monitoring_requested:
                 yield _render_pipeline_flow() + _render_blocked_banner()
                 time.sleep(2)
@@ -3528,6 +3535,8 @@ def create_dashboard(
                 for chunk in _process_scenarios_cycle(scenario_list, f"Cycle #{poll_cycle}"):
                     yield chunk
                 # If pipeline is blocked, wait until all blocks are cleared
+                if _blocked_scenarios:
+                    _diag("monitor_blocked", phase=f"cycle_{poll_cycle}", scenarios=list(_blocked_scenarios.keys()))
                 while _blocked_scenarios and not _stop_monitoring_requested:
                     yield _render_pipeline_flow() + _render_blocked_banner()
                     time.sleep(2)
