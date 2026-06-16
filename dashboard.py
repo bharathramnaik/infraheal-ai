@@ -4070,7 +4070,12 @@ def create_dashboard(
                     cnt = len([a for a in _pending_approvals if a.get("status") == "pending"])
                     cls = 'has-pending' if cnt > 0 else 'all-clear'
                     icon = str(cnt) if cnt > 0 else '\u2713'
+                    _diag("badge_tick", pending=cnt, cls=cls)
                     return f'<span id="floating-badge" class="tab-badge {cls}">{icon}</span>'
+
+                # Independent badge-only timer (updates regardless of pipeline state)
+                _badge_timer = gr.Timer(value=2.0, active=True)
+                _badge_timer.tick(fn=_pending_count_html, inputs=[], outputs=[cmd_pending_count])
 
                 # ── Iframe for client-side JS: timers, badge, navigation ──
                 # Scripts in gr.HTML are blocked by innerHTML; an iframe srcdoc
