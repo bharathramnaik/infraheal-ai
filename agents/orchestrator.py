@@ -569,6 +569,18 @@ class InfraHealOrchestrator:
                         ),
                         "resolution_steps": resolution_steps,
                         "llm_generated": True,
+                        # Full pipeline stages for dashboard rendering
+                        "pipeline_full": {
+                            "triage": triage,
+                            "rca": rca,
+                            "remediation": remediation,
+                            "execution_results": pipeline_out.get("execution_results", []),
+                            "report": pipeline_out.get("report", {}),
+                            "safety_results": pipeline_out.get("safety_results", []),
+                            "reasoning_chain": pipeline_out.get("reasoning_chain", []),
+                            "pipeline_metrics": pipeline_out.get("pipeline_metrics", {}),
+                            "consistency_warnings": pipeline_out.get("consistency_warnings", []),
+                        },
                     }
                 except Exception as exc:
                     logger.error("Level pipeline failed for %s: %s", level, exc)

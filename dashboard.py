@@ -2391,34 +2391,17 @@ def create_dashboard(
 
         html_parts = []
         for level in levels_to_process:
-            meta = LEVEL_META.get(level, {"icon": "⚪", "accent": "#64748b", "label": level})
+            meta = LEVEL_META.get(level, {"icon": "🔴" if level == "CRITICAL" else "🟠" if level == "ERROR" else "🟡", "accent": {"CRITICAL":"#FF3B3B","ERROR":"#FF8C00","WARNING":"#FFB800"}.get(level, "#64748b"), "label": level})
 
-            # Simulate realistic analysis delay per level
-            _time.sleep(1.5)
+            _time.sleep(0.5)
 
             lr = per_level.get(level) if per_level else None
             if lr:
                 an_count = lr.get("anomaly_count", 0)
-                summary = lr.get("resolution_summary", "Analysis complete")
-                steps = lr.get("resolution_steps", [])
-                root_cause = lr.get("root_cause", "Analysis in progress")
-                confidence = lr.get("confidence", 0)
                 llm_gen = lr.get("llm_generated", False)
+                pf = lr.get("pipeline_full") if llm_gen else None
             else:
-                # Fallback: count log entries for demo
                 an_count = sum(1 for l in scenario_logs if l.get("level", "").upper() == level)
-                summary = (
-                    f"Analyzed {an_count} {level} log entries. "
-                    f"Recommended actions generated based on standard runbook procedures."
-                )
-                steps = [
-                    f"Immediate: Isolate affected {level}-level services",
-                    f"Diagnose: Run health checks on related infrastructure",
-                    f"Mitigate: Apply auto-remediation for {level} incidents",
-                    f"Monitor: Track resolution for 15-minute window",
-                ]
-                root_cause = f"{level} indicators detected in system logs. Identifying root cause pattern."
-                confidence = 0.75
 
             if an_count == 0 and lr is None:
                 html_parts.append(
@@ -2432,59 +2415,58 @@ def create_dashboard(
                 )
                 continue
 
-            conf_pct = confidence * 100 if isinstance(confidence, float) and confidence <= 1 else confidence
+            if pf:
+                tri = pf.get("triage", {})
+                rca = pf.get("rca", {})
+                rem = pf.get("remediation", {})
+                rep = pf.get("report", {})
+                rc_chain = pf.get("reasoning_chain", [])
+                warn = pf.get("consistency_warnings", [])
 
-            def _render_step(step_text: str) -> str:
-                parts = step_text.split(":", 1)
-                if len(parts) == 2:
-                    tag, desc = parts[0].strip(), parts[1].strip()
-                    return f'<strong>{tag}</strong>: {desc}'
-                return step_text
+                tri_html = format_agent_output("Triage", tri)
+                rca_html = format_agent_output("Root Cause Analysis", rca)
+                rem_html = format_agent_output("Remediation", rem)
+                rep_html = format_agent_output("Incident Report", rep)
 
-            steps_html = "".join(
-                f'<div class="action-card">'
-                f'<div class="action-icon" style="background:rgba(255,255,255,0.1);color:#64748b;">{i}</div>'
-                f'<div style="flex:1;min-width:0;">'
-                f'<div style="font-size:0.82rem;color:#e2e8f0;">{_render_step(s)}</div>'
-                f'</div>'
-                f'</div>'
-                for i, s in enumerate(steps, 1)
-            ) if steps else (
-                f'<div style="color:#64748b;font-style:italic;padding:12px;">'
-                f'No automated resolution steps generated.</div>'
-            )
+                rc_parts = [f'<div class="evidence-item" style="border-left-color:{meta["accent"]};"><span style="color:#e2e8f0;">{s.get("agent","?")}: {s.get("reasoning","")}</span></div>' for s in rc_chain]
+                rc_html = f'<div class="glass-card" style="margin-top:12px;"><div style="font-size:0.73rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Reasoning Chain</div>{"".join(rc_parts)}</div>' if rc_parts else ""
+
+                warn_html = ""
+                if warn:
+                    warn_html = f'<div style="margin-top:8px;padding:6px 10px;background:rgba(255,184,0,0.08);border-radius:6px;font-size:0.78rem;color:#FFB800;">{"<br>".join("⚠️ "+w for w in warn)}</div>'
+
+                inner = f'{tri_html}{rca_html}{rem_html}{rep_html}{rc_html}{warn_html}'
+            else:
+                steps = lr.get("resolution_steps", [])
+                root_cause = lr.get("root_cause", f"{level} indicators detected.")
+                confidence = lr.get("confidence", 0.75)
+                conf_pct = confidence * 100 if isinstance(confidence, float) and confidence <= 1 else confidence
+                summary = lr.get("resolution_summary", "Analysis complete")
+
+                steps_html = "".join(
+                    f'<div class="action-card"><div class="action-icon" style="background:rgba(255,255,255,0.1);color:#64748b;">{i}</div>'
+                    f'<div style="flex:1;min-width:0;"><div style="font-size:0.82rem;color:#e2e8f0;">{s}</div></div></div>'
+                    for i, s in enumerate(steps, 1)
+                ) if steps else '<div style="color:#64748b;font-style:italic;padding:12px;">No automated resolution steps.</div>'
+
+                inner = (
+                    f'<div class="agent-panel-body">'
+                    f'<div style="margin-bottom:14px;"><span style="color:#64748b;font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;">Resolution Summary</span>'
+                    f'<div style="margin-top:6px;font-size:0.88rem;color:#e2e8f0;line-height:1.6;">{summary}</div></div>'
+                    f'<div style="margin-bottom:12px;"><span style="color:#64748b;font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;">Root Cause</span>'
+                    f'<div style="margin-top:6px;font-size:0.85rem;color:#e2e8f0;background:rgba(255,255,255,0.02);padding:10px 14px;border-radius:8px;border-left:3px solid {meta["accent"]};">{root_cause}</div></div>'
+                    f'<div><span style="color:#64748b;font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;display:block;">Resolution Steps</span>{steps_html}</div>'
+                    f'</div>'
+                )
 
             html_parts.append(
-                f'<div class="agent-panel" style="margin-bottom:16px;'
-                f'border-left:3px solid {meta["accent"]};">'
+                f'<div class="agent-panel" style="margin-bottom:16px;border-left:3px solid {meta["accent"]};">'
                 f'<div class="agent-panel-header" style="background:linear-gradient(135deg,{meta["accent"]}15,transparent);">'
                 f'<span style="font-size:1.1rem;">{meta["icon"]}</span>'
                 f'<span style="color:{meta["accent"]};font-weight:700;">{level}</span>'
-                f'<span style="color:#64748b;font-size:0.78rem;margin-left:8px;">'
-                f'{an_count} anomaly{"ies" if an_count != 1 else "y"}</span>'
-                f'<span style="margin-left:auto;display:flex;align-items:center;gap:6px;">'
-                f'<span class="pulse-dot" style="width:6px;height:6px;"></span>'
-                f'<span style="font-size:0.72rem;color:{meta["accent"]};">Live</span>'
-                f'<span style="font-size:0.72rem;color:#64748b;margin-left:4px;">'
-                f'{conf_pct:.0f}% confidence</span>'
-                f'</span>'
-                f'</div>'
-                f'<div class="agent-panel-body">'
-                f'<div style="margin-bottom:14px;">'
-                f'<span style="color:#64748b;font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;">Resolution Summary</span>'
-                f'<div style="margin-top:6px;font-size:0.88rem;color:#e2e8f0;line-height:1.6;">{summary}</div>'
-                f'</div>'
-                f'<div style="margin-bottom:12px;">'
-                f'<span style="color:#64748b;font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;">Root Cause</span>'
-                f'<div style="margin-top:6px;font-size:0.85rem;color:#e2e8f0;background:rgba(255,255,255,0.02);'
-                f'padding:10px 14px;border-radius:8px;border-left:3px solid {meta["accent"]};">'
-                f'{root_cause}</div>'
-                f'</div>'
-                f'<div>'
-                f'<span style="color:#64748b;font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;display:block;">Resolution Steps</span>'
-                f'{steps_html}'
-                f'</div>'
-                f'</div></div>'
+                f'<span style="color:#64748b;font-size:0.78rem;margin-left:8px;">{an_count} anomaly{"ies" if an_count != 1 else "y"}</span>'
+                f'<span style="margin-left:auto;font-size:0.72rem;color:#64748b;">{lr.get("llm_generated",False) and "LLM" or "Template"}</span>'
+                f'</div>{inner}</div>'
             )
 
         result_html = "".join(html_parts) if html_parts else _empty_state(
@@ -3768,7 +3750,7 @@ def create_dashboard(
 
     CHAT_SYSTEM_PROMPT = """You are InfraHeal AI, an autonomous incident diagnosis agent. You just analyzed an infrastructure incident. Answer questions about your analysis, reasoning, and decisions. Be concise and technical. If asked "why", explain your reasoning chain step by step. If asked "re-analyze", acknowledge and suggest running a new analysis."""
 
-    def _chat_respond(message: str, history: list, model_id: str = "") -> str:
+    def _chat_respond(message: str, history: list, model_id: str = "") -> Tuple[str, int]:
         # Handle approval commands in chat
         msg_lower = message.strip().lower()
         if msg_lower.startswith("approve ") or msg_lower == "approve all":
@@ -3779,14 +3761,14 @@ def create_dashboard(
                     if a.get("status") == "pending":
                         _approve_action(a["id"])
                         approved += 1
-                return f"Approved **{approved}** pending action(s). They will be executed."
+                return f"Approved **{approved}** pending action(s). They will be executed.", 0
             elif len(parts) >= 2:
                 aid = parts[1].upper()
                 for a in _pending_approvals:
                     if a.get("id") == aid and a.get("status") == "pending":
                         _approve_action(aid)
-                        return f"Action **{aid}** approved and executed."
-                return f"Action **{aid}** not found or already resolved."
+                        return f"Action **{aid}** approved and executed.", 0
+                return f"Action **{aid}** not found or already resolved.", 0
         if msg_lower.startswith("deny ") or msg_lower.startswith("deny all"):
             parts = msg_lower.split()
             reason_start = message.find("because ")
@@ -3797,18 +3779,18 @@ def create_dashboard(
                     if a.get("status") == "pending":
                         _deny_action(a["id"], reason)
                         denied += 1
-                return f"Denied **{denied}** pending action(s). Reason: {reason}"
+                return f"Denied **{denied}** pending action(s). Reason: {reason}", 0
             elif len(parts) >= 2:
                 aid = parts[1].upper()
                 for a in _pending_approvals:
                     if a.get("id") == aid and a.get("status") == "pending":
                         _deny_action(aid, reason)
-                        return f"Action **{aid}** denied. Reason: {reason}"
-                return f"Action **{aid}** not found or already resolved."
+                        return f"Action **{aid}** denied. Reason: {reason}", 0
+                return f"Action **{aid}** not found or already resolved.", 0
 
         # ── normal LLM chat response below ──
         if not _last_pipeline_state.get("triage"):
-            return "**No analysis data yet.**\n\nRun an incident analysis first from the **Incident Analysis** tab, then I can answer questions about it."
+            return "**No analysis data yet.**\n\nRun an incident analysis first from the **Incident Analysis** tab, then I can answer questions about it.", 0
 
         tri = _last_pipeline_state.get("triage", {})
         rca = _last_pipeline_state.get("rca", {})
@@ -3863,14 +3845,16 @@ def create_dashboard(
                     temperature=0.3,
                 )
                 content = resp.choices[0].message.content or "I don't have a specific answer."
+                tokens_used = resp.usage.total_tokens if resp.usage else 0
 
                 if has_think:
                     thinking, clean = _extract_think(content)
                     if thinking:
                         return (
-                            f"**Thinking Trace**\n\n```\n{thinking}\n```\n\n---\n\n{clean}"
+                            f"**Thinking Trace**\n\n```\n{thinking}\n```\n\n---\n\n{clean}",
+                            tokens_used,
                         )
-                return content
+                return content, tokens_used
             except Exception as exc:
                 logger.warning("Chat LLM failed: %s", exc)
 
@@ -3882,7 +3866,7 @@ def create_dashboard(
             f"**Root cause:** {rca.get('root_cause','unknown')}\n\n"
             f"{len(remed.get('recommended_actions',[]))} remediation actions. "
             f"{'Critique confirmed.' if crit.get('confirmed',True) else 'Critique found gaps.'}"
-        )
+        ), 0
 
     def _fm(text: str) -> str:
         """Convert _mhl-style markers to HTML (bold, italic, code, newlines, tables)."""
@@ -4979,6 +4963,29 @@ def create_dashboard(
                     tags.append(f"max {info.get('max_tokens', 512)} tok")
                     return f'<span style="color:#8b949e;font-size:0.75rem;">{" · ".join(tags)}</span>'
 
+                CHAT_DAILY_LIMIT = 200000
+                def _render_chat_token_gauge(used: int) -> str:
+                    pct = max(0, min(100, (used / CHAT_DAILY_LIMIT) * 100))
+                    remaining = max(0, CHAT_DAILY_LIMIT - used)
+                    r = 8; cx = 14; cy = 14; circ = 2 * 3.14159 * r
+                    offset = circ * (1 - pct / 100)
+                    color = "#00FF88" if pct < 50 else "#FFB800" if pct < 80 else "#FF3B3B"
+                    return (
+                        f'<div style="display:inline-flex;align-items:center;gap:6px;margin-left:8px;padding:2px 8px;'
+                        f'background:rgba(255,255,255,0.03);border-radius:20px;border:1px solid rgba(255,255,255,0.06);">'
+                        f'<svg width="28" height="28" viewBox="0 0 28 28">'
+                        f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="3"/>'
+                        f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="none" stroke="{color}" stroke-width="3" '
+                        f'stroke-dasharray="{circ}" stroke-dashoffset="{offset}" stroke-linecap="round" '
+                        f'transform="rotate(-90 {cx} {cy})"/>'
+                        f'<text x="{cx}" y="{cy}" text-anchor="middle" dominant-baseline="central" '
+                        f'fill="{color}" font-size="7" font-weight="700" font-family="monospace">{100-pct:.0f}%</text>'
+                        f'</svg>'
+                        f'<span style="font-size:0.65rem;color:#8b949e;font-family:JetBrains Mono,monospace;">'
+                        f'{remaining:,} / {CHAT_DAILY_LIMIT:,}</span>'
+                        f'</div>'
+                    )
+
                 # ── Header ──
                 gr.HTML(
                     '<div style="padding:8px 0 4px 0;">'
@@ -4998,6 +5005,7 @@ def create_dashboard(
                     status_text = gr.HTML(value=_init_status[1])
 
                 # ── Model Selector ──
+                chat_token_state = gr.State(0)
                 with gr.Row():
                     model_selector = gr.Dropdown(
                         choices=list(model_choices.keys()),
@@ -5009,6 +5017,9 @@ def create_dashboard(
                     )
                     model_info_html = gr.HTML(
                         value=_chat_update_model_info(default_model_label)
+                    )
+                    chat_token_display = gr.HTML(
+                        value=_render_chat_token_gauge(0)
                     )
 
                 # ── Custom Chat ──
@@ -5055,29 +5066,30 @@ def create_dashboard(
                     outputs=[model_info_html],
                 )
 
-                def _chat_handler(message: str, history: list, model_label: str):
+                def _chat_handler(message: str, history: list, model_label: str, token_used: int):
                     if not message or not message.strip():
-                        yield history, _render_chat_html(history), gr.update()
+                        yield history, _render_chat_html(history), gr.update(), token_used, _render_chat_token_gauge(token_used)
                         return
                     history.append({"role": "user", "content": message})
-                    yield history, _render_chat_html(history), ""
+                    yield history, _render_chat_html(history), "", token_used, _render_chat_token_gauge(token_used)
                     history.append({"role": "assistant", "content": "*Thinking...*"})
-                    yield history, _render_chat_html(history), ""
+                    yield history, _render_chat_html(history), "", token_used, _render_chat_token_gauge(token_used)
                     model_id = model_choices.get(model_label, MODEL_NAME)
                     ctx = [h for h in history if h.get("content") != "*Thinking...*"]
-                    response = _chat_respond(message, ctx, model_id=model_id)
+                    response, new_tokens = _chat_respond(message, ctx, model_id=model_id)
+                    token_used = min(CHAT_DAILY_LIMIT, token_used + new_tokens)
                     history[-1] = {"role": "assistant", "content": response}
-                    yield history, _render_chat_html(history), ""
+                    yield history, _render_chat_html(history), "", token_used, _render_chat_token_gauge(token_used)
 
                 chat_send.click(
                     fn=_chat_handler,
-                    inputs=[chat_msg, chat_state, model_selector],
-                    outputs=[chat_state, chat_display, chat_msg],
+                    inputs=[chat_msg, chat_state, model_selector, chat_token_state],
+                    outputs=[chat_state, chat_display, chat_msg, chat_token_state, chat_token_display],
                 )
                 chat_msg.submit(
                     fn=_chat_handler,
-                    inputs=[chat_msg, chat_state, model_selector],
-                    outputs=[chat_state, chat_display, chat_msg],
+                    inputs=[chat_msg, chat_state, model_selector, chat_token_state],
+                    outputs=[chat_state, chat_display, chat_msg, chat_token_state, chat_token_display],
                 )
                 chat_msg.change(
                     fn=lambda v: gr.update(interactive=bool(v.strip())),
@@ -5091,9 +5103,9 @@ def create_dashboard(
                     }], _render_chat_html([{
                         "role": "assistant",
                         "content": "**System Ready**\n\nInfraHeal AI v1.0 \u2014 Terminal cleared. Ready for new questions."
-                    }]), ""),
+                    }]), "", 0, _render_chat_token_gauge(0)),
                     inputs=[],
-                    outputs=[chat_state, chat_display, chat_msg],
+                    outputs=[chat_state, chat_display, chat_msg, chat_token_state, chat_token_display],
                 )
 
                 for btn, q_text in [(q1, "Why P1?"), (q2, "What's the root cause?"), (q3, "What should I do?"), (q4, "Explain evidence"), (q5, "Re-analyze")]:
@@ -5103,8 +5115,8 @@ def create_dashboard(
                         outputs=[pending_quick_q],
                     ).then(
                         fn=_chat_handler,
-                        inputs=[pending_quick_q, chat_state, model_selector],
-                        outputs=[chat_state, chat_display, chat_msg],
+                        inputs=[pending_quick_q, chat_state, model_selector, chat_token_state],
+                        outputs=[chat_state, chat_display, chat_msg, chat_token_state, chat_token_display],
                     )
 
                 # Wire analysis button to also update chat status/risk components
