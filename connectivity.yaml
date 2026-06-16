@@ -1,0 +1,281 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# InfraHeal AI — External Connectivity Configuration
+# ══════════════════════════════════════════════════════════════════════════════
+# This file defines how InfraHeal AI connects to real infrastructure for
+# live log/metric ingestion, remediation execution, and CI/CD integration.
+#
+# Each source can be independently enabled/disabled.  When disabled, the
+# system falls back to synthetic data from data_generator.py.
+#
+# Usage:
+#   The ConnectionManager (future) reads this file at startup and
+#   instantiates the appropriate connectors.  The anomaly detector and
+#   remediation agent reference the enabled sources automatically.
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── Global Settings ──────────────────────────────────────────────────────────
+global:
+  # How often to poll enabled sources for new data (seconds)
+  poll_interval: 15
+  # Connection timeout for all external services (seconds)
+  request_timeout: 30
+  # Directory for SSL certs (optional override)
+  ssl_cert_dir: null
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  DATA SOURCES — ingested by the AnomalyDetector for real-time monitoring
+# ══════════════════════════════════════════════════════════════════════════════
+
+sources:
+
+  # ── OpenShift Container Platform ─────────────────────────────────────────
+  # Streams pod logs, watches cluster events, and queries metrics via
+  # the OpenShift REST API (kube-apiserver).
+  openshift:
+    enabled: false
+    # OpenShift / Kubernetes API endpoint
+    api_url: "https://api.openshift.example.com:6443"
+    # Service account token with appropriate RBAC (read logs, get events)
+    token: "${OPENSHIFT_TOKEN}"
+    # Optional: path to kubeconfig (mutually exclusive with api_url/token)
+    kubeconfig: null
+    # Namespace filter (empty = all namespaces)
+    namespace: ""
+    # Label selector for pod filtering (e.g. "app=infraheal")
+    label_selector: ""
+    # What to stream
+    stream:
+      pod_logs: true
+      cluster_events: true
+      node_metrics: true
+
+  # ── Prometheus ───────────────────────────────────────────────────────────
+  # Pulls metric snapshots for statistical anomaly detection (z-score, IQR,
+  # error-rate spikes).  The AnomalyDetector queries PromQL at each poll
+  # cycle.
+  prometheus:
+    enabled: false
+    url: "http://prometheus.example.com:9090"
+    # PromQL queries to run each cycle
+    queries:
+      cpu_utilization: 'avg(rate(node_cpu_seconds_total{mode!="idle"}[5m])) by (instance)'
+      memory_usage: 'avg(node_memory_MemTotal_bytes - node_memory_MemFree_bytes) by (instance)'
+      disk_usage: 'avg(node_filesystem_avail_bytes / node_filesystem_size_bytes) by (mountpoint) * 100'
+      error_rate: 'sum(rate(http_requests_total{status=~"5.."}[5m])) by (service)'
+      request_latency: 'histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, service))'
+    # Additional custom queries can be added here
+    custom_queries: {}
+
+  # ── Grafana ──────────────────────────────────────────────────────────────
+  # Provides dashboard snapshots and alert annotations for incident reports.
+  # The ReportingAgent embeds Grafana panel images in generated reports.
+  grafana:
+    enabled: false
+    url: "http://grafana.example.com:3000"
+    api_key: "${GRAFANA_API_KEY}"
+    # Dashboards to snapshot for reports
+    dashboards:
+      - uid: "infrastructure-overview"
+        panels: [1, 3, 7]
+      - uid: "application-health"
+        panels: [2, 5]
+    # Alert rule names to check during incident triage
+    alert_sources: ["prometheus", "alertmanager"]
+
+  # ── Elasticsearch / ELK Stack ────────────────────────────────────────────
+  # Centralized log storage for historical RCA.  The RCAAgent queries ES
+  # for correlated log patterns across services and time windows.
+  elasticsearch:
+    enabled: false
+    hosts:
+      - "http://elastic-master.example.com:9200"
+      - "http://elastic-data-01.example.com:9200"
+    # Authentication
+    username: "${ES_USERNAME}"
+    password: "${ES_PASSWORD}"
+    api_key: "${ES_API_KEY}"
+    # Index pattern for operational logs
+    index_pattern: "logs-*"
+    # Maximum documents per query
+    max_docs: 500
+
+  # ── Docker Engine ────────────────────────────────────────────────────────
+  # Local or remote Docker daemon for container-level monitoring and
+  # remediation (restart, stop, exec).
+  docker:
+    enabled: false
+    # Unix socket (local) or TCP (remote)
+    socket: "/var/run/docker.sock"
+    # host: "tcp://docker.example.com:2375"
+    # TLS config for remote daemon
+    tls_cert: null
+    tls_key: null
+    # Labels to watch (empty = all containers)
+    label_filter: "com.infraheal.managed=true"
+
+  # ── Webhook Receiver ─────────────────────────────────────────────────────
+  # Accepts push-based alerts from existing monitoring (PagerDuty, OpsGenie,
+  # Datadog, custom webhooks).  Each received alert is queued as an incident.
+  webhook:
+    enabled: false
+    # HTTP listen port for incoming webhooks
+    listen_port: 8080
+    # Shared secret for HMAC verification (optional)
+    secret: "${WEBHOOK_SECRET}"
+    # Accepted content-types
+    content_types:
+      - "application/json"
+      - "application/x-www-form-urlencoded"
+    # Mapping from webhook payload fields to incident schema
+    field_mapping:
+      alert_name: "$.alert.name"
+      severity: "$.alert.severity"
+      description: "$.alert.message"
+      source: "$.alert.source"
+      timestamp: "$.alert.started_at"
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  REMEDIATION ACTIONS — executed by the RemediationAgent after approval
+# ══════════════════════════════════════════════════════════════════════════════
+
+actions:
+
+  # ── Kubernetes / OpenShift Actions ───────────────────────────────────────
+  kubernetes:
+    enabled: false
+    # kubeconfig to use for action execution (can differ from source config)
+    kubeconfig: null
+    # Allowed actions (SafetyGuard enforces this list)
+    allowed:
+      restart_deployment: true
+      scale_deployment: true
+      rollback_deployment: true
+      delete_pod: false       # intentionally restricted
+      cordon_node: false      # requires higher approval
+      patch_resource: true
+    # Default namespace for actions
+    default_namespace: "production"
+
+  # ── Docker Actions ───────────────────────────────────────────────────────
+  docker_actions:
+    enabled: false
+    # Docker endpoint for actions (can differ from source config)
+    socket: "/var/run/docker.sock"
+    allowed:
+      restart_container: true
+      stop_container: false   # requires approval
+      exec_command: true
+      prune_images: false     # restricted
+
+  # ── Shell / Script Actions ───────────────────────────────────────────────
+  # Executes predefined remediation scripts on the host or via SSH.
+  scripts:
+    enabled: false
+    # Directory containing executable scripts
+    script_dir: "/opt/infraheal/scripts"
+    # Allowed script names (SafetyGuard whitelist)
+    allowed_scripts:
+      - "flush_cache.sh"
+      - "rotate_logs.sh"
+      - "restart_service.sh"
+      - "clear_temp.sh"
+    # Execution timeout per script
+    timeout_seconds: 60
+    # Remote execution over SSH (optional)
+    ssh:
+      host: null
+      port: 22
+      user: "${SSH_USER}"
+      key: "${SSH_PRIVATE_KEY}"
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  CI/CD INTEGRATIONS — triggered by remediation for automatic rollback/deploy
+# ══════════════════════════════════════════════════════════════════════════════
+
+cicd:
+
+  # ── Jenkins ──────────────────────────────────────────────────────────────
+  jenkins:
+    enabled: false
+    url: "http://jenkins.example.com:8080"
+    username: "${JENKINS_USER}"
+    api_token: "${JENKINS_TOKEN}"
+    # Job pattern for triggered rollbacks
+    rollback_job: "deploy-rollback-{service}"
+    # Parameters to pass to the rollback job
+    rollback_params:
+      SERVICE: "{service}"
+      VERSION: "{previous_version}"
+      TRIGGERED_BY: "InfraHeal AI"
+
+  # ── GitLab CI ────────────────────────────────────────────────────────────
+  gitlab_ci:
+    enabled: false
+    url: "https://gitlab.example.com"
+    token: "${GITLAB_TOKEN}"
+    # Project ID / path for pipeline triggers
+    project_id: null
+    project_path: "namespace/project"
+    # Trigger rollback pipeline
+    rollback_branch: "main"
+    rollback_variables:
+      ACTION: "rollback"
+      TARGET: "{service}"
+
+  # ── GitHub Actions ───────────────────────────────────────────────────────
+  github_actions:
+    enabled: false
+    token: "${GITHUB_TOKEN}"
+    repo: "organization/repository"
+    workflow: "rollback.yml"
+    ref: "main"
+    inputs:
+      service: "{service}"
+      version: "{previous_version}"
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  NOTIFICATIONS — alert downstream systems about incidents and resolutions
+# ══════════════════════════════════════════════════════════════════════════════
+
+notifications:
+
+  # ── PagerDuty ────────────────────────────────────────────────────────────
+  pagerduty:
+    enabled: false
+    routing_key: "${PD_ROUTING_KEY}"
+    # Severity mapping: InfraHeal severity -> PagerDuty severity
+    severity_map:
+      P1: critical
+      P2: error
+      P3: warning
+      P4: info
+
+  # ── Slack Webhook ────────────────────────────────────────────────────────
+  slack:
+    enabled: false
+    webhook_url: "${SLACK_WEBHOOK_URL}"
+    channel: "#infraheal-alerts"
+    # What events trigger a Slack notification
+    notify_on:
+      incident_created: true
+      incident_resolved: true
+      approval_required: true
+      high_risk_action: true
+
+  # ── Email (SMTP) ─────────────────────────────────────────────────────────
+  email:
+    enabled: false
+    smtp_host: "smtp.example.com"
+    smtp_port: 587
+    smtp_user: "${SMTP_USER}"
+    smtp_password: "${SMTP_PASSWORD}"
+    from: "infraheal@example.com"
+    to:
+      - "oncall@example.com"
+      - "sre-team@example.com"
+    # Send daily digest of incidents
+    daily_digest: false

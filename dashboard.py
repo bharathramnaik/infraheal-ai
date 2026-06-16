@@ -1366,11 +1366,18 @@ def format_log_table(logs: List[Dict[str, Any]]) -> str:
         )
 
     return (
-        f'<div style="overflow-x:auto;border-radius:14px;border:1px solid rgba(255,255,255,0.06);">'
+        f'<div id="live-log-stream" style="overflow-x:auto;overflow-y:auto;max-height:420px;'
+        f'border-radius:14px;border:1px solid rgba(255,255,255,0.06);">'
         f'<table class="styled-table">'
         f'<thead><tr><th>Timestamp</th><th>Level</th><th>Service</th><th>Source</th><th>Message</th></tr></thead>'
         f'<tbody>{rows}</tbody>'
         f'</table></div>'
+        f'<script>'
+        f'(function(){'
+        f'  var el=document.getElementById("live-log-stream");'
+        f'  if(el){el.scrollTop=el.scrollHeight;}'
+        f'})();'
+        f'</script>'
     )
 
 
@@ -4922,17 +4929,22 @@ def create_dashboard(
                         ("What is InfraHeal AI?",
                          "Autonomous incident diagnosis & resolution system built for the TCS & AMD Build AI 2026 hackathon. "
                          "Uses a <b>4-agent LLM pipeline</b> (Triage &rarr; RCA &rarr; Remediation &rarr; Report) powered by "
-                         "<b>Qwen/Qwen2.5-7B-Instruct</b> on <b>AMD ROCm + vLLM</b>. Features real-time log streaming, "
-                         "RAG-based knowledge retrieval, human-in-the-loop approvals, and continuous learning via LoRA fine-tuning."),
+                         "<b>Qwen/Qwen2.5-7B-Instruct</b> on <b>AMD ROCm + vLLM</b>. Features: real-time log streaming, "
+                         "RAG-based knowledge retrieval, human-in-the-loop approvals, animated pipeline progress, "
+                         "error-level-specific resolution, chat token gauge, and continuous learning via LoRA fine-tuning."),
                         ("How do I run an analysis?",
-                         "Go to <b>Incident Analysis</b> tab &rarr; select a scenario from the dropdown &rarr; "
+                         "Two ways:"
+                         "<br><b>Single scenario:</b> Go to <b>Incident Analysis</b> tab &rarr; select a scenario &rarr; "
                          "click <b>Analyze Incident</b>. The pipeline runs sequentially: "
                          "Triage classifies severity/category, RCA identifies root cause, Remediation generates actions, "
-                         "Reporting produces a summary. Results appear in the four agent output panels below. "
-                         "The <b>Agent Reasoning Chain</b> accordion shows step-by-step reasoning from each agent."),
+                         "Reporting produces a summary. Results appear in the four agent output panels with step-by-step reasoning."
+                         "<br><b>Level-specific:</b> Go to <b>Command Center</b> &rarr; <b>Resolution by Error Level</b> section "
+                         "&rarr; filter by CRITICAL/ERROR/WARNING &rarr; click <b>Run Level-Specific Resolution</b>. "
+                         "Shows animated pipeline steps: Detect &rarr; Triage &rarr; RCA &rarr; Remediation &rarr; Report &rarr; Results."),
                         ("How do I process all incidents at once?",
                          "Go to <b>Command Center</b> &rarr; click <b>Process All Incidents</b>. "
-                         "This iterates over every scenario, runs the full pipeline on each, and produces "
+                         "An animated pipeline flow shows progress per scenario with step indicators. "
+                         "Each scenario runs the full 4-agent pipeline, producing "
                          "a comprehensive summary table with severity, category, root cause, and action counts. "
                          "Performance metrics are aggregated across all scenarios."),
                         ("What is the approval queue for?",
@@ -4972,6 +4984,39 @@ def create_dashboard(
                          "<span style='color:#FFB800;'><b>flag</b></span> (risky but permitted), or "
                          "<span style='color:#FF3B3B;'><b>block</b></span> (dangerous, prevented). "
                          "Results are shown in the Remediation output panel with detailed reasoning."),
+                        ("What does the pipeline flow animation show?",
+                         "When you click <b>Process All Incidents</b>, <b>Start Continuous Monitoring</b>, or "
+                         "<b>Run Level-Specific Resolution</b>, an animated pipeline flow appears showing: "
+                         "<br>1. A <b>progress bar</b> with percentage complete"
+                         "<br>2. Individual <b>step indicators</b> per scenario or per agent (Triage, RCA, Remediation, Report)"
+                         "<br>3. <b>Per-step timing</b> showing how long each stage took"
+                         "<br>4. A <b>running timer</b> for the overall pipeline"
+                         "<br>Each step transitions from pending &rarr; running &rarr; completed. "
+                         "Failed steps are shown in red with the error message in the step description."),
+                        ("What do the Command Center metric cards mean?",
+                         "Four cards on the Command Center dashboard:"
+                         "<br><b>Active Incidents:</b> Number of loaded synthetic incident scenarios (6 by default)."
+                         "<br><b>Anomalies Detected:</b> Total anomalies found by the AnomalyDetector engine "
+                         "(metric outliers + log pattern breaches + burst detection) across all scenarios."
+                         "<br><b>Mean Resolution:</b> Average resolution time from past incident records."
+                         "<br><b>System Health:</b> 100% minus the average error rate across all metrics. "
+                         "Updated in real-time as new log data arrives."),
+                        ("What is the Resolution by Error Level feature?",
+                         "In <b>Command Center</b>, the <b>Resolution by Error Level</b> section lets you "
+                         "filter logs by severity (CRITICAL, ERROR, or WARNING) and run the agent pipeline "
+                         "on just that severity level. The pipeline shows 6 steps per level: "
+                         "<b>Detect</b> (anomaly detection) &rarr; <b>Triage</b> &rarr; <b>RCA</b> &rarr; "
+                         "<b>Remediation</b> &rarr; <b>Report</b> &rarr; <b>Results</b>. "
+                         "Each step shows its own timing and status. "
+                         "Results include a summary, root cause, and remediation steps for that specific error level. "
+                         "Useful for focusing on the most critical issues first."),
+                        ("What is the token gauge in Agent Chat?",
+                         "Next to the model selector in Agent Chat, a <b>ring gauge</b> shows your "
+                         "daily token usage. The default limit is <b>200,000 tokens</b> per day. "
+                         "The ring fills as you use tokens across chat messages. "
+                         "A green ring means plenty remaining, amber is getting low, red means near limit. "
+                         "Token count resets when the dashboard restarts. "
+                         "You can adjust the limit in <code>CHAT_DAILY_TOKEN_LIMIT</code> in <code>config.py</code>."),
                         ("What does the critique agent do?",
                          "After RCA, the critique agent reviews the root cause analysis for evidence quality. "
                          "It either <b>confirms</b> the RCA or identifies <b>gaps</b> (e.g. 'Insufficient evidence for memory critical conditions'). "
@@ -5017,7 +5062,11 @@ def create_dashboard(
                          "<br><code>vllm serve Qwen/Qwen2.5-7B-Instruct --host 0.0.0.0 --port 8000 "
                          "--gpu-memory-utilization 0.9 --max-model-len 8192</code>"
                          "<br><code>python dashboard.py</code>"
-                         "<br><b>Local (CPU demo mode):</b> python dashboard.py runs with pre-generated demo data."),
+                         "<br>Optional flags: <code>--host 0.0.0.0 --port 7860 --share</code>"
+                         "<br>To connect to real infrastructure: configure <code>connectivity.yaml</code> "
+                         "and set <code>enabled: true</code> for each source."
+                         "<br><b>Local (CPU demo mode):</b> <code>python dashboard.py</code> runs with "
+                         "pre-generated demo data and simulated agents."),
                         ("What hardware is required?",
                          "<b>Production:</b> AMD ROCm GPU (MI250/MI300 recommended) with vLLM for inference. "
                          "Requires ROCm 6.x + PyTorch with ROCm support."
@@ -5048,9 +5097,20 @@ def create_dashboard(
                          "Early in a session or after idle periods, the cache is naturally empty. "
                          "It populates after a few requests. 0% is normal behavior and not a concern."),
                         ("Can this integrate with real infrastructure?",
-                         "Currently uses simulated execution — actions print success messages but don't "
-                         "connect to actual servers. For production: replace <code>execute_action()</code> "
-                         "in <code>remediation_agent.py</code> with real API calls (Kubernetes, AWS, Ansible, etc.). "
+                         "Yes. The system has a pluggable <b>connectivity configuration</b> (<code>connectivity.yaml</code>) "
+                         "that defines connections to:"
+                         "<br><b>OpenShift / Kubernetes:</b> Stream pods logs, watch events, execute "
+                         "<code>kubectl</code> actions (restart, scale, rollback) via the remediation agent."
+                         "<br><b>Prometheus:</b> Pull metric data for anomaly detection (CPU, memory, "
+                         "error rates, latency)."
+                         "<br><b>Grafana:</b> Embed dashboard snapshots in incident reports."
+                         "<br><b>Elasticsearch / ELK:</b> Index and search operational logs for RCA."
+                         "<br><b>Docker:</b> Monitor containers, restart failed services."
+                         "<br><b>CI/CD (Jenkins, GitLab CI):</b> Trigger pipeline rollbacks or re-deployments "
+                         "as remediation actions."
+                         "<br><b>Webhook:</b> Receive real-time alerts from PagerDuty, OpsGenie, "
+                         "or custom monitoring tools."
+                         "<br>Each source can be enabled/disabled independently. "
                          "The SafetyGuard, approval queue, and logging infrastructure are production-ready."),
                     ]
                     items = "".join(
