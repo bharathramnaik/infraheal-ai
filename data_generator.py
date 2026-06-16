@@ -1980,8 +1980,98 @@ def create_incident_scenarios(seed: int = SEED) -> List[Dict[str, Any]]:
         "expected_root_cause": "Application cascade: bad API payloads → microservice timeouts → DB constraint violations",
     })
 
+    # ── Enrich each scenario with additional filler logs ──────────
+    _enrich_scenario_logs(scenarios, rng)
+
     logger.info("Created %d demo scenarios", len(scenarios))
     return scenarios
+
+
+def _enrich_scenario_logs(scenarios: List[Dict[str, Any]], rng: random.Random) -> None:
+    """Insert periodic health-check and intermediate context logs into each scenario.
+
+    Keeps the original hand-crafted narrative logs intact while adding
+    realistic 'background noise' so the live log stream shows more activity.
+    """
+    HEALTH_SOURCES = [
+        ("healthcheck", "health-checker", "INFO",
+         "health check passed — all endpoints responsive"),
+        ("healthcheck", "health-checker", "INFO",
+         "health check passed — service latency within SLA"),
+        ("monitor", "prometheus", "INFO",
+         "scrape succeeded — 124 metrics collected from node"),
+        ("monitor", "prometheus", "INFO",
+         "rule evaluation: infra_health_score = 0.94 (threshold 0.80)"),
+        ("systemd", "systemd", "INFO",
+         "Started Periodic health check service."),
+        ("kernel", "kernel", "INFO",
+         "memory pages: 12.4G active, 4.2G inactive, 1.8G free"),
+    ]
+    TIMESTAMP_FMT = "%Y-%m-%dT%H:%M:%SZ"
+
+    for sc in scenarios:
+        logs: List[dict] = sc.get("logs", [])
+        if not logs:
+            continue
+
+        # Build a time-ordered list of entries so we can insert between them
+        logs.sort(key=lambda x: x.get("timestamp", ""))
+        enriched: List[dict] = []
+        time_window = 3  # minutes between filler batches
+
+        # Find the first and last timestamps in the scenario
+        try:
+            t_start = datetime.fromisoformat(logs[0]["timestamp"])
+            t_end = datetime.fromisoformat(logs[-1]["timestamp"])
+        except (ValueError, TypeError):
+            enriched = logs  # can't parse timestamps, skip
+            sc["logs"] = enriched
+            continue
+
+        # Insert filler logs at regular intervals between existing log timestamps
+        cursor = t_start
+        while cursor < t_end:
+            # Add a health-check INFO log at this interval
+            src, svc, lvl, msg = rng.choice(HEALTH_SOURCES)
+            ts_str = cursor.strftime(TIMESTAMP_FMT)
+            enriched.append({
+                "timestamp": ts_str,
+                "source": src,
+                "level": lvl,
+                "service": svc,
+                "message": msg,
+                "metadata": {"host": logs[0].get("metadata", {}).get("host", "unknown")},
+            })
+            # Occasionally add a DEBUG or INFO log from a supporting service
+            if rng.random() < 0.6:
+                noise_msg = rng.choice([
+                    "connection pool: 12/20 active connections",
+                    "cache hit ratio: 94.2%",
+                    "garbage collection paused 42ms (concurrent)",
+                    "renewing ACME certificate for *.infraheal.internal",
+                    "session cleanup: removed 37 expired sessions",
+                    "rate limiter token bucket: 148/200 available",
+                    "thread pool: 8/16 active threads, 23 tasks queued",
+                    "DNS resolution for db-primary.infraheal.internal: 10.0.1.10 (4ms)",
+                    "SSL handshake with upstream api-gateway: success (TLSv1.3)",
+                    "metrics push to collector: success (1024 bytes)",
+                ])
+                noise_ts = cursor + timedelta(seconds=rng.randint(10, 150))
+                if noise_ts < t_end:
+                    enriched.append({
+                        "timestamp": noise_ts.strftime(TIMESTAMP_FMT),
+                        "source": "sidecar",
+                        "level": rng.choice(["INFO", "DEBUG"]),
+                        "service": sc.get("name", "application")[:20].lower(),
+                        "message": noise_msg,
+                        "metadata": {"host": logs[0].get("metadata", {}).get("host", "unknown")},
+                    })
+            cursor += timedelta(minutes=time_window)
+
+        # Append original narrative logs on top
+        enriched.extend(logs)
+        enriched.sort(key=lambda x: x.get("timestamp", ""))
+        sc["logs"] = enriched
 
 
 # ────────────────────────────────────────────────────────────────────

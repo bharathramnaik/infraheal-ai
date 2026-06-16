@@ -925,6 +925,30 @@ footer { display: none !important; }
 .rerun-btn:active {
   transform: rotate(90deg);
 }
+.tool-btn {
+  min-width: auto !important;
+  padding: 4px 12px !important;
+  height: 32px !important;
+  font-size: 0.78rem !important;
+  font-weight: 600 !important;
+  border-radius: 6px !important;
+  border: 1px solid #484f58 !important;
+  background: transparent !important;
+  color: #8b949e !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  box-shadow: none !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+}
+.tool-btn:hover {
+  color: #e2e8f0 !important;
+  border-color: #8b949e !important;
+  background: rgba(255,255,255,0.04) !important;
+}
+.tool-btn:active {
+  background: rgba(255,255,255,0.08) !important;
+}
 .stop-btn {
   min-width: 32px !important;
   width: 32px !important;
@@ -1379,6 +1403,61 @@ def format_log_table(logs: List[Dict[str, Any]]) -> str:
         '})();'
         '</script>'
     )
+
+
+def format_raw_logs(logs: List[Dict[str, Any]]) -> str:
+    """Format logs as raw text (like OpenShift pod logs)."""
+    if not logs:
+        return _empty_state("No logs available", "Run an anomaly scan to see live logs.")
+    lines = []
+    for log in logs[:200]:
+        ts = log.get("timestamp", "—")
+        svc = log.get("service", "—")
+        lvl = log.get("level", "INFO").upper()
+        src = log.get("source", "—")
+        msg = log.get("message", "")
+        lines.append(f"{ts} [{lvl}] [{svc}] [{src}] {msg}")
+    text = "\n".join(lines)
+    escaped = (text
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+    )
+    level_colors = {
+        "CRITICAL": "#FF3B3B", "ERROR": "#FF3B3B",
+        "WARNING": "#FFB800", "INFO": "#8b949e",
+        "DEBUG": "#484f58",
+    }
+    colored = escaped
+    for lvl, color in level_colors.items():
+        colored = colored.replace(f"[{lvl}]", f'<span style="color:{color};font-weight:600;">[{lvl}]</span>')
+    return (
+        f'<div id="live-log-stream" style="overflow-y:auto;max-height:500px;'
+        f'background:#0d1117;border-radius:14px;border:1px solid rgba(255,255,255,0.06);'
+        f'padding:12px;font-family:monospace;font-size:0.78rem;line-height:1.6;color:#c9d1d9;'
+        f'white-space:pre-wrap;word-break:break-all;">{colored}</div>'
+        '<script>'
+        '(function(){'
+        '  var el=document.getElementById("live-log-stream");'
+        '  if(el){el.scrollTop=el.scrollHeight;}'
+        '})();'
+        '</script>'
+    )
+
+
+def filter_logs(logs: List[Dict[str, Any]], keyword: str) -> List[Dict[str, Any]]:
+    """Filter logs by keyword (case-insensitive match against any field)."""
+    if not keyword:
+        return logs
+    kw = keyword.lower()
+    return [
+        log for log in logs
+        if any(
+            kw in str(v).lower()
+            for v in log.values()
+            if isinstance(v, (str, list, dict))
+        )
+    ]
 
 
 def format_metrics_panel(metrics: Dict[str, Any]) -> str:
@@ -4174,10 +4253,50 @@ def create_dashboard(
                     '<div class="section-label" style="margin-top:16px;">Live Log Stream</div>'
                 )
 
-                # Hidden JS bridge textbox
+                with gr.Row():
+                    log_filter = gr.Textbox(
+                        label="", placeholder="Filter logs by keyword...",
+                        scale=4, container=False,
+                    )
+                    raw_btn = gr.Button("Raw", scale=0, elem_classes="tool-btn", size="sm")
+                raw_state = gr.State(value=False)
+
                 log_stream = gr.HTML(value=_get_command_center_logs)
                 live_timer = gr.Timer(value=3.0, active=True)
-                live_timer.tick(fn=_render_live_logs, inputs=[], outputs=[log_stream])
+
+                def _render_filtered_logs(keyword: str, raw: bool) -> str:
+                    try:
+                        all_logs: List[Dict[str, Any]] = []
+                        for sc in scenarios.values():
+                            all_logs.extend(sc.get("logs", []))
+                        all_logs.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+                        filtered = filter_logs(all_logs[:100], keyword)
+                        if raw:
+                            return format_raw_logs(filtered)
+                        return format_log_table(filtered)
+                    except Exception as exc:
+                        logger.warning("Log render error: %s", exc)
+                        return _get_command_center_logs()
+
+                live_timer.tick(
+                    fn=_render_filtered_logs,
+                    inputs=[log_filter, raw_state],
+                    outputs=[log_stream],
+                )
+                raw_btn.click(
+                    fn=lambda r: not r,
+                    inputs=[raw_state],
+                    outputs=[raw_state],
+                ).then(
+                    fn=_render_filtered_logs,
+                    inputs=[log_filter, raw_state],
+                    outputs=[log_stream],
+                )
+                log_filter.change(
+                    fn=_render_filtered_logs,
+                    inputs=[log_filter, raw_state],
+                    outputs=[log_stream],
+                )
 
                 gr.HTML('<div style="height:12px;"></div>')
                 # ── Action buttons with rerun ──
