@@ -2416,48 +2416,37 @@ def create_dashboard(
                 continue
 
             if pf:
-                tri = pf.get("triage", {})
                 rca = pf.get("rca", {})
                 rem = pf.get("remediation", {})
-                rep = pf.get("report", {})
+                steps = []
+                for a in rem.get("recommended_actions", []):
+                    t = a.get("tool_name", "")
+                    r = a.get("rationale", "")
+                    steps.append(f"{t}: {r}" if r else t)
+                if not steps:
+                    steps = lr.get("resolution_steps", [])
+                root_cause = rca.get("root_cause", lr.get("root_cause", f"{level} indicators detected."))
+                confidence = rca.get("confidence_score", lr.get("confidence", 0.75))
+                summary = rca.get("reasoning_summary", lr.get("resolution_summary", rca.get("root_cause", f"Analyzed {an_count} {level}-level anomalies."))[:200])
                 rc_chain = pf.get("reasoning_chain", [])
-                warn = pf.get("consistency_warnings", [])
-
-                tri_html = format_agent_output("Triage", tri)
-                rca_html = format_agent_output("Root Cause Analysis", rca)
-                rem_html = format_agent_output("Remediation", rem)
-                rep_html = format_agent_output("Incident Report", rep)
-
-                rc_parts = [f'<div class="evidence-item" style="border-left-color:{meta["accent"]};"><span style="color:#e2e8f0;">{s.get("agent","?")}: {s.get("reasoning","")}</span></div>' for s in rc_chain]
-                rc_html = f'<div class="glass-card" style="margin-top:12px;"><div style="font-size:0.73rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Reasoning Chain</div>{"".join(rc_parts)}</div>' if rc_parts else ""
-
-                warn_html = ""
-                if warn:
-                    warn_html = f'<div style="margin-top:8px;padding:6px 10px;background:rgba(255,184,0,0.08);border-radius:6px;font-size:0.78rem;color:#FFB800;">{"<br>".join("⚠️ "+w for w in warn)}</div>'
-
-                inner = f'{tri_html}{rca_html}{rem_html}{rep_html}{rc_html}{warn_html}'
+                pipeline_dots = "".join(
+                    f'<span title="{s.get("agent","")}" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#00FF88;margin:0 1px;"></span>'
+                    for s in rc_chain
+                )
+                header_suffix = f'<span style="margin-left:auto;display:flex;align-items:center;gap:4px;">{pipeline_dots}<span style="font-size:0.65rem;color:#64748b;">Pipeline</span></span>'
             else:
                 steps = lr.get("resolution_steps", [])
                 root_cause = lr.get("root_cause", f"{level} indicators detected.")
                 confidence = lr.get("confidence", 0.75)
-                conf_pct = confidence * 100 if isinstance(confidence, float) and confidence <= 1 else confidence
                 summary = lr.get("resolution_summary", "Analysis complete")
+                header_suffix = f'<span style="margin-left:auto;font-size:0.72rem;color:#64748b;">Template</span>'
 
-                steps_html = "".join(
-                    f'<div class="action-card"><div class="action-icon" style="background:rgba(255,255,255,0.1);color:#64748b;">{i}</div>'
-                    f'<div style="flex:1;min-width:0;"><div style="font-size:0.82rem;color:#e2e8f0;">{s}</div></div></div>'
-                    for i, s in enumerate(steps, 1)
-                ) if steps else '<div style="color:#64748b;font-style:italic;padding:12px;">No automated resolution steps.</div>'
-
-                inner = (
-                    f'<div class="agent-panel-body">'
-                    f'<div style="margin-bottom:14px;"><span style="color:#64748b;font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;">Resolution Summary</span>'
-                    f'<div style="margin-top:6px;font-size:0.88rem;color:#e2e8f0;line-height:1.6;">{summary}</div></div>'
-                    f'<div style="margin-bottom:12px;"><span style="color:#64748b;font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;">Root Cause</span>'
-                    f'<div style="margin-top:6px;font-size:0.85rem;color:#e2e8f0;background:rgba(255,255,255,0.02);padding:10px 14px;border-radius:8px;border-left:3px solid {meta["accent"]};">{root_cause}</div></div>'
-                    f'<div><span style="color:#64748b;font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;display:block;">Resolution Steps</span>{steps_html}</div>'
-                    f'</div>'
-                )
+            conf_pct = confidence * 100 if isinstance(confidence, float) and confidence <= 1 else confidence
+            steps_html = "".join(
+                f'<div class="action-card"><div class="action-icon" style="background:rgba(255,255,255,0.1);color:#64748b;">{i}</div>'
+                f'<div style="flex:1;min-width:0;"><div style="font-size:0.82rem;color:#e2e8f0;">{s}</div></div></div>'
+                for i, s in enumerate(steps, 1)
+            ) if steps else '<div style="color:#64748b;font-style:italic;padding:12px;">No automated resolution steps.</div>'
 
             html_parts.append(
                 f'<div class="agent-panel" style="margin-bottom:16px;border-left:3px solid {meta["accent"]};">'
@@ -2465,8 +2454,15 @@ def create_dashboard(
                 f'<span style="font-size:1.1rem;">{meta["icon"]}</span>'
                 f'<span style="color:{meta["accent"]};font-weight:700;">{level}</span>'
                 f'<span style="color:#64748b;font-size:0.78rem;margin-left:8px;">{an_count} anomaly{"ies" if an_count != 1 else "y"}</span>'
-                f'<span style="margin-left:auto;font-size:0.72rem;color:#64748b;">{lr.get("llm_generated",False) and "LLM" or "Template"}</span>'
-                f'</div>{inner}</div>'
+                f'{header_suffix}'
+                f'</div>'
+                f'<div class="agent-panel-body">'
+                f'<div style="margin-bottom:14px;"><span style="color:#64748b;font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;">Resolution Summary</span>'
+                f'<div style="margin-top:6px;font-size:0.88rem;color:#e2e8f0;line-height:1.6;">{summary}</div></div>'
+                f'<div style="margin-bottom:12px;"><span style="color:#64748b;font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;">Root Cause</span>'
+                f'<div style="margin-top:6px;font-size:0.85rem;color:#e2e8f0;background:rgba(255,255,255,0.02);padding:10px 14px;border-radius:8px;border-left:3px solid {meta["accent"]};">{root_cause}</div></div>'
+                f'<div><span style="color:#64748b;font-size:0.73rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;display:block;">Resolution Steps</span>{steps_html}</div>'
+                f'</div></div>'
             )
 
         result_html = "".join(html_parts) if html_parts else _empty_state(
@@ -4967,21 +4963,21 @@ def create_dashboard(
                 def _render_chat_token_gauge(used: int) -> str:
                     pct = max(0, min(100, (used / CHAT_DAILY_LIMIT) * 100))
                     remaining = max(0, CHAT_DAILY_LIMIT - used)
-                    r = 8; cx = 14; cy = 14; circ = 2 * 3.14159 * r
+                    r = 12; cx = 18; cy = 18; circ = 2 * 3.14159 * r
                     offset = circ * (1 - pct / 100)
                     color = "#00FF88" if pct < 50 else "#FFB800" if pct < 80 else "#FF3B3B"
                     return (
-                        f'<div style="display:inline-flex;align-items:center;gap:6px;margin-left:8px;padding:2px 8px;'
+                        f'<div style="display:inline-flex;align-items:center;gap:8px;margin-left:8px;padding:3px 10px;'
                         f'background:rgba(255,255,255,0.03);border-radius:20px;border:1px solid rgba(255,255,255,0.06);">'
-                        f'<svg width="28" height="28" viewBox="0 0 28 28">'
-                        f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="3"/>'
-                        f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="none" stroke="{color}" stroke-width="3" '
+                        f'<svg width="36" height="36" viewBox="0 0 36 36">'
+                        f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="4"/>'
+                        f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="none" stroke="{color}" stroke-width="4" '
                         f'stroke-dasharray="{circ}" stroke-dashoffset="{offset}" stroke-linecap="round" '
                         f'transform="rotate(-90 {cx} {cy})"/>'
                         f'<text x="{cx}" y="{cy}" text-anchor="middle" dominant-baseline="central" '
-                        f'fill="{color}" font-size="7" font-weight="700" font-family="monospace">{100-pct:.0f}%</text>'
+                        f'fill="{color}" font-size="9" font-weight="800" font-family="monospace">{100-pct:.0f}%</text>'
                         f'</svg>'
-                        f'<span style="font-size:0.65rem;color:#8b949e;font-family:JetBrains Mono,monospace;">'
+                        f'<span style="font-size:0.75rem;color:#8b949e;font-family:JetBrains Mono,monospace;font-weight:500;">'
                         f'{remaining:,} / {CHAT_DAILY_LIMIT:,}</span>'
                         f'</div>'
                     )
