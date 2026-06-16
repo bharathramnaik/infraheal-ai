@@ -2998,6 +2998,17 @@ def create_dashboard(
                 if q_count:
                     logger.info("Queued %d actions for human approval in scenario %s", q_count, name)
 
+                # Block on high-risk actions
+                if _blocked_scenarios.get(name):
+                    step["status"] = "blocked"
+                    step["desc"] = "BLOCKED — high-risk action pending approval"
+                    yield _render_pipeline_flow() + _render_blocked_banner()
+                    while _blocked_scenarios.get(name):
+                        yield _render_pipeline_flow() + _render_blocked_banner()
+                        time.sleep(2)
+                    _complete_step(step, "completed")
+                    yield _render_pipeline_flow()
+
             badge = format_severity_badge(sev)
             rows += (
                 f'<tr>'
@@ -4284,7 +4295,7 @@ setInterval(function(){
             # ──────────────────────────────────────────────────────
             #  TAB 4 — APPROVALS
             # ──────────────────────────────────────────────────────
-            with gr.Tab("Approvals"):
+            with gr.Tab("Approvals") as appr_tab:
                 gr.HTML(
                     '<div class="section-title">Human Approval Center</div>'
                     '<div class="section-subtitle">'
@@ -4326,6 +4337,12 @@ setInterval(function(){
                 appr_status = gr.HTML(value="")
                 appr_history_panel = gr.HTML(value=_render_approval_history())
                 appr_audit_panel = gr.HTML(value=_render_audit_log())
+
+                # Auto-refresh approval components when user navigates to this tab
+                appr_tab.select(
+                    fn=lambda: (_render_approval_panel(), _render_approval_history(), _render_audit_log(), _refresh_approval_selector()),
+                    inputs=[], outputs=[appr_panel, appr_history_panel, appr_audit_panel, appr_approval_selector],
+                )
 
                 def _render_action_log(a: dict, action_label: str, color: str) -> str:
                     # Build structured steps collapsible
