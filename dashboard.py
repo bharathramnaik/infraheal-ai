@@ -2101,17 +2101,22 @@ def create_dashboard(
                 _level_pipeline_run["steps"][si]["status"] = "completed"
                 _level_pipeline_run["steps"][si]["duration"] = time.time() - _level_pipeline_run["steps"][si]["start"]
                 _level_pipeline_run["steps"][si]["progress"] = 100
+                _level_pipeline_run["steps"][si]["desc"] = f"{len(an)} anomalies"
 
-                # RCA step
+                # RCA step — runs Triage + RCA + Remediation + Report agents
                 _level_pipeline_run["steps"][si+1]["status"] = "running"
                 _level_pipeline_run["steps"][si+1]["start"] = time.time()
+                _level_pipeline_run["steps"][si+1]["desc"] = "Triage → RCA → Remediation → Report"
                 yield _render_pipeline_flow(run_key="_level") + "".join(result_blocks)
 
+                _agent_error = None
                 if orchestrator and an:
                     try:
                         pl = orchestrator.process_by_error_level(logs=level_logs, metrics=scenario_metrics, use_llm=True)
                         lr = pl.get("per_level", {}).get(lvl, {})
-                    except Exception:
+                    except Exception as exc:
+                        _agent_error = str(exc)
+                        logger.error("Level pipeline agent calls failed for %s: %s", lvl, exc)
                         lr = {}
                 else:
                     lr = {}
@@ -2119,6 +2124,10 @@ def create_dashboard(
                 _level_pipeline_run["steps"][si+1]["status"] = "completed"
                 _level_pipeline_run["steps"][si+1]["duration"] = time.time() - _level_pipeline_run["steps"][si+1]["start"]
                 _level_pipeline_run["steps"][si+1]["progress"] = 100
+                desc = f"vLLM pipeline: {lr.get('llm_generated', False) and 'LLM' or 'template'} mode"
+                if _agent_error:
+                    desc += f" — error: {_agent_error[:60]}"
+                _level_pipeline_run["steps"][si+1]["desc"] = desc
 
                 # Remediation step
                 _level_pipeline_run["steps"][si+2]["status"] = "running"
@@ -2155,9 +2164,9 @@ def create_dashboard(
 
                 result_blocks.append(
                     f'<div class="agent-panel" style="margin-bottom:12px;border-left:3px solid {meta[lvl][0]};">'
-                    f'<div class="agent-panel-header" style="background:linear-gradient(135deg,{meta[lvl][0]}15,transparent);">'
+                    f'<div class="agent-panel-header" style="display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,{meta[lvl][0]}15,transparent);">'
                     f'<span style="color:{meta[lvl][0]};font-weight:800;font-size:0.9rem;">{lvl}</span>'
-                    f'<span style="color:#64748b;font-size:0.78rem;margin-left:8px;">{len(an)} anomaly{"ies" if len(an)!=1 else "y"}</span>'
+                    f'<span style="color:#64748b;font-size:0.78rem;">{len(an)} anomal{"ies" if len(an)!=1 else "y"}</span>'
                     f'<span style="margin-left:auto;font-size:0.72rem;color:#64748b;">{conf_pct:.0f}%</span>'
                     f'</div>'
                     f'<div class="agent-panel-body">'
