@@ -1372,12 +1372,12 @@ def format_log_table(logs: List[Dict[str, Any]]) -> str:
         f'<thead><tr><th>Timestamp</th><th>Level</th><th>Service</th><th>Source</th><th>Message</th></tr></thead>'
         f'<tbody>{rows}</tbody>'
         f'</table></div>'
-        f'<script>'
-        f'(function(){'
-        f'  var el=document.getElementById("live-log-stream");'
-        f'  if(el){el.scrollTop=el.scrollHeight;}'
-        f'})();'
-        f'</script>'
+        '<script>'
+        '(function(){'
+        '  var el=document.getElementById("live-log-stream");'
+        '  if(el){el.scrollTop=el.scrollHeight;}'
+        '})();'
+        '</script>'
     )
 
 
